@@ -168,7 +168,7 @@ async function readVideoStructureFromDb(
 
     const { data: videosRows, error } = await supabase
       .from('videos')
-      .select('id, title, artist, duration, resolution, file_size, file_path, thumbnail_url, genre_id, genres(name, slug)')
+      .select('id, title, artist, duration, resolution, file_size, file_path, thumbnail_url, genre_id, key, bpm, genres(name, slug)')
       .eq('pack_id', pack.id)
       .order('artist')
 
@@ -223,6 +223,8 @@ async function readVideoStructureFromDb(
         durationSeconds: row.duration ?? undefined,
         duration: row.duration ? formatDuration(row.duration) : undefined,
         resolution: row.resolution ?? undefined,
+        key: row.key ?? undefined,
+        bpm: row.bpm ?? undefined,
       })
     }
 

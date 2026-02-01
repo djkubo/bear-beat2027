@@ -33,6 +33,33 @@ function loadEnv(file) {
 loadEnv('.env');
 loadEnv('.env.local');
 
+/** Extrae key y BPM del nombre de archivo. Ej: "Artist - Title (10A – 124 BPM).mp4" */
+function parseKeyBpmFromFilename(filename) {
+  const nameWithoutExt = filename.replace(/\.(mp4|mov|avi|mkv)$/i, '').trim();
+  let key = null;
+  let bpm = null;
+  let nameWithoutKeyBpm = nameWithoutExt;
+
+  const keyBpmEnd = nameWithoutExt.match(/\((\d{1,2}[AB])\s*[–-]\s*(\d+)\s*BPM\)\s*$/i);
+  if (keyBpmEnd) {
+    key = keyBpmEnd[1].toUpperCase();
+    bpm = keyBpmEnd[2];
+    nameWithoutKeyBpm = nameWithoutExt.replace(keyBpmEnd[0], '').trim().replace(/\s*-\s*$/, '').trim();
+  } else {
+    const bpmMatch = nameWithoutExt.match(/\((\d+)\s*BPM\)/i);
+    if (bpmMatch) {
+      bpm = bpmMatch[1];
+      nameWithoutKeyBpm = nameWithoutKeyBpm.replace(bpmMatch[0], '').trim().replace(/\s*-\s*$/, '').trim();
+    }
+    const keyMatch = nameWithoutExt.match(/\((\d{1,2}[AB])\)/i);
+    if (keyMatch) {
+      key = keyMatch[1].toUpperCase();
+      nameWithoutKeyBpm = nameWithoutKeyBpm.replace(keyMatch[0], '').trim().replace(/\s*-\s*$/, '').trim();
+    }
+  }
+  return { key, bpm, nameWithoutKeyBpm };
+}
+
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -99,6 +126,7 @@ async function main() {
     }
 
     let total = 0;
+    let totalSizeBytes = 0;
     const BATCH = 100;
     let batch = [];
 
@@ -112,19 +140,23 @@ async function main() {
 
         for (const file of videoFiles) {
           const relativePath = `${genreName}/${file.name}`;
-          const nameWithoutExt = file.name.replace(/\.(mp4|mov|avi|mkv)$/i, '');
-          const parts = nameWithoutExt.split(' - ');
-          const artist = parts.length >= 2 ? parts[0].trim() : nameWithoutExt;
+          const { key, bpm, nameWithoutKeyBpm } = parseKeyBpmFromFilename(file.name);
+          const parts = nameWithoutKeyBpm.split(' - ');
+          const artist = parts.length >= 2 ? parts[0].trim() : nameWithoutKeyBpm;
           const title = parts.length >= 2 ? parts.slice(1).join(' - ').trim() : '';
 
+          const fileSize = file.size || 0;
+          totalSizeBytes += fileSize;
           batch.push({
             pack_id: packId,
             genre_id: genreId,
-            title: title || nameWithoutExt,
+            title: title || nameWithoutKeyBpm,
             artist: artist || null,
             file_path: relativePath,
-            file_size: file.size || 0,
+            file_size: fileSize,
             resolution: '1080p',
+            key: key,
+            bpm: bpm,
           });
 
           if (batch.length >= BATCH) {
@@ -150,6 +182,16 @@ async function main() {
       } else {
         total += batch.length;
       }
+    }
+
+    const totalSizeGb = totalSizeBytes / (1024 * 1024 * 1024);
+    const { error: upErr } = await supabase.from('packs').update({
+      total_videos: total,
+      total_size_gb: Math.round(totalSizeGb * 100) / 100,
+      updated_at: new Date().toISOString(),
+    }).eq('id', packId);
+    if (upErr) {
+      console.warn('⚠ No se pudo actualizar total_videos del pack:', upErr.message);
     }
 
     console.log('\n✅ Listo. Total videos en DB desde Hetzner FTP:', total);

@@ -96,6 +96,8 @@ CREATE TABLE IF NOT EXISTS public.videos (
   file_path TEXT NOT NULL,
   thumbnail_url TEXT,
   preview_url TEXT,
+  key VARCHAR(20),
+  bpm VARCHAR(20),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

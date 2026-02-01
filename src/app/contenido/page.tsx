@@ -363,10 +363,10 @@ export default function ContenidoPage() {
                     <span>🎬</span> Preview Demo
                   </h3>
                   
-                  {/* VIDEO PLAYER CON WATERMARK */}
+                  {/* VIDEO PLAYER CON WATERMARK - bloqueado clic derecho, arrastre, abrir en nueva ventana */}
                   <div 
-                    className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4"
-                    onContextMenu={(e) => { e.preventDefault(); if (!hasAccess) setShowPaywall(true) }}
+                    className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4 select-none"
+                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); if (!hasAccess) setShowPaywall(true) }}
                   >
                     {/* Portada: thumbnail o fallback con inicial del artista */}
                     <div className="absolute inset-0 z-0">
@@ -419,12 +419,15 @@ export default function ContenidoPage() {
                       src={demoUrl}
                       className="relative z-10 w-full h-full object-contain"
                       controls
-                      controlsList="nodownload noplaybackrate"
+                      controlsList="nodownload nofullscreen noplaybackrate noremoteplayback"
                       disablePictureInPicture
+                      disableRemotePlayback
                       playsInline
+                      draggable={false}
                       autoPlay
                       muted
                       preload="metadata"
+                      onContextMenu={(e) => e.preventDefault()}
                       onError={() => setDemoError(true)}
                     />
                       )
@@ -511,7 +514,7 @@ export default function ContenidoPage() {
                 </Link>
 
                 <ul className="text-left text-sm space-y-2">
-                  <li className="flex items-center gap-2">✅ {packInfo?.totalVideos} videos HD</li>
+                  <li className="flex items-center gap-2">✅ {(packInfo?.totalVideos ?? inventory.count ?? 0).toLocaleString()} videos HD</li>
                   <li className="flex items-center gap-2">✅ Descarga ilimitada</li>
                   <li className="flex items-center gap-2">✅ Acceso FTP incluido</li>
                   <li className="flex items-center gap-2">✅ Soporte 24/7</li>
@@ -561,7 +564,7 @@ export default function ContenidoPage() {
               </p>
               {selectedVideo && (
                 <p className="text-gray-400 mb-6">
-                  Incluye <span className="text-bear-blue font-bold">"{selectedVideo.artist}"</span> y los otros <span className="text-bear-blue font-bold">{packInfo?.totalVideos} videos</span>.
+                  Incluye <span className="text-bear-blue font-bold">"{selectedVideo.artist}"</span> y los otros <span className="text-bear-blue font-bold">{(packInfo?.totalVideos ?? inventory.count ?? 0).toLocaleString()} videos</span>.
                 </p>
               )}
               
@@ -605,7 +608,7 @@ export default function ContenidoPage() {
         <footer className="py-8 px-4 bg-gradient-to-t from-bear-blue/20 to-transparent">
           <div className="max-w-4xl mx-auto text-center">
             <p className="text-2xl font-black mb-4">
-              ¿Listo para tener {packInfo?.totalVideos} videos?
+              ¿Listo para tener {(packInfo?.totalVideos ?? inventory.count ?? 0).toLocaleString()} videos?
             </p>
             <Link href="/checkout?pack=enero-2026">
               <button className="bg-bear-blue text-bear-black font-black text-xl px-12 py-5 rounded-xl hover:bg-bear-blue/90">

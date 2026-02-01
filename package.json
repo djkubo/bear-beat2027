@@ -12,6 +12,7 @@
     "db:setup": "node scripts/run-supabase-sql.js supabase/SETUP_COMPLETO.sql",
     "db:sync-videos": "node scripts/sync-videos-to-supabase.js",
     "db:sync-videos-ftp": "node scripts/sync-videos-from-ftp.js",
+    "db:update-videos-metadata": "node scripts/update-videos-metadata.js",
     "deploy:env": "node scripts/render-set-env.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"

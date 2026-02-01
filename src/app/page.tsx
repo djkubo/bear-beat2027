@@ -91,12 +91,13 @@ function CountdownTimer({ endDate }: { endDate: Date }) {
 }
 
 function ScarcityBar({ sold, total }: { sold: number; total: number }) {
-  const percentage = (sold / total) * 100
+  const safeTotal = Math.max(1, total)
+  const percentage = total <= 0 ? 0 : (sold / safeTotal) * 100
   return (
     <div className="w-full">
       <div className="flex justify-between text-sm mb-2">
-        <span className="font-bold text-red-500">⚠️ {total - sold} lugares disponibles</span>
-        <span className="text-gray-400">{sold}/{total} vendidos</span>
+        <span className="font-bold text-red-500">⚠️ {Math.max(0, total - sold)} lugares disponibles</span>
+        <span className="text-gray-400">{sold}/{total || 0} vendidos</span>
       </div>
       <div className="h-4 bg-gray-800 rounded-full overflow-hidden">
         <motion.div 
@@ -127,27 +128,37 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl }: { video: 
     setDownloading(false)
   }
 
+  const blockCopy = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 select-none"
       onClick={onClose}
+      onContextMenu={blockCopy}
     >
       <motion.div
         initial={{ scale: 0.9 }}
         animate={{ scale: 1 }}
         className="relative w-full max-w-4xl"
         onClick={(e) => e.stopPropagation()}
+        onContextMenu={(e) => e.stopPropagation()}
       >
         {/* Cerrar */}
         <button onClick={onClose} className="absolute -top-12 right-0 text-white text-xl hover:text-bear-blue">
           ✕ Cerrar
         </button>
 
-        {/* Video con watermark (solo si no tiene acceso) */}
-        <div className="relative aspect-video bg-black rounded-2xl overflow-hidden">
+        {/* Video con watermark (solo si no tiene acceso) - bloqueado clic derecho, arrastre, abrir en nueva ventana */}
+        <div
+          className="relative aspect-video bg-black rounded-2xl overflow-hidden"
+          onContextMenu={blockCopy}
+        >
           {!hasAccess && (
             <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
               <p className="text-white/20 text-4xl md:text-6xl font-black rotate-[-25deg]">BEAR BEAT</p>
@@ -166,11 +177,15 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl }: { video: 
           ) : (
           <video
             src={demoSrc}
-            className="w-full h-full"
+            className="w-full h-full pointer-events-auto"
             controls
             autoPlay
-            controlsList={hasAccess ? undefined : "nodownload"}
+            playsInline
+            draggable={false}
+            controlsList={hasAccess ? undefined : "nodownload nofullscreen noremoteplayback"}
             disablePictureInPicture={!hasAccess}
+            disableRemotePlayback
+            onContextMenu={blockCopy}
             onError={() => !hasAccess && setDemoError(true)}
           />
           )}
@@ -323,11 +338,10 @@ export default function HomePage() {
     trackCTAClick('comprar_oferta', location, 'lanzamiento_2026')
   }
 
-  // Una sola fuente de verdad: packInfo (mismo fetch que la lista). Fallback a inventory y luego a defaults para enero-2026 (evita "..." en cold start / API lenta).
-  const PACK_DEFAULTS = { totalVideos: 1000, genreCount: 17, totalSizeFormatted: '141.28 GB' }
-  const totalVideos = packInfo?.totalVideos ?? inventory.count ?? PACK_DEFAULTS.totalVideos
-  const genreCount = packInfo?.genreCount ?? inventory.genreCount ?? PACK_DEFAULTS.genreCount
-  const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted ?? PACK_DEFAULTS.totalSizeFormatted
+  // Datos en tiempo real: packInfo (fetch /api/videos) o inventory (useVideoInventory). Sin defaults estáticos.
+  const totalVideos = packInfo?.totalVideos ?? inventory.count ?? 0
+  const genreCount = packInfo?.genreCount ?? inventory.genreCount ?? 0
+  const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted ?? '0 B'
   const statsLoading = !statsTimedOut && ((loading && !packInfo) || inventory.loading)
 
   return (
@@ -504,7 +518,7 @@ export default function HomePage() {
           // ==========================================
           <div className="max-w-5xl mx-auto text-center relative z-10">
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-4 bg-gradient-to-r from-white via-gray-200 to-bear-blue/90 bg-clip-text text-transparent">
-              1,000 videos HD para DJs. Un pago. Descarga hoy.
+              {statsLoading ? '...' : totalVideos.toLocaleString()} videos HD para DJs. Un pago. Descarga hoy.
             </motion.h1>
 
             <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg md:text-xl text-gray-300 mb-6 max-w-2xl mx-auto">
@@ -677,7 +691,7 @@ export default function HomePage() {
                 </li>
                 <li className="flex gap-3">
                   <span className="text-green-400 shrink-0 text-xl" aria-hidden>✅</span>
-                  <span><strong className="text-white">Valoras tu tiempo:</strong> Prefieres pagar una vez y tener 1,000 videos listos y organizados, en lugar de perder 50 horas ripeando de YouTube con mala calidad.</span>
+                  <span><strong className="text-white">Valoras tu tiempo:</strong> Prefieres pagar una vez y tener {statsLoading ? '...' : totalVideos.toLocaleString()} videos listos y organizados, en lugar de perder 50 horas ripeando de YouTube con mala calidad.</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="text-green-400 shrink-0 text-xl" aria-hidden>✅</span>
@@ -698,7 +712,7 @@ export default function HomePage() {
                 </li>
                 <li className="flex gap-3">
                   <span className="text-red-400 shrink-0 text-xl" aria-hidden>❌</span>
-                  <span><strong className="text-white">No usas laptop:</strong> Aunque puedes descargar en el celular, el pack es pesado (141 GB). Necesitas una PC/Mac para sacarle el jugo real.</span>
+                  <span><strong className="text-white">No usas laptop:</strong> Aunque puedes descargar en el celular, el pack es pesado ({statsLoading ? '...' : totalSizeFormatted}). Necesitas una PC/Mac para sacarle el jugo real.</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="text-red-400 shrink-0 text-xl" aria-hidden>❌</span>
@@ -802,7 +816,7 @@ export default function HomePage() {
       {/* SCARCITY */}
       <section className="py-8 px-4 bg-red-500/10 border-y border-red-500/30">
         <div className="max-w-xl mx-auto">
-          <ScarcityBar sold={847} total={1000} />
+          <ScarcityBar sold={Math.max(0, totalVideos - 153)} total={totalVideos} />
         </div>
       </section>
 

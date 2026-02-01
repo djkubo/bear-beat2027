@@ -7,6 +7,35 @@ const PACK_SLUG = 'enero-2026'
 const FTP_BASE = process.env.FTP_BASE_PATH || process.env.FTP_VIDEOS_PATH || 'Videos Enero 2026'
 const BATCH = 100
 
+/** Extrae key y BPM del nombre de archivo. Ej: "Artist - Title (10A – 124 BPM).mp4" o "Title (124 BPM) (10A).mp4" */
+function parseKeyBpmFromFilename(filename: string): { key: string | null; bpm: string | null; nameWithoutKeyBpm: string } {
+  const nameWithoutExt = filename.replace(/\.(mp4|mov|avi|mkv)$/i, '').trim()
+  let key: string | null = null
+  let bpm: string | null = null
+  let nameWithoutKeyBpm = nameWithoutExt
+
+  // (10A – 124 BPM) o (10A - 124 BPM) al final
+  const keyBpmEnd = nameWithoutExt.match(/\((\d{1,2}[AB])\s*[–-]\s*(\d+)\s*BPM\)\s*$/i)
+  if (keyBpmEnd) {
+    key = keyBpmEnd[1].toUpperCase()
+    bpm = keyBpmEnd[2]
+    nameWithoutKeyBpm = nameWithoutExt.replace(keyBpmEnd[0], '').trim().replace(/\s*-\s*$/, '').trim()
+  } else {
+    const bpmMatch = nameWithoutExt.match(/\((\d+)\s*BPM\)/i)
+    if (bpmMatch) {
+      bpm = bpmMatch[1]
+      nameWithoutKeyBpm = nameWithoutKeyBpm.replace(bpmMatch[0], '').trim().replace(/\s*-\s*$/, '').trim()
+    }
+    const keyMatch = nameWithoutExt.match(/\((\d{1,2}[AB])\)/i)
+    if (keyMatch) {
+      key = keyMatch[1].toUpperCase()
+      nameWithoutKeyBpm = nameWithoutKeyBpm.replace(keyMatch[0], '').trim().replace(/\s*-\s*$/, '').trim()
+    }
+  }
+
+  return { key, bpm, nameWithoutKeyBpm }
+}
+
 /**
  * POST /api/admin/sync-videos-ftp
  * Solo admin. Sincroniza el listado de videos desde el FTP (Hetzner Storage Box)
@@ -76,6 +105,7 @@ export async function POST() {
     }
 
     let total = 0
+    let totalSizeBytes = 0
     const batch: Array<{
       pack_id: number
       genre_id: number | null
@@ -84,6 +114,8 @@ export async function POST() {
       file_path: string
       file_size: number
       resolution: string
+      key: string | null
+      bpm: string | null
     }> = []
 
     try {
@@ -115,19 +147,23 @@ export async function POST() {
 
           for (const file of videoFiles) {
             const relativePath = `${genreName}/${file.name}`
-            const nameWithoutExt = file.name.replace(/\.(mp4|mov|avi|mkv)$/i, '')
-            const parts = nameWithoutExt.split(' - ')
-            const artist = parts.length >= 2 ? parts[0].trim() : nameWithoutExt
+            const { key, bpm, nameWithoutKeyBpm } = parseKeyBpmFromFilename(file.name)
+            const parts = nameWithoutKeyBpm.split(' - ')
+            const artist = parts.length >= 2 ? parts[0].trim() : nameWithoutKeyBpm
             const title = parts.length >= 2 ? parts.slice(1).join(' - ').trim() : ''
 
+            const fileSize = file.size || 0
+            totalSizeBytes += fileSize
             batch.push({
               pack_id: packId,
               genre_id: genreId,
-              title: title || nameWithoutExt,
+              title: title || nameWithoutKeyBpm,
               artist: artist || null,
               file_path: relativePath,
-              file_size: file.size || 0,
+              file_size: fileSize,
               resolution: '1080p',
+              key,
+              bpm,
             })
 
             if (batch.length >= BATCH) {
@@ -154,6 +190,14 @@ export async function POST() {
         }
         total += batch.length
       }
+
+      // Actualizar pack con total real (total_videos y total_size_gb)
+      const totalSizeGb = totalSizeBytes / (1024 * 1024 * 1024)
+      await (admin as any).from('packs').update({
+        total_videos: total,
+        total_size_gb: Math.round(totalSizeGb * 100) / 100,
+        updated_at: new Date().toISOString(),
+      }).eq('id', packId)
 
       await ftpClient.close()
       return NextResponse.json({ ok: true, total, message: 'Catálogo sincronizado desde FTP. Total: ' + total + ' videos.' })
