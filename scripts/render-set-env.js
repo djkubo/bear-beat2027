@@ -81,7 +81,11 @@ async function main() {
 
   const appUrl = 'https://bear-beat2027.onrender.com'
   const skipKeys = ['RENDER_API_KEY', 'RENDER_SERVICE_ID']
-  const overrides = { NEXT_PUBLIC_APP_URL: appUrl, NODE_ENV: 'production' }
+  const overrides = {
+    NEXT_PUBLIC_APP_URL: appUrl,
+    NODE_ENV: 'production',
+    FIX_ADMIN_SECRET: process.env.FIX_ADMIN_SECRET || 'bearbeat-admin-2027-secreto',
+  }
   const vars = []
   if (fs.existsSync(envPath)) {
     fs.readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
@@ -105,6 +109,12 @@ async function main() {
       vars.push({ key, value: val })
       console.log('   (Bunny desde .env)', key)
     }
+  }
+
+  // FIX_ADMIN_SECRET: siempre subir a Render (fix-admin?token=valor)
+  if (!vars.some((v) => v.key === 'FIX_ADMIN_SECRET')) {
+    vars.push({ key: 'FIX_ADMIN_SECRET', value: overrides.FIX_ADMIN_SECRET })
+    console.log('   (FIX_ADMIN_SECRET fijo para /fix-admin)')
   }
 
   for (const { key, value } of vars) {
