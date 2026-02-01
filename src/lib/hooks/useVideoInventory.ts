@@ -27,7 +27,7 @@ export function useVideoInventory(): VideoInventory {
         setLoading(true)
         setError(null)
 
-        const res = await fetch('/api/videos?pack=enero-2026')
+        const res = await fetch('/api/videos?pack=enero-2026', { cache: 'no-store' })
         const data = await res.json()
 
         if (!data.success || !data.pack) {

@@ -7,13 +7,13 @@ export default async function AdminLayout({
   children: React.ReactNode
 }) {
   const supabase = await createServerClient()
-  // getSession() primero; si no hay sesión (ej. cookie no leída en prod), intentar getUser() una vez
-  let { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) session = { user } as typeof session
+  // getUser() es la fuente fiable (valida JWT). getSession() como fallback por si hay diferencia de contexto.
+  const { data: { user: userFromGetUser } } = await supabase.auth.getUser()
+  let user = userFromGetUser
+  if (!user) {
+    const { data: { session } } = await supabase.auth.getSession()
+    user = session?.user ?? undefined
   }
-  const user = session?.user
 
   if (!user) {
     redirect('/login?redirect=/admin')

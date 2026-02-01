@@ -233,6 +233,51 @@ const GENRE_ICONS: Record<string, string> = {
   rock: '🎸', electronica: '💿', default: '🎬'
 }
 
+/** Tarjeta de video con portada o placeholder (gradient + inicial) si no hay thumbnail o falla */
+function VideoCard({ video, onSelect }: { video: Video; onSelect: () => void }) {
+  const [thumbError, setThumbError] = useState(false)
+  const showThumb = video.thumbnailUrl && !thumbError
+  return (
+    <motion.div
+      whileHover={{ scale: 1.03 }}
+      onClick={onSelect}
+      className="bg-white/5 rounded-xl overflow-hidden cursor-pointer group border border-transparent hover:border-bear-blue/50"
+    >
+      <div className="aspect-video bg-gray-900 relative overflow-hidden">
+        {showThumb ? (
+          <img
+            src={video.thumbnailUrl}
+            alt={video.artist}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={() => setThumbError(true)}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-bear-blue/20 to-purple-500/20 flex items-center justify-center">
+            <span className="text-3xl md:text-4xl font-black text-white/60">
+              {(video.artist || video.title || 'V')[0].toUpperCase()}
+            </span>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <div className="w-12 h-12 bg-bear-blue rounded-full flex items-center justify-center shadow-lg">
+            <span className="text-xl ml-1">▶</span>
+          </div>
+        </div>
+        {video.duration && (
+          <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-0.5 rounded text-xs font-mono">
+            {video.duration}
+          </div>
+        )}
+      </div>
+      <div className="p-2">
+        <p className="font-bold text-xs truncate">{video.artist}</p>
+        <p className="text-[10px] text-gray-500 truncate">{video.title}</p>
+      </div>
+    </motion.div>
+  )
+}
+
 // ==========================================
 // PÁGINA PRINCIPAL
 // ==========================================
@@ -321,7 +366,7 @@ export default function HomePage() {
 
   const cargarVideos = async () => {
     try {
-      const res = await fetch('/api/videos?pack=enero-2026')
+      const res = await fetch('/api/videos?pack=enero-2026', { cache: 'no-store' })
       const data = await res.json()
       if (data.success) {
         setGenres(data.genres)
@@ -612,47 +657,10 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Grid de 6 tarjetas de video (demos principales) */}
+          {/* Grid de 6 tarjetas de video (demos principales) - portada o placeholder */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
             {genres.flatMap((g) => g.videos).slice(0, 6).map((video) => (
-              <motion.div
-                key={video.id}
-                whileHover={{ scale: 1.03 }}
-                onClick={() => setSelectedVideo(video)}
-                className="bg-white/5 rounded-xl overflow-hidden cursor-pointer group border border-transparent hover:border-bear-blue/50"
-              >
-                <div className="aspect-video bg-gray-900 relative overflow-hidden">
-                  {video.thumbnailUrl ? (
-                    <img
-                      src={video.thumbnailUrl}
-                      alt={video.artist}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-bear-blue/20 to-purple-500/20 flex items-center justify-center">
-                      <span className="text-3xl opacity-50">🎬</span>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="w-12 h-12 bg-bear-blue rounded-full flex items-center justify-center shadow-lg">
-                      <span className="text-xl ml-1">▶</span>
-                    </div>
-                  </div>
-                  {video.duration && (
-                    <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-0.5 rounded text-xs font-mono">
-                      {video.duration}
-                    </div>
-                  )}
-                </div>
-                <div className="p-2">
-                  <p className="font-bold text-xs truncate">{video.artist}</p>
-                  <p className="text-[10px] text-gray-500 truncate">{video.title}</p>
-                </div>
-              </motion.div>
+              <VideoCard key={video.id} video={video} onSelect={() => setSelectedVideo(video)} />
             ))}
           </div>
 
@@ -795,7 +803,9 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-          <p className="text-gray-500 text-sm mb-8">Valor total: <span className="line-through">$8,000+ MXN</span></p>
+          <p className="text-gray-500 text-sm mb-8">
+            Valor total: <span className="line-through">${statsLoading ? '...' : (totalVideos * 10 + 2400 + 4000).toLocaleString()}+ MXN</span>
+          </p>
           
           {/* Tarjeta ganadora: $350 con borde brillante y glow */}
           <div className="relative rounded-3xl p-8 md:p-10 bg-gradient-to-b from-bear-blue/15 to-bear-blue/5 border-2 border-bear-blue/80 shadow-[0_0_40px_rgba(8,225,247,0.25)] ring-2 ring-bear-blue/40 ring-offset-4 ring-offset-bear-black mb-8">
@@ -813,12 +823,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SCARCITY */}
-      <section className="py-8 px-4 bg-red-500/10 border-y border-red-500/30">
-        <div className="max-w-xl mx-auto">
-          <ScarcityBar sold={Math.max(0, totalVideos - 153)} total={totalVideos} />
-        </div>
-      </section>
+      {/* SCARCITY - solo si hay datos cargados */}
+      {!statsLoading && totalVideos > 0 && (
+        <section className="py-8 px-4 bg-red-500/10 border-y border-red-500/30">
+          <div className="max-w-xl mx-auto">
+            <ScarcityBar sold={Math.max(0, totalVideos - 153)} total={totalVideos} />
+          </div>
+        </section>
+      )}
 
       {/* GUARANTEE */}
       <section className="py-16 px-4">

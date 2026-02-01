@@ -44,15 +44,19 @@ async function getTracksByGenre(): Promise<GenreGroup[]> {
 
   const { data: rows, error } = await supabase
     .from('videos')
-    .select('id, title, artist, duration, file_path, genre_id, genres(name, slug)')
+    .select('id, title, artist, duration, file_path, genre_id, key, bpm, genres(name, slug)')
     .eq('pack_id', pack.id)
     .order('genre_id')
     .order('artist')
 
-  if (error || !rows?.length) return []
+  if (error) {
+    console.error('tracks-pdf getTracksByGenre:', error.message)
+    return []
+  }
+  if (!rows?.length) return []
 
   const byGenre = new Map<string, GenreGroup>()
-  for (const row of rows as unknown as VideoRow[]) {
+  for (const row of rows as unknown as (VideoRow & { key?: string; bpm?: string })[]) {
     const genreName = row.genres?.name ?? row.file_path?.split('/')[0] ?? 'Sin género'
     if (!byGenre.has(genreName)) {
       byGenre.set(genreName, { name: genreName, videos: [] })
@@ -62,8 +66,8 @@ async function getTracksByGenre(): Promise<GenreGroup[]> {
       artist: row.artist || row.title,
       title: row.title,
       duration: row.duration != null ? formatDuration(row.duration) : undefined,
-      key: undefined,
-      bpm: undefined,
+      key: row.key ?? undefined,
+      bpm: row.bpm ?? undefined,
     })
   }
   return Array.from(byGenre.values()).sort((a, b) => a.name.localeCompare(b.name))
@@ -161,8 +165,12 @@ export async function GET() {
         'Cache-Control': 'private, max-age=300',
       },
     })
-  } catch (err) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Error al generar el PDF'
     console.error('Error generating tracks PDF:', err)
-    return NextResponse.json({ error: 'Error al generar el PDF' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Error al generar el PDF', detail: process.env.NODE_ENV === 'development' ? message : undefined },
+      { status: 500 }
+    )
   }
 }

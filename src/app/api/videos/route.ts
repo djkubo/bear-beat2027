@@ -217,7 +217,8 @@ async function readVideoStructureFromDb(
         sizeFormatted: formatBytes(size),
         path: relativePath,
         genre: genreName,
-        thumbnailUrl: row.thumbnail_url || `/api/thumbnail/${encodeURIComponent(relativePath)}`,
+        // En producción no hay archivos locales: /api/thumbnail redirige a favicon. Si no hay thumbnail_url en DB, no pedir thumbnail (front muestra placeholder).
+        thumbnailUrl: row.thumbnail_url || (process.env.NODE_ENV === 'production' ? undefined : `/api/thumbnail/${encodeURIComponent(relativePath)}`),
         canPreview: DEMOS_ENABLED,
         canDownload: hasAccess,
         durationSeconds: row.duration ?? undefined,
