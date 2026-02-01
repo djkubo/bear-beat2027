@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
             return request.cookies.getAll()
           },
           setAll(cookiesToSet: { name: string; value: string; options?: unknown }[]) {
-            response = NextResponse.next({ request })
+            // No reemplazar response: setear cookies en la misma respuesta que devolvemos
             cookiesToSet.forEach(({ name, value, options }) =>
               response.cookies.set(name, value, options as Record<string, unknown>)
             )

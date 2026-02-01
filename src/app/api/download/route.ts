@@ -30,7 +30,10 @@ export async function GET(req: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession()
     const user = session?.user
     if (!user) {
-      return NextResponse.json({ error: 'No autenticado. Inicia sesión.' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'No autenticado. Inicia sesión.', loginUrl: '/login' },
+        { status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+      )
     }
     
     const { data: purchases, error } = await supabase

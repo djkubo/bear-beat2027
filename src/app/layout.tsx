@@ -155,8 +155,8 @@ export default function RootLayout({
           <MetaPixel />
         </Suspense>
 
-        {/* ManyChat Widget */}
-        <ManyChatWidget />
+        {/* ManyChat Widget: solo si hay Page ID configurado (evita "Page Id is required") */}
+        {process.env.NEXT_PUBLIC_MANYCHAT_PAGE_ID && <ManyChatWidget />}
         
         {/* Chat Widget Web */}
         <Suspense fallback={null}>

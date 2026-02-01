@@ -13,7 +13,7 @@ export default async function AdminLayout({
   const user = session?.user
   
   if (!user) {
-    redirect('/login')
+    redirect('/login?redirect=/admin')
   }
   
   // Verificar que sea admin

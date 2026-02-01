@@ -28,9 +28,12 @@ export async function GET(
     const videoPath = decodeURIComponent(pathSegments.join('/'))
     const fullVideoPath = path.join(VIDEOS_BASE_PATH, videoPath)
 
-    // En producción los videos están en FTP; si no hay archivo local, servir placeholder para que no se rompa la UI
+    // En producción los videos están en FTP; si no hay archivo local, servir placeholder
     if (!fs.existsSync(fullVideoPath)) {
-      return NextResponse.redirect(new URL('/favicon.png', req.url))
+      const origin = (process.env.NEXT_PUBLIC_APP_URL && !/localhost|127\.0\.0\.1|0\.0\.0\.0/.test(process.env.NEXT_PUBLIC_APP_URL))
+        ? process.env.NEXT_PUBLIC_APP_URL
+        : req.url
+      return NextResponse.redirect(new URL('/favicon.png', origin))
     }
 
     // Generar nombre único para el thumbnail
@@ -65,7 +68,10 @@ export async function GET(
           { timeout: 30000 }
         )
       } catch {
-        return NextResponse.redirect(new URL('/favicon.png', req.url))
+        const origin = (process.env.NEXT_PUBLIC_APP_URL && !/localhost|127\.0\.0\.1|0\.0\.0\.0/.test(process.env.NEXT_PUBLIC_APP_URL))
+          ? process.env.NEXT_PUBLIC_APP_URL
+          : req.url
+        return NextResponse.redirect(new URL('/favicon.png', origin))
       }
     }
 

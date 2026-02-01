@@ -1,16 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
-
-const PACK_SLUG = 'enero-2026'
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-}
 
 export interface VideoInventory {
   count: number
@@ -21,8 +11,8 @@ export interface VideoInventory {
 }
 
 /**
- * Inventario en tiempo real desde la tabla `videos` de Supabase.
- * Si agregas o borras filas, el número cambia al recargar.
+ * Inventario en tiempo real desde /api/videos (misma fuente que el listado).
+ * Así totalVideos y genreCount coinciden con lo que se muestra (géneros por carpeta/file_path).
  */
 export function useVideoInventory(): VideoInventory {
   const [count, setCount] = useState(0)
@@ -32,55 +22,25 @@ export function useVideoInventory(): VideoInventory {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const supabase = createClient()
-
     async function load() {
       try {
         setLoading(true)
         setError(null)
 
-        const { data: pack, error: packErr } = await supabase
-          .from('packs')
-          .select('id')
-          .eq('slug', PACK_SLUG)
-          .single()
+        const res = await fetch('/api/videos?pack=enero-2026')
+        const data = await res.json()
 
-        if (packErr || !pack) {
+        if (!data.success || !data.pack) {
           setCount(0)
           setTotalSizeFormatted('0 B')
           setGenreCount(0)
+          if (data.error) setError(data.error)
           return
         }
 
-        const packId = pack.id
-
-        const { count: videoCount, error: countErr } = await supabase
-          .from('videos')
-          .select('*', { count: 'exact', head: true })
-          .eq('pack_id', packId)
-
-        if (countErr) {
-          setError(countErr.message)
-          setCount(0)
-          return
-        }
-
-        setCount(videoCount ?? 0)
-
-        const { data: rows, error: sizeErr } = await supabase
-          .from('videos')
-          .select('file_size, genre_id')
-          .eq('pack_id', packId)
-
-        if (!sizeErr && rows?.length) {
-          const totalBytes = rows.reduce((sum, r) => sum + (Number(r.file_size) || 0), 0)
-          setTotalSizeFormatted(formatBytes(totalBytes))
-          const uniqueGenres = new Set(rows.map((r) => r.genre_id).filter(Boolean))
-          setGenreCount(uniqueGenres.size)
-        } else {
-          setTotalSizeFormatted('0 B')
-          setGenreCount(0)
-        }
+        setCount(data.pack.totalVideos ?? 0)
+        setTotalSizeFormatted(data.pack.totalSizeFormatted ?? '0 B')
+        setGenreCount(data.pack.genreCount ?? 0)
       } catch (e: any) {
         setError(e?.message || 'Error cargando inventario')
         setCount(0)

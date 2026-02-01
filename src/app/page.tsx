@@ -275,7 +275,7 @@ export default function HomePage() {
 
   const cargarVideos = async () => {
     try {
-      const res = await fetch('/api/videos')
+      const res = await fetch('/api/videos?pack=enero-2026')
       const data = await res.json()
       if (data.success) {
         setGenres(data.genres)
@@ -297,6 +297,12 @@ export default function HomePage() {
 
   // Obtener videos del género activo
   const activeGenreData = genres.find(g => g.id === activeGenre)
+
+  // Una sola fuente de verdad: packInfo (mismo fetch que la lista). Así totalVideos y genreCount coinciden con lo que se muestra.
+  const totalVideos = packInfo?.totalVideos ?? inventory.count
+  const genreCount = packInfo?.genreCount ?? inventory.genreCount
+  const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted
+  const statsLoading = (loading && !packInfo) || inventory.loading
 
   return (
     <div className={`min-h-screen bg-bear-black text-white ${!userState.hasAccess ? 'pb-20 md:pb-0' : ''}`}>
@@ -420,7 +426,7 @@ export default function HomePage() {
               className="text-3xl md:text-5xl lg:text-6xl font-black leading-tight mb-6"
             >
               Tienes acceso a{' '}
-              <span className="text-bear-blue">{inventory.loading ? '...' : inventory.count.toLocaleString()} Video Remixes</span>
+              <span className="text-bear-blue">{statsLoading ? '...' : totalVideos.toLocaleString()} Video Remixes</span>
             </motion.h1>
 
             <motion.p 
@@ -474,14 +480,14 @@ export default function HomePage() {
 
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-3xl md:text-5xl lg:text-7xl font-black leading-tight mb-6">
               Descarga{' '}
-              <span className="text-bear-blue">{inventory.loading ? '...' : inventory.count.toLocaleString()} Video Remixes</span>
+              <span className="text-bear-blue">{statsLoading ? '...' : totalVideos.toLocaleString()} Video Remixes</span>
               {' '}en HD y Cobra Como Profesional
             </motion.h1>
 
             <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl lg:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
               El arsenal completo de videos que usan los DJs que cobran{' '}
               <strong className="text-white">$15,000+ por evento</strong>. 
-              Organizados en <strong className="text-bear-blue">{inventory.loading ? '...' : inventory.genreCount} géneros</strong>, listos para usar HOY.
+              Organizados en <strong className="text-bear-blue">{statsLoading ? '...' : genreCount} géneros</strong>, listos para usar HOY.
             </motion.p>
 
             {/* PRECIO GIGANTE VISIBLE */}
@@ -520,19 +526,19 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto grid grid-cols-3 gap-4 text-center">
           <div>
             <div className="text-2xl md:text-4xl font-black text-bear-blue">
-              {inventory.loading ? '...' : inventory.count.toLocaleString()}
+              {statsLoading ? '...' : totalVideos.toLocaleString()}
             </div>
             <div className="text-xs md:text-sm text-gray-400">Video Remixes</div>
           </div>
           <div>
             <div className="text-2xl md:text-4xl font-black text-bear-blue">
-              {inventory.loading ? '...' : inventory.genreCount}
+              {statsLoading ? '...' : genreCount}
             </div>
             <div className="text-xs md:text-sm text-gray-400">Géneros</div>
           </div>
           <div>
             <div className="text-2xl md:text-4xl font-black text-bear-blue">
-              {inventory.loading ? '...' : inventory.totalSizeFormatted}
+              {statsLoading ? '...' : totalSizeFormatted}
             </div>
             <div className="text-xs md:text-sm text-gray-400">De Contenido</div>
           </div>
@@ -634,7 +640,7 @@ export default function HomePage() {
           <div className="text-center mt-8">
             <Link href="/contenido">
               <button className="bg-white/10 text-white font-bold px-8 py-4 rounded-xl hover:bg-white/20">
-                Ver los {inventory.loading ? '...' : inventory.count.toLocaleString()} videos completos →
+                Ver los {statsLoading ? '...' : totalVideos.toLocaleString()} videos completos →
               </button>
             </Link>
           </div>
@@ -709,8 +715,8 @@ export default function HomePage() {
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
             {[
-              { icon: '⚡', title: 'Descarga instantánea', desc: `${inventory.loading ? '...' : inventory.count.toLocaleString()} videos listos en minutos` },
-              { icon: '🎯', title: 'Organizados por género', desc: `${inventory.loading ? '...' : inventory.genreCount} categorías para encontrar rápido` },
+              { icon: '⚡', title: 'Descarga instantánea', desc: `${statsLoading ? '...' : totalVideos.toLocaleString()} videos listos en minutos` },
+              { icon: '🎯', title: 'Organizados por género', desc: `${statsLoading ? '...' : genreCount} categorías para encontrar rápido` },
               { icon: '💎', title: 'Calidad profesional', desc: 'HD/4K sin marcas de agua' },
               { icon: '🔄', title: 'Descarga ilimitada', desc: 'Web + FTP para descarga masiva' },
             ].map((benefit, i) => (
@@ -733,7 +739,7 @@ export default function HomePage() {
           
           <div className="space-y-3 mb-8">
             {[
-              { item: `${inventory.loading ? '...' : inventory.count.toLocaleString()} videos a $10 c/u`, price: `$${((inventory.loading ? 0 : inventory.count) * 10).toLocaleString()}` },
+              { item: `${statsLoading ? '...' : totalVideos.toLocaleString()} videos a $10 c/u`, price: `$${((statsLoading ? 0 : totalVideos) * 10).toLocaleString()}` },
               { item: 'Suscripción a pools de videos (anual)', price: '$2,400' },
               { item: 'Tiempo buscando y descargando (40hrs)', price: '$4,000' },
             ].map((row, i) => (
@@ -837,7 +843,7 @@ export default function HomePage() {
           
           <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('final')}>
             <button className="bg-bear-blue text-bear-black font-black text-xl md:text-3xl px-12 py-8 rounded-2xl shadow-2xl hover:scale-105 transition-all animate-pulse">
-              SÍ, QUIERO MIS {inventory.loading ? '...' : inventory.count.toLocaleString()} VIDEOS →
+              SÍ, QUIERO MIS {statsLoading ? '...' : totalVideos.toLocaleString()} VIDEOS →
             </button>
           </Link>
           <p className="text-sm text-gray-500 mt-4">

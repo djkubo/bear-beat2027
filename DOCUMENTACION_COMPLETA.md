@@ -24,6 +24,7 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 16. [Variables de entorno](#16-variables-de-entorno)
 17. [Scripts npm](#17-scripts-npm)
 18. [Flujos principales](#18-flujos-principales)
+19. [Cambios recientes (sesión, consola, landing)](#19-cambios-recientes-sesión-consola-landing)
 
 ---
 
@@ -439,6 +440,10 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 ### Bunny (descargas en producción)
 - `BUNNY_CDN_URL`, `BUNNY_TOKEN_KEY`, `BUNNY_PACK_PATH_PREFIX` (ej. `packs/enero-2026`).
 
+### Consola y tracking (opcionales)
+- `NEXT_PUBLIC_META_PIXEL_DISABLED=true`: desactiva el pixel de Meta (evita "unavailable due to traffic permission settings").
+- `NEXT_PUBLIC_MANYCHAT_PAGE_ID`: si no está definida, el widget de ManyChat no se carga (evita "Page Id is required").
+
 ### Otras
 - Meta Pixel, ManyChat, Twilio, Resend, Push (VAPID), Render API key, etc. (ver `.env.example` y PRODUCCION.md).
 
@@ -479,6 +484,31 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 ### 18.4 Descarga
 - Usuario con compra en `/contenido` → clic descarga → GET `/api/download?file=Género/archivo.mp4` (y opcional `&stream=true`).
 - Backend comprueba sesión y compra; si Bunny está configurado redirige a URL firmada; si no, sirve desde disco (solo desarrollo).
+
+---
+
+## 19. CAMBIOS RECIENTES (SESIÓN, CONSOLA, LANDING)
+
+### 19.1 Sesión y autenticación (admin, descarga, demos)
+- **Middleware** (`src/middleware.ts`): En `setAll` de cookies **no se reemplaza** la respuesta; las cookies de Supabase se escriben en la misma respuesta que se devuelve, para que el refresh de sesión funcione correctamente.
+- **Auth callback** (`src/app/auth/callback/route.ts`): Tras OAuth (Google), la redirect se crea primero y el cliente Supabase escribe las cookies de sesión **en esa respuesta**, para que el navegador reciba la sesión al redirigir.
+- **Admin**: Si no hay sesión se redirige a `/login?redirect=/admin` para volver al admin tras iniciar sesión.
+- **Download** (`/api/download`): Respuesta 401 con `Content-Type: application/json; charset=utf-8` y campo `loginUrl: '/login'` para evitar encoding incorrecto y facilitar redirección al login.
+
+### 19.2 Landing: una sola fuente de datos (hero y stats)
+- **Origen único**: El hero y la barra de stats (Video Remixes, Géneros, De Contenido) usan **packInfo** del mismo fetch que la lista de géneros (`cargarVideos()` → `/api/videos?pack=enero-2026`). Así los números coinciden siempre con lo que se muestra en la página.
+- **Variables derivadas**: `totalVideos`, `genreCount`, `totalSizeFormatted`, `statsLoading` se calculan a partir de `packInfo` cuando existe; si no, se usa el hook `useVideoInventory` como fallback.
+
+### 19.3 Consola y errores en producción
+- **Meta Pixel**: Si el pixel de Meta está "unavailable" por permisos de tráfico, se puede desactivar con `NEXT_PUBLIC_META_PIXEL_DISABLED=true`. Las llamadas a `fbq` van en try/catch para no romper la app.
+- **ManyChat**: El widget solo se renderiza si existe `NEXT_PUBLIC_MANYCHAT_PAGE_ID`; si no está definida, no se carga el script y se evita el error "Page Id is required".
+- **user_events**: Inserts defensivos (longitudes acotadas); errores 400 no llenan la consola en producción; en desarrollo se hace `console.warn`. API `/api/track-event` devuelve 400 sin loguear cuando el insert falla.
+- **Thumbnail**: Al redirigir a `/favicon.png` (cuando no hay video local), se usa `NEXT_PUBLIC_APP_URL` como origen si está definida y no es localhost/0.0.0.0, para evitar redirects a direcciones incorrectas.
+
+### 19.4 Variables de entorno relacionadas
+- `NEXT_PUBLIC_META_PIXEL_DISABLED=true`: desactiva el pixel de Meta (evita "unavailable" en consola).
+- `NEXT_PUBLIC_MANYCHAT_PAGE_ID`: si no está definida, el widget de ManyChat no se carga.
+- `NEXT_PUBLIC_APP_URL`: usada en redirects de thumbnail y en callbacks; debe ser la URL pública de la app (ej. `https://bear-beat2027.onrender.com`).
 
 ---
 

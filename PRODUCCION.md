@@ -126,6 +126,11 @@ UPDATE users SET role = 'admin' WHERE email = 'tu@email.com';
 **Recomendadas:**  
 `DATABASE_URL` (para `db:setup` y scripts), `NEXT_PUBLIC_META_PIXEL_ID`, `FACEBOOK_CAPI_ACCESS_TOKEN`, `NEXT_PUBLIC_MANYCHAT_PAGE_ID`, `MANYCHAT_API_KEY`, `TWILIO_*` (SMS/WhatsApp), `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL`, `BUNNY_*` (storage), **Hetzner Robot** (`HETZNER_ROBOT_USER`, `HETZNER_ROBOT_PASSWORD`, `HETZNER_STORAGEBOX_ID`) para FTP real por compra, `RESEND_API_KEY`, etc.
 
+**Opcionales (evitar errores en consola):**
+- `NEXT_PUBLIC_META_PIXEL_DISABLED=true`: desactiva el pixel de Meta hasta que el dominio tenga permisos de tráfico en Meta.
+- Si no usas ManyChat, no definas `NEXT_PUBLIC_MANYCHAT_PAGE_ID` (el widget no se carga y no aparece "Page Id is required").
+- `NEXT_PUBLIC_APP_URL`: debe ser la URL pública (ej. `https://bear-beat2027.onrender.com`); se usa en redirects y callbacks.
+
 **Subir env a Render desde `.env.local`:**
 ```bash
 npm run deploy:env
@@ -178,8 +183,9 @@ Ninguna clave debe estar hardcodeada en el código; todas vienen de variables de
 5. **Comprobar**
    - https://bear-beat2027.onrender.com
    - https://bear-beat2027.onrender.com/contenido (listado de videos si hiciste sync).
-   - https://bear-beat2027.onrender.com/admin (con usuario admin).
+   - https://bear-beat2027.onrender.com/admin (con usuario admin; si no hay sesión redirige a `/login?redirect=/admin`).
    - https://bear-beat2027.onrender.com/dashboard (con usuario logueado).
+   - Descarga: sesión y compra se validan con cookies; si falla, ver middleware y auth callback (DOCUMENTACION_COMPLETA.md §19).
 
 ---
 
@@ -214,7 +220,15 @@ Nada de conteos ni precios hardcodeados; todo desde Supabase o APIs. Ver REGLAS_
 
 ---
 
-## 8. Documentación relacionada
+## 8. Cambios recientes (sesión, consola, landing)
+
+- **Sesión (admin, descarga):** Middleware no reemplaza la respuesta al setear cookies; auth callback escribe cookies en la respuesta de redirect; admin redirige a `/login?redirect=/admin` si no hay sesión. Ver DOCUMENTACION_COMPLETA.md §19.
+- **Landing:** Hero y stats usan una sola fuente (`packInfo` del mismo fetch que la lista de géneros); los números coinciden con lo mostrado.
+- **Consola:** Meta Pixel desactivable con `NEXT_PUBLIC_META_PIXEL_DISABLED=true`; ManyChat solo se carga si hay `NEXT_PUBLIC_MANYCHAT_PAGE_ID`; user_events insert defensivo; thumbnail usa `NEXT_PUBLIC_APP_URL` para redirects.
+
+---
+
+## 9. Documentación relacionada
 
 - **README.md** – Resumen, stack, instalación, admin/dashboard.
 - **INSTALACION.md** – Pasos detallados de instalación y crear admin.

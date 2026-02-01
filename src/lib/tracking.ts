@@ -106,15 +106,14 @@ export async function trackEvent({
     const attribution = getAttributionForAPI()
     const trafficSource = getTrafficSource()
     
-    // 1. Guardar en Supabase con atribución
-    await supabase.from('user_events').insert({
-      session_id: sessionId,
+    // 1. Guardar en Supabase con atribución (insert defensivo: no romper si la tabla/RLS falla)
+    const { error: insertError } = await supabase.from('user_events').insert({
+      session_id: sessionId?.slice(0, 255) || null,
       user_id: userId || null,
-      event_type: eventType,
-      event_name: eventName,
+      event_type: String(eventType).slice(0, 50),
+      event_name: eventName ? String(eventName).slice(0, 255) : null,
       event_data: {
-        ...eventData,
-        // Incluir atribución en cada evento
+        ...(typeof eventData === 'object' && eventData !== null ? eventData : {}),
         attribution: {
           source: trafficSource?.source,
           medium: trafficSource?.medium,
@@ -123,14 +122,17 @@ export async function trackEvent({
           display_name: trafficSource?.displayName,
         },
       },
-      page_url: browserInfo.pageUrl,
-      referrer: browserInfo.referrer,
-      user_agent: browserInfo.userAgent,
-      // Campos de atribución directos para queries fáciles
-      utm_source: attribution.utm_source,
-      utm_medium: attribution.utm_medium,
-      utm_campaign: attribution.utm_campaign,
+      page_url: browserInfo.pageUrl ? String(browserInfo.pageUrl).slice(0, 2048) : null,
+      referrer: browserInfo.referrer ? String(browserInfo.referrer).slice(0, 2048) : null,
+      user_agent: browserInfo.userAgent ? String(browserInfo.userAgent).slice(0, 512) : null,
+      utm_source: attribution?.utm_source?.slice(0, 100) || null,
+      utm_medium: attribution?.utm_medium?.slice(0, 100) || null,
+      utm_campaign: attribution?.utm_campaign?.slice(0, 255) || null,
     })
+    if (insertError && insertError.code !== '23505') {
+      // Ignorar 400/RLS en silencio para no llenar consola; 23505 = duplicate
+      if (process.env.NODE_ENV === 'development') console.warn('user_events insert:', insertError.message)
+    }
     
     // 2. Enviar a ManyChat si tenemos email o teléfono
     const userEmail = email || getUserEmail()
@@ -154,8 +156,8 @@ export async function trackEvent({
       }).catch(err => console.error('ManyChat track error:', err))
     }
     
-  } catch (error) {
-    console.error('Error tracking event:', error)
+  } catch (_) {
+    // No llenar consola en producción por fallos de tracking
   }
 }
 

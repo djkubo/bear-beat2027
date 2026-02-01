@@ -27,20 +27,25 @@ export async function POST(req: NextRequest) {
     const userAgent = headersList.get('user-agent') || 'unknown'
     const referer = headersList.get('referer') || '(direct)'
     
-    // Insertar evento
-    const { error } = await supabase.from('user_events').insert({
-      session_id: sessionId,
+    // Insertar evento (campos acotados para evitar 400 por schema/RLS)
+    const payload: Record<string, unknown> = {
+      session_id: (sessionId || '').slice(0, 255),
       user_id: userId || null,
-      event_type: eventType,
-      event_name: eventName,
-      event_data: eventData,
-      page_url: eventData.pageUrl || referer,
-      referrer: referer,
-      user_agent: userAgent,
-      ip_address: ip.split(',')[0].trim(), // Primera IP si hay múltiples
-    })
-    
-    if (error) throw error
+      event_type: String(eventType).slice(0, 50),
+      event_name: eventName ? String(eventName).slice(0, 255) : null,
+      event_data: typeof eventData === 'object' && eventData !== null ? eventData : {},
+      page_url: (eventData?.pageUrl || referer || '').slice(0, 2048),
+      referrer: (referer || '').slice(0, 2048),
+      user_agent: (userAgent || '').slice(0, 512),
+      ip_address: (ip.split(',')[0] || '').trim().slice(0, 45),
+    }
+    const { error } = await supabase.from('user_events').insert(payload)
+
+    if (error) {
+      if (error.code === '23505') return NextResponse.json({ success: true }) // duplicate ok
+      if (process.env.NODE_ENV === 'development') console.warn('user_events API:', error.message)
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 })
+    }
     
     // Establecer cookie de session si no existe
     const response = NextResponse.json({ success: true })
@@ -53,11 +58,9 @@ export async function POST(req: NextRequest) {
     }
     
     return response
-  } catch (error: any) {
-    console.error('Error tracking event:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to track event' },
-      { status: 500 }
-    )
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Failed to track event'
+    if (process.env.NODE_ENV === 'development') console.warn('track-event:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

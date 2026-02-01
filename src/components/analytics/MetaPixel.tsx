@@ -4,7 +4,9 @@ import Script from 'next/script'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 
+// Para evitar "unavailable due to traffic permission settings" en Meta, pon NEXT_PUBLIC_META_PIXEL_DISABLED=true
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || '1325763147585869'
+const META_PIXEL_DISABLED = process.env.NEXT_PUBLIC_META_PIXEL_DISABLED === 'true'
 
 // Declaración de tipos para fbq
 declare global {
@@ -90,56 +92,51 @@ export function MetaPixel() {
 
   // Trackear cambios de página (SPA navigation) con deduplicación
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.fbq) {
+    if (typeof window === 'undefined' || !window.fbq || META_PIXEL_DISABLED) return
+    try {
       const eventId = generateEventId()
-      
-      // Pixel (cliente)
       window.fbq('track', 'PageView', {}, { eventID: eventId })
-      
-      // CAPI (servidor) - con el mismo eventId para deduplicación
-      sendToCAPI({
-        eventName: 'PageView',
-        eventId: eventId,
-      })
+      sendToCAPI({ eventName: 'PageView', eventId })
+    } catch (_) {
+      // Pixel puede estar "unavailable" por permisos de tráfico en Meta; no romper la app
     }
   }, [pathname, searchParams])
 
+  // No cargar pixel si está deshabilitado o no hay ID (evita errores "unavailable" en consola)
+  if (META_PIXEL_DISABLED || !META_PIXEL_ID) return null
+
   return (
     <>
-      {/* Meta Pixel Base Code */}
       <Script
         id="meta-pixel"
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{
           __html: `
-            !function(f,b,e,v,n,t,s)
-            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-            n.queue=[];t=b.createElement(e);t.async=!0;
-            t.src=v;s=b.getElementsByTagName(e)[0];
-            s.parentNode.insertBefore(t,s)}(window, document,'script',
-            'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${META_PIXEL_ID}');
-            
-            // PageView inicial con eventID para deduplicación
-            var initialEventId = 'bb_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            fbq('track', 'PageView', {}, { eventID: initialEventId });
-            
-            // También enviar a CAPI
-            fetch('/api/facebook', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                eventName: 'PageView',
-                eventId: initialEventId,
-                eventSourceUrl: window.location.href
-              })
-            }).catch(function(e) { console.error('CAPI error:', e); });
+            try {
+              !function(f,b,e,v,n,t,s)
+              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+              n.queue=[];t=b.createElement(e);t.async=!0;
+              t.src=v;s=b.getElementsByTagName(e)[0];
+              s.parentNode.insertBefore(t,s)}(window, document,'script',
+              'https://connect.facebook.net/en_US/fbevents.js');
+              fbq('init', '${META_PIXEL_ID}');
+              var initialEventId = 'bb_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+              fbq('track', 'PageView', {}, { eventID: initialEventId });
+              fetch('/api/facebook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  eventName: 'PageView',
+                  eventId: initialEventId,
+                  eventSourceUrl: window.location.href
+                })
+              }).catch(function() {});
+            } catch (e) {}
           `,
         }}
       />
-      {/* Noscript fallback */}
       <noscript>
         <img
           height="1"
