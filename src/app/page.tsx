@@ -238,6 +238,13 @@ export default function HomePage() {
   // Inventario en tiempo real desde Supabase (tabla videos)
   const inventory = useVideoInventory()
 
+  // Timeout para no mostrar "..." eternamente si la API tarda (cold start en Render)
+  const [statsTimedOut, setStatsTimedOut] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setStatsTimedOut(true), 2000)
+    return () => clearTimeout(t)
+  }, [])
+
   // Cargar datos reales al montar
   useEffect(() => {
     trackPageView('home')
@@ -307,11 +314,12 @@ export default function HomePage() {
   // Obtener videos del género activo
   const activeGenreData = genres.find(g => g.id === activeGenre)
 
-  // Una sola fuente de verdad: packInfo (mismo fetch que la lista). Así totalVideos y genreCount coinciden con lo que se muestra.
-  const totalVideos = packInfo?.totalVideos ?? inventory.count
-  const genreCount = packInfo?.genreCount ?? inventory.genreCount
-  const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted
-  const statsLoading = (loading && !packInfo) || inventory.loading
+  // Una sola fuente de verdad: packInfo (mismo fetch que la lista). Fallback a inventory y luego a defaults para enero-2026 (evita "..." en cold start / API lenta).
+  const PACK_DEFAULTS = { totalVideos: 1000, genreCount: 17, totalSizeFormatted: '141.28 GB' }
+  const totalVideos = packInfo?.totalVideos ?? inventory.count ?? PACK_DEFAULTS.totalVideos
+  const genreCount = packInfo?.genreCount ?? inventory.genreCount ?? PACK_DEFAULTS.genreCount
+  const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted ?? PACK_DEFAULTS.totalSizeFormatted
+  const statsLoading = !statsTimedOut && ((loading && !packInfo) || inventory.loading)
 
   return (
     <div className={`min-h-screen bg-bear-black text-white ${!userState.hasAccess ? 'pb-20 md:pb-0' : ''}`}>
@@ -845,7 +853,7 @@ export default function HomePage() {
             <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-green-400 mb-4">✅ Con Bear Beat</h3>
               <ul className="text-left text-gray-400 space-y-2 text-sm">
-                <li>• {inventory.loading ? '...' : inventory.count.toLocaleString()} videos descargados hoy</li>
+                <li>• {statsLoading ? '...' : totalVideos.toLocaleString()} videos descargados hoy</li>
                 <li>• Un solo pago de $350</li>
                 <li>• Arsenal profesional completo</li>
                 <li>• Calidad HD garantizada</li>

@@ -133,7 +133,7 @@ export default function CheckoutPage() {
                         📦 Pack Enero 2026 - Video Remixes
                       </h1>
                       <p className="text-gray-400">
-                        {inventory.loading ? '...' : inventory.count.toLocaleString()} videos HD • Descarga ilimitada • Pago único
+                        {(inventory.count || 1000).toLocaleString()} videos HD • Descarga ilimitada • Pago único
                       </p>
                     </div>
                     <div className="text-right">
