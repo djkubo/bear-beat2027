@@ -12,17 +12,25 @@
 const fs = require('fs')
 const path = require('path')
 
-const envPath = path.join(__dirname, '..', '.env.local')
-if (fs.existsSync(envPath)) {
-  fs.readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
-    const m = line.match(/^([^#=]+)=(.*)$/)
-    if (m) {
-      const key = m[1].trim()
-      const val = m[2].trim().replace(/^["']|["']$/g, '')
-      process.env[key] = val
-    }
-  })
+// Cargar .env y luego .env.local (local sobreescribe)
+const rootDir = path.join(__dirname, '..')
+const envPaths = [
+  path.join(rootDir, '.env'),
+  path.join(rootDir, '.env.local'),
+]
+for (const envPath of envPaths) {
+  if (fs.existsSync(envPath)) {
+    fs.readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
+      const m = line.match(/^([^#=]+)=(.*)$/)
+      if (m) {
+        const key = m[1].trim()
+        const val = m[2].trim().replace(/^["']|["']$/g, '')
+        process.env[key] = val
+      }
+    })
+  }
 }
+const envPath = path.join(rootDir, '.env.local')
 
 const RENDER_API_KEY = process.env.RENDER_API_KEY
 if (!RENDER_API_KEY) {
@@ -75,14 +83,29 @@ async function main() {
   const skipKeys = ['RENDER_API_KEY', 'RENDER_SERVICE_ID']
   const overrides = { NEXT_PUBLIC_APP_URL: appUrl, NODE_ENV: 'production' }
   const vars = []
-  fs.readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
-    const m = line.match(/^([^#=]+)=(.*)$/)
-    if (!m) return
-    const key = m[1].trim()
-    const raw = m[2].trim().replace(/^["']|["']$/g, '')
-    if (skipKeys.includes(key) || !raw) return
-    vars.push({ key, value: overrides[key] ?? raw })
-  })
+  if (fs.existsSync(envPath)) {
+    fs.readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
+      const m = line.match(/^([^#=]+)=(.*)$/)
+      if (!m) return
+      const key = m[1].trim()
+      const raw = m[2].trim().replace(/^["']|["']$/g, '')
+      if (skipKeys.includes(key) || !raw) return
+      vars.push({ key, value: overrides[key] ?? raw })
+    })
+  }
+
+  // Bunny: si no están en .env.local, tomar de process.env (p. ej. .env)
+  const BUNNY_KEYS = ['BUNNY_CDN_URL', 'NEXT_PUBLIC_BUNNY_CDN_URL', 'BUNNY_API_KEY', 'BUNNY_STORAGE_ZONE', 'BUNNY_STORAGE_PASSWORD', 'BUNNY_TOKEN_KEY', 'BUNNY_PACK_PATH_PREFIX']
+  const hasKey = (k) => vars.some((v) => v.key === k)
+  const isPlaceholder = (v) => !v || /^tu_|^xxx$|^\.\.\.$|clave_secreta|password_de|^re_$/i.test(String(v).trim())
+  for (const key of BUNNY_KEYS) {
+    if (hasKey(key)) continue
+    const val = process.env[key]
+    if (val && !isPlaceholder(val)) {
+      vars.push({ key, value: val })
+      console.log('   (Bunny desde .env)', key)
+    }
+  }
 
   for (const { key, value } of vars) {
     if (!value) {
@@ -98,7 +121,12 @@ async function main() {
   }
 
   console.log('\n✅ Listo. Haz un Manual Deploy en Render para que el build use las nuevas variables.')
-  console.log('   Si usas FTP real (Hetzner) o descargas por Bunny, añade HETZNER_ROBOT_*, HETZNER_STORAGEBOX_ID y BUNNY_* en .env.local y vuelve a ejecutar deploy:env, o configúralas en Render → Environment.')
+  const bunnyPushed = vars.filter((v) => v.key.startsWith('BUNNY_') || v.key === 'NEXT_PUBLIC_BUNNY_CDN_URL').length
+  if (bunnyPushed) {
+    console.log('   🐰 Bunny:', bunnyPushed, 'variable(s) subidas (demos/descargas por CDN).')
+  } else {
+    console.log('   Para demos por Bunny: añade BUNNY_CDN_URL=https://bear-beat.b-cdn.net (o tu Pull Zone) en .env.local y vuelve a ejecutar: npm run deploy:env')
+  }
 }
 
 main().catch((e) => {

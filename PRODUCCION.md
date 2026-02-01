@@ -267,6 +267,7 @@ Nada de conteos ni precios hardcodeados; todo desde Supabase o APIs. Ver REGLAS_
 - **Consola:** Meta Pixel desactivable con `NEXT_PUBLIC_META_PIXEL_DISABLED=true`; ManyChat solo se carga si hay `NEXT_PUBLIC_MANYCHAT_PAGE_ID`; user_events insert defensivo; thumbnail usa `NEXT_PUBLIC_APP_URL` para redirects.
 - **CRO embudo (2026-02):** Landing con H1 "1,000 videos HD...", sección Para quién es/NO es, garantía 30 días; create-checkout con metadata customer_email/customer_name en Stripe; complete-purchase con mensaje "¡Pago confirmado!", credenciales FTP visibles, botones Descargar por Web y Datos FTP. E2E Playwright en `e2e/purchase-flow.spec.ts`. Ver DOCUMENTACION_COMPLETA.md §19.5 y docs/CRO_EMBUDO_COPY.md.
 - **Fix build (2026-02):** complete-purchase: `ftp_username` opcional en writeText → uso de `?? ''` para tipo string (build TypeScript en Render). Ver DOCUMENTACION_COMPLETA.md §19.6.
+- **Bunny CDN demos (2026-02):** Demos apuntan directo a Bunny (evita 503). Front usa `BUNNY_CDN_URL` vía GET `/api/cdn-base`; `getDemoCdnUrl` en `src/lib/utils.ts`. Añadir `BUNNY_CDN_URL=https://tu-zona.b-cdn.net` en .env.local y `npm run deploy:env`; guía Pull Zone: [docs/BUNNY_PULL_ZONE_SETUP.md](docs/BUNNY_PULL_ZONE_SETUP.md). Script `render-set-env.js` sube vars Bunny desde .env/.env.local.
 
 ---
 
