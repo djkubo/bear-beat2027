@@ -252,7 +252,7 @@ export async function executeAction(
     messageContent: string
   }
 ): Promise<ActionResult> {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   
   switch (action) {
     case 'password_reset': {
@@ -393,7 +393,7 @@ export async function executeAction(
 // ==========================================
 
 export async function searchKnowledgeBase(query: string): Promise<string | null> {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const queryLower = query.toLowerCase()
   
   // Buscar en knowledge base por keywords
@@ -452,7 +452,7 @@ export async function searchKnowledgeBase(query: string): Promise<string | null>
  * Procesa un mensaje entrante y genera respuesta
  */
 export async function processMessage(message: IncomingMessage): Promise<BotResponse> {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const startTime = Date.now()
   
   try {
@@ -578,7 +578,7 @@ export async function processMessage(message: IncomingMessage): Promise<BotRespo
  * Obtiene las intenciones más comunes
  */
 export async function getTopIntents(days: number = 30): Promise<Array<{ intent: string; count: number }>> {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   
   const { data } = await supabase
     .from('messages')
@@ -604,7 +604,7 @@ export async function getTopIntents(days: number = 30): Promise<Array<{ intent: 
  * Obtiene preguntas sin respuesta (para mejorar el bot)
  */
 export async function getUnansweredQuestions(limit: number = 50): Promise<string[]> {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   
   const { data } = await supabase
     .from('messages')

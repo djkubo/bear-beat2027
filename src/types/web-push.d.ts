@@ -1,0 +1,24 @@
+declare module 'web-push' {
+  interface VapidKeys {
+    publicKey: string
+    privateKey: string
+  }
+  interface PushSubscription {
+    endpoint: string
+    keys: { p256dh: string; auth: string }
+  }
+  interface SendResult {
+    statusCode: number
+  }
+  function setVapidDetails(
+    subject: string,
+    publicKey: string,
+    privateKey: string
+  ): void
+  function sendNotification(
+    subscription: PushSubscription,
+    payload?: string | Buffer | null,
+    options?: Record<string, unknown>
+  ): Promise<SendResult>
+  function generateVAPIDKeys(): VapidKeys
+}

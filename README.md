@@ -12,7 +12,7 @@ Plataforma de distribución de video remixes para DJs con modelo de packs mensua
 - **Storage**: Cloudflare R2
 - **Pagos**: Stripe + PayPal + Conekta (México)
 - **Emails**: Resend
-- **Deploy**: Vercel
+- **Deploy**: Render
 
 ## 🐻 Marca: Bear Beat
 
@@ -77,13 +77,13 @@ Tablas principales:
 
 ## 🚀 Deploy
 
-```bash
-# Deploy a Vercel
-vercel --prod
+Hosting en **Render**. Conecta tu repo en [render.com](https://render.com):
 
-# O push a main con auto-deploy configurado
-git push origin main
-```
+1. New → Web Service → Conecta tu repositorio
+2. Build command: `npm install && npm run build`
+3. Start command: `npm run start`
+4. Configura las variables de entorno desde `.env.local`
+5. Push a `main` para auto-deploy
 
 ## 📝 Variables de Entorno Requeridas
 

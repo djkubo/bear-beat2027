@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Si pide pack completo, verificar autenticación y compra
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -51,7 +51,8 @@ export async function GET(req: NextRequest) {
         .select('id')
         .eq('user_id', user.id)
         .eq('pack_id', packId)
-        .maybeSingle()
+        .eq('status', 'completed')
+        .single()
 
       if (!purchase) {
         return NextResponse.json(
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Para descargas, verificar autenticación
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -120,7 +121,8 @@ export async function POST(req: NextRequest) {
         .select('id')
         .eq('user_id', user.id)
         .eq('pack_id', packId)
-        .maybeSingle()
+        .eq('status', 'completed')
+        .single()
 
       if (!purchase) {
         return NextResponse.json(

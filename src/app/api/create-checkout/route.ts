@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Pack slug required' }, { status: 400 })
     }
     
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     
     // Verificar si hay usuario logueado
     let loggedUser: { id: string; email: string; name?: string } | null = null
@@ -70,14 +70,6 @@ export async function POST(req: NextRequest) {
     }
     const price = prices[currency] || pack.price_usd
     
-    // PayPal es integración separada (checkout-paypal). No se usa Stripe para PayPal.
-    if (paymentMethod === 'paypal') {
-      return NextResponse.json(
-        { error: 'Usa el botón PayPal en el checkout para pagar con PayPal.' },
-        { status: 400 }
-      )
-    }
-
     // Configurar payment_method_types según método
     let paymentMethodTypes: string[] = ['card']
     
@@ -86,6 +78,8 @@ export async function POST(req: NextRequest) {
     } else if (paymentMethod === 'spei') {
       // SPEI es customer_balance en Stripe
       paymentMethodTypes = ['customer_balance']
+    } else if (paymentMethod === 'paypal') {
+      paymentMethodTypes = ['paypal']
     }
     
     // Configuración base de la sesión

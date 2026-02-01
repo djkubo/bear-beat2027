@@ -34,7 +34,7 @@ const INTENT_NAMES: Record<string, string> = {
 }
 
 export default async function AdminChatbotPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')

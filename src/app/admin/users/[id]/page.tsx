@@ -6,7 +6,7 @@ import Link from 'next/link'
 // Next.js 15: params es Promise
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')

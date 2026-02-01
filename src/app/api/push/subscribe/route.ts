@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     
     // Obtener usuario si está autenticado
     const { data: { user } } = await supabase.auth.getUser()

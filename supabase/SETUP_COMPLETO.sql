@@ -277,26 +277,18 @@ ON CONFLICT (slug) DO NOTHING;
 -- =====================================================
 -- 🎁 PACK DE PRUEBA (ENERO 2026)
 -- =====================================================
-INSERT INTO packs (
-  slug, name, description,
-  price_mxn, price_usd,
-  release_month, release_date,
-  total_videos, total_size_gb,
-  status, featured
-) VALUES (
-  'enero-2026',
-  'Pack Enero 2026',
-  'Más de 3,000 videos HD/4K organizados por género. Lo mejor para arrancar el año con tu colección de DJ.',
-  350.00, 19.00,
-  '2026-01', '2026-01-01',
-  3000, 500,
-  'available', true
-)
-ON CONFLICT (slug) DO UPDATE SET
-  status = 'available',
-  featured = true,
-  price_mxn = 350.00,
-  price_usd = 19.00;
+-- Pack Enero 2026 (compatible con unique(slug) o unique(release_month))
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM packs WHERE release_month = '2026-01') THEN
+    UPDATE packs SET slug = 'enero-2026', name = 'Pack Enero 2026', description = 'Más de 3,000 videos HD/4K organizados por género. Lo mejor para arrancar el año con tu colección de DJ.', price_mxn = 350.00, price_usd = 19.00, release_date = '2026-01-01', total_videos = 3000, total_size_gb = 500, status = 'available', featured = true WHERE release_month = '2026-01';
+  ELSIF EXISTS (SELECT 1 FROM packs WHERE slug = 'enero-2026') THEN
+    UPDATE packs SET name = 'Pack Enero 2026', description = 'Más de 3,000 videos HD/4K organizados por género. Lo mejor para arrancar el año con tu colección de DJ.', price_mxn = 350.00, price_usd = 19.00, release_date = '2026-01-01', total_videos = 3000, total_size_gb = 500, status = 'available', featured = true WHERE slug = 'enero-2026';
+  ELSE
+    INSERT INTO packs (slug, name, description, price_mxn, price_usd, release_month, release_date, total_videos, total_size_gb, status, featured)
+    VALUES ('enero-2026', 'Pack Enero 2026', 'Más de 3,000 videos HD/4K organizados por género. Lo mejor para arrancar el año con tu colección de DJ.', 350.00, 19.00, '2026-01', '2026-01-01', 3000, 500, 'available', true);
+  END IF;
+END $$;
 
 -- =====================================================
 -- ✅ SETUP COMPLETO

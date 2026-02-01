@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
-import { createServerClient } from '@/lib/supabase/server'
 
 // Pack de prueba para desarrollo
 const TEST_PACK = {
@@ -13,48 +12,12 @@ const TEST_PACK = {
 export async function GET(req: NextRequest) {
   try {
     const sessionId = req.nextUrl.searchParams.get('session_id')
-    const provider = req.nextUrl.searchParams.get('provider')
-    const orderId = req.nextUrl.searchParams.get('order_id')
-
-    // PayPal: verificar por order_id (payment_id en purchases)
-    if (provider === 'paypal' && orderId) {
-      const supabase = createServerClient()
-      const { data: purchase, error } = await supabase
-        .from('purchases')
-        .select('*')
-        .eq('payment_id', orderId)
-        .eq('payment_provider', 'paypal')
-        .single()
-
-      if (!error && purchase) {
-        // Email/nombre pueden venir de PayPal API si se guardan; por ahora vacío, el usuario los completa en el form
-        return NextResponse.json({
-          success: true,
-          sessionId: orderId,
-          packId: purchase.pack_id || 1,
-          packSlug: 'enero-2026',
-          pack: TEST_PACK,
-          amount: Number(purchase.amount_paid) ?? 0,
-          currency: purchase.currency ?? 'MXN',
-          paymentIntent: orderId,
-          customerEmail: (purchase as any).customer_email || '',
-          customerName: (purchase as any).customer_name || '',
-          customerPhone: '',
-          paymentStatus: 'paid',
-          userId: purchase.user_id ?? null,
-        })
-      }
-      return NextResponse.json(
-        { error: 'No se encontró la compra de PayPal' },
-        { status: 404 }
-      )
-    }
-
+    
     if (!sessionId) {
       return NextResponse.json({ error: 'Session ID required' }, { status: 400 })
     }
-
-    // Stripe: verificar por session_id
+    
+    // Obtener sesión de Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['payment_intent', 'line_items'],
     })

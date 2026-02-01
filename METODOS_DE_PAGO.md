@@ -438,10 +438,10 @@ https://bearbeat.com/complete-purchase?session_id=cs_XXX
 
 ### Webhook URL (Producción):
 
-Cuando deploys a Vercel, configura en Stripe Dashboard:
+Cuando deploys a Render, configura en Stripe Dashboard:
 
 ```
-URL: https://tu-dominio.vercel.app/api/webhooks/stripe
+URL: https://tu-app.onrender.com/api/webhooks/stripe
 Eventos: checkout.session.completed
 ```
 

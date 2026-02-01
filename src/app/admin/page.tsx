@@ -4,7 +4,7 @@ import { formatPrice, formatDate } from '@/lib/utils'
 import { Users, DollarSign, Package, TrendingUp } from 'lucide-react'
 
 export default async function AdminDashboardPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   
   // Verificar autenticación
   const { data: { user } } = await supabase.auth.getUser()
@@ -169,11 +169,6 @@ export default async function AdminDashboardPage() {
           <a href="/admin/pending" className="bg-card rounded-xl p-4 border-2 border-yellow-500 hover:border-yellow-600 shadow-lg hover:shadow-xl transition-all text-center">
             <div className="text-3xl mb-1">⏳</div>
             <div className="font-bold text-sm">Pendientes</div>
-          </a>
-
-          <a href="/admin/ftp-pool" className="bg-card rounded-xl p-4 border-2 border-cyan-500 hover:border-cyan-600 shadow-lg hover:shadow-xl transition-all text-center">
-            <div className="text-3xl mb-1">📂</div>
-            <div className="font-bold text-sm">FTP Pool</div>
           </a>
 
           <a href="/admin/settings" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center">

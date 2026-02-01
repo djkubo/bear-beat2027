@@ -172,7 +172,7 @@ colors: {
 
 ---
 
-## 📤 PASO 8: Deploy a Producción (Vercel)
+## 📤 PASO 8: Deploy a Producción (Render)
 
 ### 8.1 Preparar para Deploy
 
@@ -182,30 +182,27 @@ npm run build
 
 Verifica que no hay errores.
 
-### 8.2 Deploy en Vercel
+### 8.2 Deploy en Render
 
-```bash
-# Instalar Vercel CLI
-npm i -g vercel
+1. Entra en [render.com](https://render.com) y conecta tu repositorio (GitHub/GitLab)
+2. Crea un **Web Service**
+3. Configura:
+   - **Build command:** `npm install && npm run build`
+   - **Start command:** `npm run start`
+   - **Node:** 18 o superior
+4. Deploy (o activa auto-deploy en cada push a `main`)
 
-# Login
-vercel login
+### 8.3 Configurar Variables de Entorno en Render
 
-# Deploy
-vercel --prod
-```
-
-### 8.3 Configurar Variables de Entorno en Vercel
-
-1. Ve a tu proyecto en Vercel Dashboard
-2. Settings → Environment Variables
-3. Agrega todas las variables de `.env.local`
-4. Redeploy
+1. En tu Web Service → **Environment**
+2. Agrega todas las variables de `.env.local`
+3. **NEXT_PUBLIC_APP_URL** debe ser la URL de tu app en Render (ej. `https://tu-app.onrender.com`) o tu dominio propio
+4. Guarda y redeploy
 
 ### 8.4 Actualizar Webhook de Stripe
 
 1. Ve a Stripe Dashboard → Webhooks
-2. Actualiza URL a: `https://tu-dominio.vercel.app/api/webhooks/stripe`
+2. Actualiza URL a: `https://tu-app.onrender.com/api/webhooks/stripe` (o tu dominio)
 
 ---
 
@@ -272,7 +269,7 @@ Si tienes problemas:
 
 1. Revisa esta guía nuevamente
 2. Verifica la consola del navegador
-3. Revisa logs de Vercel/Supabase
+3. Revisa logs de Render/Supabase
 4. Revisa el código de ejemplo en los componentes
 
 ---

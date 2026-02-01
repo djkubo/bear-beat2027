@@ -254,7 +254,7 @@ export default function HomePage() {
         .eq('id', user.id)
         .single()
 
-      const hasAccess = purchases && purchases.length > 0
+      const hasAccess = Boolean(purchases && purchases.length > 0)
 
       setUserState({
         isLoggedIn: true,
@@ -288,7 +288,7 @@ export default function HomePage() {
   }
 
   const handleCTAClick = (location: string) => {
-    trackCTAClick('comprar_oferta', location, { oferta: 'lanzamiento_2026' })
+    trackCTAClick('comprar_oferta', location, 'lanzamiento_2026')
   }
 
   // Obtener videos del género activo

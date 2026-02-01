@@ -257,14 +257,9 @@ export function FileExplorer({ files, onDownload, onPreview, canDownload }: File
       {canDownload && (
         <div className="p-4 border-t border-bear-blue/20 bg-bear-blue/5">
           <div className="flex flex-wrap gap-3">
-            <a
-              href="/api/download-zip"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-bear-blue/20 text-bear-blue px-4 py-2 rounded-lg text-sm font-medium hover:bg-bear-blue/30"
-            >
+            <button className="flex items-center gap-2 bg-bear-blue/20 text-bear-blue px-4 py-2 rounded-lg text-sm font-medium hover:bg-bear-blue/30">
               ⬇️ Descargar Todo (ZIP)
-            </a>
+            </button>
             <button className="flex items-center gap-2 bg-white/10 text-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-white/20">
               📋 Copiar datos FTP
             </button>

@@ -127,7 +127,7 @@ function PaywallModal({ isOpen, onClose, fileName }: { isOpen: boolean; onClose:
           <Link href="/checkout?pack=enero-2026">
             <button 
               className="w-full bg-bear-blue text-bear-black font-black text-lg py-4 rounded-xl hover:bg-bear-blue/90 transition-colors mb-3"
-              onClick={() => trackCTAClick('paywall_cta', 'preview', { file: fileName })}
+              onClick={() => trackCTAClick('paywall_cta', 'preview', fileName)}
             >
               OBTENER ACCESO AHORA →
             </button>
@@ -352,7 +352,7 @@ export default function PreviewPage() {
   const handleDownloadAttempt = (fileName: string) => {
     setPaywallFileName(fileName)
     setShowPaywall(true)
-    trackCTAClick('download_attempt', 'preview', { file: fileName })
+    trackCTAClick('download_attempt', 'preview', fileName)
   }
 
   // Contar total de videos
@@ -472,7 +472,7 @@ export default function PreviewPage() {
                     <Link href="/checkout?pack=enero-2026">
                       <button 
                         className="bg-bear-blue text-bear-black font-black text-lg px-8 py-4 rounded-xl hover:bg-bear-blue/90"
-                        onClick={() => trackCTAClick('preview_cta', 'preview', { file: selectedFile.name })}
+                        onClick={() => trackCTAClick('preview_cta', 'preview', selectedFile.name)}
                       >
                         DESCARGAR TODO POR $350 MXN →
                       </button>

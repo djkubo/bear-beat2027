@@ -68,16 +68,6 @@ export default function ContenidoPage() {
     loadVideos()
   }, [])
 
-  // Autoplay cuando seleccionan otro video (el click ya es gesto de usuario)
-  useEffect(() => {
-    if (!selectedVideo || !videoRef.current) return
-    const el = videoRef.current
-    const play = () => el.play().catch(() => {})
-    if (el.readyState >= 2) play()
-    else el.addEventListener('loadeddata', play, { once: true })
-    return () => el.removeEventListener('loadeddata', play)
-  }, [selectedVideo])
-
   const verificarAcceso = async () => {
     try {
       const supabase = createClient()
@@ -89,7 +79,7 @@ export default function ContenidoPage() {
           .select('*')
           .eq('user_id', user.id)
 
-        const hasUserAccess = purchases && purchases.length > 0
+        const hasUserAccess = Boolean(purchases && purchases.length > 0)
         setHasAccess(hasUserAccess)
         
         console.log('🔍 CONTENIDO - Acceso:', hasUserAccess, 'Compras:', purchases?.length || 0)
@@ -141,13 +131,13 @@ export default function ContenidoPage() {
     } else {
       setSelectedVideo(video)
       setShowPaywall(true)
-      trackCTAClick('download_blocked', 'contenido', { video: video.name })
+      trackCTAClick('download_blocked', 'contenido', video.name)
     }
   }
 
   const handlePreview = (video: Video) => {
     setSelectedVideo(video)
-    trackCTAClick('preview', 'contenido', { video: video.name })
+    trackCTAClick('preview', 'contenido', video.name)
   }
 
   if (loading) {
@@ -173,19 +163,9 @@ export default function ContenidoPage() {
 
           <div className="flex items-center gap-3">
             {hasAccess ? (
-              <div className="flex items-center gap-3">
-                <a
-                  href="/api/download-zip"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-bear-blue font-bold text-sm hover:underline"
-                >
-                  ⬇️ Descargar ZIP
-                </a>
-                <Link href="/dashboard">
-                  <span className="text-green-400 font-bold text-sm">✅ Acceso Activo</span>
-                </Link>
-              </div>
+              <Link href="/dashboard">
+                <span className="text-green-400 font-bold text-sm">✅ Acceso Activo</span>
+              </Link>
             ) : (
               <>
                 <span className="text-bear-blue font-bold text-sm hidden md:block">
@@ -383,8 +363,7 @@ export default function ContenidoPage() {
                       controlsList="nodownload noplaybackrate"
                       disablePictureInPicture
                       playsInline
-                      preload="auto"
-                      autoPlay
+                      preload="metadata"
                     />
 
                     {/* Badge DEMO */}

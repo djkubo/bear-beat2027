@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
-import { isHetznerWebDAVConfigured, createHetznerReadStream } from '@/lib/storage/hetzner-webdav'
-import { isLocalVideos, resolveLocalVideoPath } from '@/lib/storage/videos-source'
+import path from 'path'
 
 // ==========================================
-// API DE STREAMING DE DEMOS - Carpeta local o Hetzner WebDAV
+// API DE STREAMING DE DEMOS
+// Sirve los videos con headers anti-descarga
 // ==========================================
 
-const DEMO_HEADERS = {
-  'Content-Type': 'video/mp4',
-  'Content-Disposition': 'inline',
-  'Cache-Control': 'no-store, no-cache, must-revalidate',
-  'X-Content-Type-Options': 'nosniff',
-} as const
+const VIDEOS_BASE_PATH = process.env.VIDEOS_PATH || path.join(process.cwd(), 'Videos Enero 2026')
 
 export async function GET(
   req: NextRequest,
@@ -20,56 +15,72 @@ export async function GET(
 ) {
   try {
     const { path: pathSegments } = await params
-    const filePath = pathSegments.map((p) => decodeURIComponent(p)).join('/')
-    const sanitizedPath = filePath.replace(/\.\./g, '').replace(/^\//, '')
+    const filePath = pathSegments.join('/')
+    const fullPath = path.join(VIDEOS_BASE_PATH, decodeURIComponent(filePath))
 
-    if (isLocalVideos()) {
-      const localPath = resolveLocalVideoPath(sanitizedPath)
-      if (!fs.existsSync(localPath) || !fs.statSync(localPath).isFile()) {
-        return NextResponse.json({ error: 'Video no encontrado' }, { status: 404 })
-      }
-      const readStream = fs.createReadStream(localPath)
-      const webStream = new ReadableStream({
-        start(controller) {
-          readStream.on('data', (chunk: Buffer) => controller.enqueue(chunk))
-          readStream.on('end', () => controller.close())
-          readStream.on('error', (err) => controller.error(err))
-        },
-      })
-      return new NextResponse(webStream, {
-        status: 200,
-        headers: { ...DEMO_HEADERS, 'Accept-Ranges': 'bytes' },
-      })
-    }
-
-    if (!isHetznerWebDAVConfigured()) {
+    // Verificar que el archivo existe
+    if (!fs.existsSync(fullPath)) {
       return NextResponse.json(
-        { error: 'Configura VIDEOS_BASE_PATH o Hetzner Storage Box (HETZNER_STORAGEBOX_* en .env) para demos.' },
-        { status: 503 }
+        { error: 'Video no encontrado' },
+        { status: 404 }
       )
     }
 
-    const remotePath = `/${sanitizedPath}`
-    const readStream = createHetznerReadStream(remotePath)
-    if (!readStream) {
-      return NextResponse.json({ error: 'Video no encontrado' }, { status: 404 })
+    // Obtener stats del archivo
+    const stat = fs.statSync(fullPath)
+    const fileSize = stat.size
+
+    // Manejar Range requests para streaming
+    const range = req.headers.get('range')
+
+    if (range) {
+      // Streaming parcial
+      const parts = range.replace(/bytes=/, '').split('-')
+      const start = parseInt(parts[0], 10)
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1
+      const chunkSize = end - start + 1
+
+      const fileStream = fs.createReadStream(fullPath, { start, end })
+      const chunks: Buffer[] = []
+
+      for await (const chunk of fileStream) {
+        chunks.push(Buffer.from(chunk))
+      }
+
+      const buffer = Buffer.concat(chunks)
+
+      return new NextResponse(buffer, {
+        status: 206,
+        headers: {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunkSize.toString(),
+          'Content-Type': 'video/mp4',
+          // Headers anti-descarga
+          'Content-Disposition': 'inline',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      })
+    } else {
+      // Streaming completo
+      const fileBuffer = fs.readFileSync(fullPath)
+
+      return new NextResponse(fileBuffer, {
+        status: 200,
+        headers: {
+          'Content-Length': fileSize.toString(),
+          'Content-Type': 'video/mp4',
+          'Accept-Ranges': 'bytes',
+          // Headers anti-descarga
+          'Content-Disposition': 'inline',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      })
     }
-    const webStream = new ReadableStream({
-      start(controller) {
-        readStream.on('data', (chunk: Buffer) => controller.enqueue(chunk))
-        readStream.on('end', () => controller.close())
-        readStream.on('error', (err) => controller.error(err))
-      },
-    })
-    return new NextResponse(webStream, {
-      status: 200,
-      headers: {
-        ...DEMO_HEADERS,
-        'Accept-Ranges': 'bytes',
-      },
-    })
   } catch (error: any) {
-    console.error('Error streaming demo:', error)
+    console.error('Error streaming video:', error)
     return NextResponse.json(
       { error: 'Error al cargar video' },
       { status: 500 }

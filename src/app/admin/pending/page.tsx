@@ -4,7 +4,7 @@ import { formatDate, formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 
 export default async function AdminPendingPurchasesPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -24,13 +24,12 @@ export default async function AdminPendingPurchasesPage() {
     .order('completed_at', { ascending: false })
     .limit(20)
 
-  // Obtener eventos recientes (user_events)
-  const { data: eventsData } = await supabase
+  // Eventos recientes (user_events)
+  const { data: events } = await supabase
     .from('user_events')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(50)
-  const events = eventsData ?? []
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-bear-blue/5 via-background to-bear-black/5">

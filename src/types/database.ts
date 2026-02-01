@@ -250,6 +250,29 @@ export interface Database {
           created_at?: string
         }
       }
+      ftp_pool: {
+        Row: {
+          id: number
+          username: string
+          password: string
+          in_use: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          username: string
+          password: string
+          in_use?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          username?: string
+          password?: string
+          in_use?: boolean
+          created_at?: string
+        }
+      }
     }
   }
 }

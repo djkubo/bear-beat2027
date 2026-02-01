@@ -37,53 +37,13 @@ export default function DashboardPage() {
   const [copied, setCopied] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'web' | 'ftp'>('web')
   const [ftpReady, setFtpReady] = useState(false)
-  const [ftpConfig, setFtpConfig] = useState<{
-    host: string
-    port: string
-    user: string
-    pass: string
-    useFtps?: boolean
-    hint?: string
-  } | null>(null)
-  const [ftpConfigError, setFtpConfigError] = useState<string | null>(null)
-
+  
   const supabase = createClient()
 
   useEffect(() => {
     trackPageView('dashboard')
     loadData()
   }, [])
-
-  const loadFtpCredentials = async () => {
-    try {
-      const res = await fetch('/api/ftp-credentials')
-      const data = await res.json()
-      if (res.ok && data.configured) {
-        setFtpConfig({
-          host: data.host,
-          port: data.port,
-          user: data.user,
-          pass: data.password,
-          useFtps: data.useFtps,
-          hint: data.hint,
-        })
-        setFtpConfigError(null)
-      } else if (res.status === 503) {
-        setFtpConfigError(data.message || 'FTP en configuración')
-        setFtpConfig(null)
-      } else {
-        setFtpConfigError(data.error || null)
-        setFtpConfig(null)
-      }
-    } catch (_) {
-      setFtpConfigError('No se pudieron cargar las credenciales FTP')
-      setFtpConfig(null)
-    }
-  }
-
-  useEffect(() => {
-    if (user && purchases.length > 0) loadFtpCredentials()
-  }, [user?.id, purchases.length])
 
   const loadData = async () => {
     try {
@@ -133,24 +93,12 @@ export default function DashboardPage() {
     setTimeout(() => setCopied(null), 2000)
   }
 
-  // Prioridad: 1) Hetzner desde API, 2) credenciales de la primera compra, 3) placeholder
-  const ftp = user
-    ? ftpConfig
-      ? { host: ftpConfig.host, port: ftpConfig.port, user: ftpConfig.user, pass: ftpConfig.pass }
-      : purchases[0]?.ftp_username && purchases[0]?.ftp_password
-        ? {
-            host: process.env.NEXT_PUBLIC_FTP_HOST || 'u540473.your-storagebox.de',
-            port: process.env.NEXT_PUBLIC_FTP_PORT || '21',
-            user: purchases[0].ftp_username,
-            pass: purchases[0].ftp_password,
-          }
-        : {
-            host: process.env.NEXT_PUBLIC_FTP_HOST || 'u540473.your-storagebox.de',
-            port: process.env.NEXT_PUBLIC_FTP_PORT || '21',
-            user: `dj_${user.id.substring(0, 8)}`,
-            pass: '(ver email o activar compra)',
-          }
-    : null
+  const ftp = user ? {
+    host: 'ftp.bearbeat.mx',
+    port: '21',
+    user: `dj_${user.id.substring(0, 8)}`,
+    pass: `BB${user.id.substring(0, 12)}!`
+  } : null
 
   if (loading) {
     return (
@@ -304,31 +252,13 @@ export default function DashboardPage() {
                   </ul>
                 </div>
 
-                {ftpConfigError && !ftpConfig && (
-                  <div className="bg-amber-500/20 border border-amber-500/50 rounded-2xl p-6 mb-6">
-                    <h3 className="font-bold text-amber-400 mb-2">🔧 FTP en configuración</h3>
-                    <p className="text-gray-300 text-sm mb-2">{ftpConfigError}</p>
-                    <p className="text-gray-400 text-xs">
-                      Tu host Hetzner es <strong>u540473.your-storagebox.de</strong>. Configura en el servidor las variables HETZNER_STORAGEBOX_HOST, HETZNER_STORAGEBOX_USER y HETZNER_STORAGEBOX_PASSWORD. Puerto 21 (FTP/FTPS) o 22 (SFTP).
-                    </p>
-                  </div>
-                )}
-
                 {ftp && (
                   <>
-                    {ftpConfig?.hint && (
-                      <p className="text-sm text-purple-300 mb-4 rounded-xl bg-purple-500/10 px-4 py-2">
-                        💡 {ftpConfig.hint}
-                      </p>
-                    )}
                     {/* CREDENCIALES */}
                     <div className="bg-black/50 rounded-2xl p-6 mb-6">
                       <h3 className="font-bold text-sm text-purple-400 mb-4 flex items-center gap-2">
-                        🔐 TUS CREDENCIALES FTP (Hetzner Storage Box)
+                        🔐 TUS CREDENCIALES FTP (PRIVADAS)
                       </h3>
-                      <p className="text-xs text-gray-400 mb-3">
-                        Solo descarga: con estas credenciales puedes descargar todo el pack. No puedes subir ni borrar archivos (solo el admin puede).
-                      </p>
                       
                       <div className="space-y-3">
                         {[

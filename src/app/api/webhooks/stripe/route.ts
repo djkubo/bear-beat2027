@@ -6,7 +6,8 @@ import { upsertSubscriber, addMultipleTags, BEAR_BEAT_TAGS } from '@/lib/manycha
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
-  const signature = headers().get('stripe-signature')
+  const headersList = await headers()
+  const signature = headersList.get('stripe-signature')
 
   if (!signature) {
     return NextResponse.json({ error: 'No signature' }, { status: 400 })
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
 
   // Procesar el evento
   if (event.type === 'checkout.session.completed') {

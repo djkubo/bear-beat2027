@@ -1,16 +1,18 @@
-# Render Blueprint - Bear Beat
-# Conecta tu repo en Render y Render usará este archivo para crear el servicio.
-# Variables obligatorias en Dashboard: HETZNER_*, HETZNER_VIDEOS_BASE_PATH=Videos Enero 2026,
-# NEXT_PUBLIC_APP_URL=https://tu-app.onrender.com, Supabase, Stripe, PayPal, etc.
-
+# Render.com - Web Service para Bear Beat
+# https://docs.render.com/blueprint-spec
 services:
   - type: web
-    name: bear-beat
+    name: bear-beat2027
     runtime: node
-    buildCommand: npm install --legacy-peer-deps && npm run build
-    startCommand: npm start
+    region: oregon
+
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+
     envVars:
-      - key: NODE_VERSION
-        value: 20
       - key: NODE_ENV
         value: production
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+        # En Render Dashboard pon: https://bear-beat2027.onrender.com (o tu dominio)
+      # El resto (Supabase, Stripe, etc.) se configuran en Dashboard → Environment

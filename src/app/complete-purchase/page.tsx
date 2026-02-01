@@ -30,14 +30,11 @@ export default function CompletePurchasePage() {
   const supabase = createClient()
   
   const sessionId = searchParams.get('session_id')
-  const provider = searchParams.get('provider')
-  const orderId = searchParams.get('order_id')
-  const hasPaymentId = sessionId || (provider === 'paypal' && orderId)
-
+  
   const [state, setState] = useState<PageState>('loading')
   const [purchaseData, setPurchaseData] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-
+  
   // Form
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
@@ -49,37 +46,39 @@ export default function CompletePurchasePage() {
   const [hasExistingAccount, setHasExistingAccount] = useState(false)
   const [generatedCredentials, setGeneratedCredentials] = useState<{email: string, password: string} | null>(null)
 
-  // Cargar datos de la compra (Stripe por session_id o PayPal por provider + order_id)
+  // Cargar datos de la compra
   useEffect(() => {
-    if (!hasPaymentId) {
+    if (!sessionId) {
       setError('No se encontró la sesión de pago')
       setState('error')
       return
     }
+    
     loadPurchaseData()
-  }, [sessionId, provider, orderId])
+  }, [sessionId])
 
   const loadPurchaseData = async () => {
     try {
+      // PRIMERO: Verificar si el usuario ya está logueado
       const { data: { user: currentUser } } = await supabase.auth.getUser()
-
-      const verifyUrl = provider === 'paypal' && orderId
-        ? `/api/verify-payment?provider=paypal&order_id=${encodeURIComponent(orderId)}`
-        : `/api/verify-payment?session_id=${sessionId}`
-      const stripeRes = await fetch(verifyUrl)
+      
+      // Obtener datos de Stripe
+      const stripeRes = await fetch(`/api/verify-payment?session_id=${sessionId}`)
       const stripeData = await stripeRes.json()
-
+      
       if (stripeRes.ok && stripeData.success) {
+        // Pago verificado con Stripe
         const purchaseInfo = {
-          stripe_session_id: sessionId || orderId,
+          stripe_session_id: sessionId,
           pack_id: stripeData.packId || 1,
           pack: stripeData.pack || { name: 'Pack Enero 2026' },
           amount_paid: stripeData.amount,
           currency: stripeData.currency?.toUpperCase() || 'MXN',
-          payment_provider: provider === 'paypal' ? 'paypal' : 'stripe',
+          payment_provider: 'stripe',
           stripe_payment_intent: stripeData.paymentIntent,
           customer_email: stripeData.customerEmail,
           customer_name: stripeData.customerName,
+          // User ID del usuario que estaba logueado al pagar
           original_user_id: stripeData.userId,
         }
         
@@ -307,27 +306,18 @@ export default function CompletePurchasePage() {
   // Activar compra para usuario YA LOGUEADO
   const activatePurchaseForLoggedUser = async (userId: string, purchaseInfo: any) => {
     try {
-      // Guardar la compra en la base de datos (FTP se asigna por pool: una cuenta por cliente)
+      // Guardar la compra en la base de datos
       try {
-        const { data: insertData, error: insertErr } = await supabase
-          .from('purchases')
-          .insert({
-            user_id: userId,
-            pack_id: purchaseInfo.pack_id || 1,
-            amount_paid: purchaseInfo.amount_paid || 350,
-            currency: purchaseInfo.currency || 'MXN',
-            payment_provider: purchaseInfo.payment_provider || 'stripe',
-            payment_id: purchaseInfo.stripe_payment_intent || sessionId,
-          })
-          .select('id')
-          .single()
-        if (!insertErr && insertData?.id) {
-          await fetch('/api/assign-ftp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ purchaseId: insertData.id }),
-          })
-        }
+        await supabase.from('purchases').insert({
+          user_id: userId,
+          pack_id: purchaseInfo.pack_id || 1,
+          amount_paid: purchaseInfo.amount_paid || 350,
+          currency: purchaseInfo.currency || 'MXN',
+          payment_provider: purchaseInfo.payment_provider || 'stripe',
+          payment_id: purchaseInfo.stripe_payment_intent || sessionId,
+          ftp_username: `dj_${userId.slice(0, 8)}`,
+          ftp_password: generatePassword(),
+        })
       } catch (dbErr) {
         console.log('DB insert failed (may already exist):', dbErr)
       }
@@ -387,26 +377,17 @@ export default function CompletePurchasePage() {
           })
           .eq('stripe_session_id', sessionId)
 
-        // Crear purchase definitiva (FTP se asigna por pool: una cuenta por cliente)
-        const { data: insertData, error: insertErr } = await supabase
-          .from('purchases')
-          .insert({
-            user_id: userId,
-            pack_id: purchaseData.pack_id || 1,
-            amount_paid: purchaseData.amount_paid || 350,
-            currency: purchaseData.currency || 'MXN',
-            payment_provider: purchaseData.payment_provider || 'stripe',
-            payment_id: purchaseData.stripe_payment_intent || sessionId,
-          })
-          .select('id')
-          .single()
-        if (!insertErr && insertData?.id) {
-          await fetch('/api/assign-ftp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ purchaseId: insertData.id }),
-          })
-        }
+        // Crear purchase definitiva
+        await supabase.from('purchases').insert({
+          user_id: userId,
+          pack_id: purchaseData.pack_id || 1,
+          amount_paid: purchaseData.amount_paid || 350,
+          currency: purchaseData.currency || 'MXN',
+          payment_provider: purchaseData.payment_provider || 'stripe',
+          payment_id: purchaseData.stripe_payment_intent || sessionId,
+          ftp_username: `dj_${userId.slice(0, 8)}`,
+          ftp_password: generatePassword(),
+        })
       } catch (dbErr) {
         console.log('DB not available for activation, continuing...')
       }

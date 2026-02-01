@@ -16,21 +16,6 @@ const BUNNY_STREAM_API_KEY = process.env.BUNNY_STREAM_API_KEY || ''
 const BUNNY_TOKEN_KEY = process.env.BUNNY_TOKEN_KEY || ''
 
 /**
- * Indica si Bunny CDN está configurado para entrega (URLs firmadas).
- * Si es true, /api/download puede redirigir al CDN en vez de hacer stream desde Hetzner.
- */
-export function isBunnyCDNConfigured(): boolean {
-  return !!(BUNNY_CDN_URL && BUNNY_TOKEN_KEY && BUNNY_STORAGE_ZONE)
-}
-
-/**
- * Indica si Bunny Storage está configurado para listar/leer (ZIP desde Bunny).
- */
-export function isBunnyStorageConfigured(): boolean {
-  return !!(BUNNY_STORAGE_ZONE && BUNNY_STORAGE_PASSWORD)
-}
-
-/**
  * Genera URL firmada que expira
  * Solo funciona por X tiempo y desde tu dominio
  */
@@ -107,7 +92,7 @@ export async function uploadFile(
           'AccessKey': BUNNY_STORAGE_PASSWORD,
           'Content-Type': 'application/octet-stream',
         },
-        body: fileBuffer,
+        body: fileBuffer as unknown as BodyInit,
       }
     )
 
@@ -131,16 +116,14 @@ export async function uploadFile(
 }
 
 /**
- * Listar archivos de una carpeta (Bunny Storage).
- * Para root usar folderPath ''.
+ * Listar archivos de una carpeta
  */
 export async function listFiles(
   folderPath: string = ''
 ): Promise<BunnyFile[]> {
   try {
-    const pathPart = folderPath ? `${folderPath}/` : ''
     const response = await fetch(
-      `https://storage.bunnycdn.com/${BUNNY_STORAGE_ZONE}/${pathPart}`,
+      `https://storage.bunnycdn.com/${BUNNY_STORAGE_ZONE}/${folderPath}/`,
       {
         headers: {
           'AccessKey': BUNNY_STORAGE_PASSWORD,
@@ -154,32 +137,10 @@ export async function listFiles(
     }
 
     const files = await response.json()
-    return Array.isArray(files) ? files : []
+    return files
   } catch (error) {
     console.error('Error listing files:', error)
     return []
-  }
-}
-
-/**
- * Obtener stream de un archivo desde Bunny Storage (para ZIP).
- * Devuelve Node Readable para usar con archiver.
- */
-export async function getBunnyFileStream(
-  filePath: string
-): Promise<NodeJS.ReadableStream | null> {
-  if (!isBunnyStorageConfigured()) return null
-  try {
-    const response = await fetch(
-      `https://storage.bunnycdn.com/${BUNNY_STORAGE_ZONE}/${filePath}`,
-      { headers: { 'AccessKey': BUNNY_STORAGE_PASSWORD } }
-    )
-    if (!response.ok || !response.body) return null
-    const { Readable } = await import('stream')
-    return Readable.fromWeb(response.body as import('stream').web.ReadableStream)
-  } catch (e) {
-    console.error('Bunny getBunnyFileStream error:', filePath, e)
-    return null
   }
 }
 

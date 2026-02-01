@@ -4,7 +4,7 @@ import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
 
 export default async function AdminTrackingPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')

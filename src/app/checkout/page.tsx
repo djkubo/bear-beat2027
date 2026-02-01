@@ -12,7 +12,7 @@ import { trackCTAClick } from '@/lib/tracking'
 // EMBUDO DE CONVERSIÓN - CHECKOUT PERFECTO
 // ==========================================
 
-type PaymentMethod = 'oxxo' | 'spei' | 'card'
+type PaymentMethod = 'oxxo' | 'spei' | 'card' | 'paypal'
 type Step = 'select' | 'processing' | 'redirect'
 
 export default function CheckoutPage() {
@@ -50,7 +50,7 @@ export default function CheckoutPage() {
 
     try {
       // Track
-      trackCTAClick('checkout_method', 'checkout', { method, pack: packSlug })
+      trackCTAClick('checkout_method', 'checkout', `${method}-${packSlug}`)
 
       // Crear sesión de Stripe
       const response = await fetch('/api/create-checkout', {
@@ -255,10 +255,10 @@ export default function CheckoutPage() {
                     </div>
                   </button>
 
-                  {/* PayPal — integración separada (no Stripe) */}
-                  <Link
-                    href={`/checkout-paypal?pack=${packSlug}&currency=${currency}`}
-                    className="block w-full bg-white/5 hover:bg-yellow-500/20 border-2 border-yellow-500/50 hover:border-yellow-500 rounded-2xl p-5 text-left transition-all group"
+                  {/* PayPal */}
+                  <button
+                    onClick={() => handlePayment('paypal' as PaymentMethod)}
+                    className="w-full bg-white/5 hover:bg-yellow-500/20 border-2 border-yellow-500/50 hover:border-yellow-500 rounded-2xl p-5 text-left transition-all group"
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-[#003087] rounded-xl flex items-center justify-center shrink-0">
@@ -274,7 +274,7 @@ export default function CheckoutPage() {
                       <div className="flex-1">
                         <div className="text-xl font-black mb-1">PayPal</div>
                         <p className="text-gray-400 text-sm">
-                          Paga con tu cuenta de PayPal (integración directa)
+                          Paga con tu cuenta de PayPal
                         </p>
                         <div className="flex gap-2 mt-2">
                           <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs font-bold">
@@ -289,8 +289,7 @@ export default function CheckoutPage() {
                         →
                       </div>
                     </div>
-                  </Link>
-
+                  </button>
                 </div>
 
                 {/* Garantías */}
@@ -354,6 +353,7 @@ export default function CheckoutPage() {
                   {selectedMethod === 'oxxo' && 'Generando tu ficha de OXXO...'}
                   {selectedMethod === 'spei' && 'Generando tu referencia SPEI...'}
                   {selectedMethod === 'card' && 'Conectando con el procesador...'}
+                  {selectedMethod === 'paypal' && 'Conectando con PayPal...'}
                 </p>
                 <p className="text-sm text-gray-500 mt-4">
                   No cierres esta ventana

@@ -74,7 +74,7 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
     // Crear nueva suscripción
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource
     })
 
     console.log('Nueva suscripción push:', subscription)
@@ -160,7 +160,7 @@ export async function sendLocalNotification(title: string, options?: Notificatio
     badge: '/favicon.png',
     vibrate: [200, 100, 200],
     ...options
-  })
+  } as Parameters<ServiceWorkerRegistration['showNotification']>[1])
 }
 
 /**

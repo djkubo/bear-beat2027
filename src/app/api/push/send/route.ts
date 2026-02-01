@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const { title, body, url, icon, target } = await req.json()
 
     // Verificar que es admin
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
 // GET - Obtener stats de suscripciones
 export async function GET() {
   try {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     
     const { data, error } = await supabase
       .from('push_subscriptions')

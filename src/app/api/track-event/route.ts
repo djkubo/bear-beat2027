@@ -13,8 +13,8 @@ export async function POST(req: NextRequest) {
       )
     }
     
-    const supabase = createServerClient()
-    const headersList = headers()
+    const supabase = await createServerClient()
+    const headersList = await headers()
     
     // Obtener session ID de cookies o crear uno
     const sessionId = req.cookies.get('bear_session_id')?.value || 

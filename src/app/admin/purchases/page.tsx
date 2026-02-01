@@ -4,7 +4,7 @@ import { formatDate, formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 
 export default async function AdminPurchasesPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')

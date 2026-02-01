@@ -125,13 +125,13 @@
 □ Crear términos y condiciones
 □ Crear política de privacidad
 □ Configurar dominio propio
-□ SSL configurado (Vercel lo hace automático)
+□ SSL configurado (Render lo hace automático)
 ```
 
 ### Lanzamiento
 ```
-□ Deploy a producción en Vercel
-□ Configurar variables de entorno en Vercel
+□ Deploy a producción en Render
+□ Configurar variables de entorno en Render
 □ Actualizar webhook de Stripe con URL de producción
 □ Probar checkout en producción con modo test de Stripe
 □ Cambiar a modo live de Stripe
@@ -177,12 +177,12 @@
 ### Desarrollo
 - **VS Code**: Editor principal
 - **GitHub**: Control de versiones
-- **Vercel**: Hosting (ya configurado)
+- **Render**: Hosting (ya configurado)
 - **Postman**: Testing de APIs
 
 ### Monitoreo
 - **Sentry**: Error tracking ($26/mes)
-- **Vercel Analytics**: Performance (incluido)
+- **Render / Analytics**: Performance (opcional)
 - **Google Analytics**: Comportamiento usuarios (gratis)
 
 ### Comunicación
@@ -203,7 +203,7 @@
 ```
 Desarrollo: Ya hecho ✅
 Infraestructura: $50-100/mes
-  - Vercel: $20
+  - Render: $7-25
   - Supabase: $25
   - Resend: $0 (gratis hasta 100/día)
   - R2: $15 (10TB storage)
@@ -214,7 +214,7 @@ Total: ~$70/mes
 ### Mes 3 (100 usuarios)
 ```
 Infraestructura: $100-150/mes
-  - Vercel Pro: $20
+  - Render: $25
   - Supabase Pro: $25
   - R2: $30-50
   - Resend: $20

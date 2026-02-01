@@ -18,7 +18,7 @@ Stack Tecnológico 2026:
 └─ Cloudflare R2 (Storage preparado)
 
 Hosting:
-├─ Vercel (Frontend)
+├─ Render (Frontend)
 ├─ Supabase (Backend)
 └─ Cloudflare (CDN para archivos)
 ```
@@ -454,7 +454,7 @@ WHERE email = 'TU-EMAIL-AQUI';
 
 ### Inicio (0-100 usuarios):
 ```
-Vercel:          $0-20     (gratis hasta límite)
+Render:          $0-7      (free tier) o $7-25/mes
 Supabase:        $0-25     (gratis o Pro)
 Twilio SMS:      ~$1       (100 verificaciones)
 Stripe:          2.9% + $0.30 por transacción
@@ -465,7 +465,7 @@ Total: ~$22-50/mes
 
 ### Con 1,000 usuarios:
 ```
-Vercel:          $20
+Render:          $7-25
 Supabase:        $25
 Cloudflare R2:   $150      (10TB storage + bandwidth)
 Twilio:          $10       (1,000 SMS)
