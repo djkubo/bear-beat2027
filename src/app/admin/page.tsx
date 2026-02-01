@@ -2,22 +2,21 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { formatPrice, formatDate } from '@/lib/utils'
 import { Users, DollarSign, Package, TrendingUp } from 'lucide-react'
+import { SyncVideosFtpButton } from './SyncVideosFtpButton'
 
 export default async function AdminDashboardPage() {
   const supabase = await createServerClient()
   
-  // Verificar autenticación
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
   if (!user) redirect('/login')
   
-  // Verificar que sea admin
   const { data: userData } = await supabase
     .from('users')
     .select('email, role')
     .eq('id', user.id)
     .single()
   
-  // Verificar role de admin
   if (!userData || userData.role !== 'admin') {
     redirect('/')
   }
@@ -175,6 +174,11 @@ export default async function AdminDashboardPage() {
             <div className="text-3xl mb-1">⚙️</div>
             <div className="font-bold text-sm">Config</div>
           </a>
+        </div>
+
+        {/* Sync catálogo FTP (usa env del servidor) */}
+        <div className="mb-8">
+          <SyncVideosFtpButton />
         </div>
 
         {/* Últimas Compras */}

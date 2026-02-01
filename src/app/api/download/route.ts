@@ -26,10 +26,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'File path required' }, { status: 400 })
     }
     
-    // Verificar autenticación y compra
     const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
     if (!user) {
       return NextResponse.json({ error: 'No autenticado. Inicia sesión.' }, { status: 401 })
     }

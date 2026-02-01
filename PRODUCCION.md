@@ -93,10 +93,16 @@ UPDATE users SET role = 'admin' WHERE email = 'tu@email.com';
 ```
 
 **Poblar catálogo de videos (para que `/contenido` muestre lista en Render):**
-```bash
-npm run db:sync-videos
-```
-(Opcional: `node scripts/sync-videos-to-supabase.js "./ruta/carpeta/videos"`)
+
+- **Si los videos están en el Storage Box Hetzner** (ej. `u540473.your-storagebox.de`):  
+  **Opción A – Desde el servidor (recomendado):** En Render → Environment añade `FTP_HOST`, `FTP_USER`, `FTP_PASSWORD` (o `HETZNER_FTP_HOST`, `HETZNER_FTP_USER`, `HETZNER_FTP_PASSWORD`). Luego entra como **admin** a `/admin` y pulsa **«Sincronizar catálogo desde FTP»**. El sync corre en el servidor con esas variables; no hace falta .env.local.  
+  **Opción B – Desde tu máquina:** En `.env.local` pon las mismas variables FTP y Supabase; luego ejecuta `npm run db:sync-videos-ftp`.
+
+- **Si los videos están en una carpeta local:**  
+  ```bash
+  npm run db:sync-videos
+  ```
+  (Opcional: `node scripts/sync-videos-to-supabase.js "./ruta/carpeta/videos"`)
 
 ---
 
@@ -141,6 +147,7 @@ npm run deploy:env
 | **Resend** | `RESEND_API_KEY` | Emails (referenciado; integración en desarrollo). |
 | **Bunny** | `BUNNY_*` (API key, storage zone, CDN, stream) | Storage/CDN; si están configurados, `/api/download` redirige a URL firmada. |
 | **Hetzner Robot** | `HETZNER_ROBOT_USER`, `HETZNER_ROBOT_PASSWORD`, `HETZNER_STORAGEBOX_ID` | Crear subcuenta FTP real por compra (solo lectura). Ver `docs/HETZNER_FTP_REAL.md`. |
+| **FTP (listado catálogo)** | `FTP_HOST`, `FTP_USER`, `FTP_PASSWORD` (o `HETZNER_FTP_*`) | Para sync de videos desde Storage Box: botón «Sincronizar catálogo desde FTP» en `/admin` o `npm run db:sync-videos-ftp` local. |
 | **Render** | `RENDER_API_KEY` (solo local) | Script `deploy:env` para subir env al servicio. |
 
 Ninguna clave debe estar hardcodeada en el código; todas vienen de variables de entorno (o de `.env.example` como plantilla).
@@ -153,8 +160,9 @@ Ninguna clave debe estar hardcodeada en el código; todas vienen de variables de
    - Ejecutar `npm run db:setup` (o pegar `SETUP_COMPLETO.sql` en Supabase SQL Editor).
    - Crear admin: `UPDATE users SET role = 'admin' WHERE email = '...';`
 
-2. **Catálogo de videos (opcional pero recomendado)**
-   - En tu máquina (con carpeta de videos): `npm run db:sync-videos`.
+2. **Catálogo de videos (para que se vean en `/contenido`)**
+   - Videos en **Hetzner Storage Box**: en **Render → Environment** pon `FTP_HOST`, `FTP_USER`, `FTP_PASSWORD` (o `HETZNER_FTP_*`). Luego entra como admin a **/admin** y pulsa **«Sincronizar catálogo desde FTP»** (el sync corre en el servidor). O desde tu máquina con las mismas vars en `.env.local`: `npm run db:sync-videos-ftp`.
+   - Videos en **carpeta local**: `npm run db:sync-videos`.
 
 3. **Variables en Render**
    - En Render → Service → Environment: tener todas las de la sección 4.

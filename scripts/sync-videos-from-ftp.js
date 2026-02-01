@@ -16,8 +16,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const envPath = path.join(__dirname, '..', '.env.local');
-if (fs.existsSync(envPath)) {
+function loadEnv(file) {
+  const envPath = path.join(__dirname, '..', file);
+  if (!fs.existsSync(envPath)) return;
   const content = fs.readFileSync(envPath, 'utf8');
   content.split('\n').forEach((line) => {
     const m = line.match(/^([^#=]+)=(.*)$/);
@@ -28,6 +29,9 @@ if (fs.existsSync(envPath)) {
     }
   });
 }
+// Cargar .env y luego .env.local (local sobreescribe)
+loadEnv('.env');
+loadEnv('.env.local');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -68,6 +72,7 @@ async function main() {
     console.error('❌ Error borrando videos anteriores:', delErr.message);
     process.exit(1);
   }
+  const FTP_BASE = process.env.FTP_BASE_PATH || process.env.FTP_VIDEOS_PATH || 'Videos Enero 2026';
   console.log('✓ Conectando a FTP', FTP_HOST, '...');
 
   const client = new Client(60 * 1000);
@@ -79,10 +84,17 @@ async function main() {
       secure: false,
     });
 
+    try {
+      await client.cd(FTP_BASE);
+    } catch (e) {
+      console.error('❌ No se encontró la carpeta "' + FTP_BASE + '" en el FTP. Verifica FTP_BASE_PATH.');
+      process.exit(1);
+    }
+
     const rootList = await client.list();
     const dirs = rootList.filter((f) => f.isDirectory);
     if (dirs.length === 0) {
-      console.error('❌ No se encontraron carpetas en la raíz del FTP. ¿La estructura es Género/videos.mp4?');
+      console.error('❌ No hay carpetas (géneros) dentro de /' + FTP_BASE + '/');
       process.exit(1);
     }
 

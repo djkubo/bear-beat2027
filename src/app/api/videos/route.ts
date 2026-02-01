@@ -195,8 +195,9 @@ async function readVideoStructureFromDb(
     const byGenre = new Map<string, { name: string; slug: string; videos: VideoFile[] }>()
 
     for (const row of videosRows as Row[]) {
-      const genreName = row.genres?.name ?? 'Otros'
-      const genreSlug = (row.genres?.slug ?? genreName.toLowerCase().replace(/\s+/g, '-')) as string
+      const folderFromPath = row.file_path?.split('/')[0]
+      const genreName = row.genres?.name ?? folderFromPath ?? 'Sin género'
+      const genreSlug = (row.genres?.slug ?? genreName.toLowerCase().replace(/\s+/g, '-').replace(/ñ/g, 'n')) as string
       const fileName = row.file_path?.split('/').pop() || row.title || `video-${row.id}`
       const relativePath = row.file_path || `${genreName}/${fileName}`
 

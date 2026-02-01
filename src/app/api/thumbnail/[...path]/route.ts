@@ -28,9 +28,9 @@ export async function GET(
     const videoPath = decodeURIComponent(pathSegments.join('/'))
     const fullVideoPath = path.join(VIDEOS_BASE_PATH, videoPath)
 
-    // Verificar que el video existe
+    // En producción los videos están en FTP; si no hay archivo local, servir placeholder para que no se rompa la UI
     if (!fs.existsSync(fullVideoPath)) {
-      return NextResponse.json({ error: 'Video no encontrado' }, { status: 404 })
+      return NextResponse.redirect(new URL('/favicon.png', req.url))
     }
 
     // Generar nombre único para el thumbnail
@@ -65,8 +65,7 @@ export async function GET(
           { timeout: 30000 }
         )
       } catch {
-        // Si ffmpeg no está disponible, devolver placeholder
-        return NextResponse.redirect(new URL('/placeholder-video.jpg', req.url))
+        return NextResponse.redirect(new URL('/favicon.png', req.url))
       }
     }
 

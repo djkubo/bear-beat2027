@@ -4,7 +4,9 @@ import path from 'path'
 
 // ==========================================
 // API DE STREAMING DE DEMOS
-// Sirve los videos con headers anti-descarga
+// Sirve los videos con headers anti-descarga (desde disco local).
+// En producción (Render) los archivos están en FTP: aquí no hay carpeta local,
+// por lo que devuelve 404. Para demos en producción haría falta proxy desde FTP o Bunny.
 // ==========================================
 
 const VIDEOS_BASE_PATH = process.env.VIDEOS_PATH || path.join(process.cwd(), 'Videos Enero 2026')

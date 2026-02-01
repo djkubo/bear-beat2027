@@ -364,6 +364,8 @@ export default function ContenidoPage() {
                       controlsList="nodownload noplaybackrate"
                       disablePictureInPicture
                       playsInline
+                      autoPlay
+                      muted
                       preload="metadata"
                     />
 

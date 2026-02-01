@@ -346,9 +346,6 @@ export default function HomePage() {
             <span className="text-xl md:text-2xl font-black text-bear-blue">BEAR BEAT</span>
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm">
-            <Link href="/contenido" className="text-white/70 hover:text-bear-blue font-medium">
-              👁️ Ver Contenido
-            </Link>
             {userState.hasAccess ? (
               <>
                 <Link href="/dashboard" className="text-bear-blue font-bold hover:text-white transition">
@@ -356,6 +353,9 @@ export default function HomePage() {
                 </Link>
                 <Link href="/mi-cuenta" className="text-white/70 hover:text-bear-blue font-medium">
                   Mi cuenta
+                </Link>
+                <Link href="/contenido" className="text-white/70 hover:text-bear-blue font-medium">
+                  👁️ Ver Contenido
                 </Link>
                 <span className="bg-bear-blue/20 text-bear-blue px-3 py-1 rounded-full font-bold text-xs">
                   ✓ Acceso Activo
@@ -368,9 +368,17 @@ export default function HomePage() {
                   <>
                     <Link href="/dashboard" className="text-white/70 hover:text-bear-blue">Mi Panel</Link>
                     <Link href="/mi-cuenta" className="text-white/70 hover:text-bear-blue">Mi cuenta</Link>
+                    <Link href="/contenido" className="text-white/70 hover:text-bear-blue font-medium">
+                      👁️ Ver Contenido
+                    </Link>
                   </>
                 ) : (
-                  <Link href="/login" className="text-white/70 hover:text-bear-blue">Iniciar Sesión</Link>
+                  <>
+                    <Link href="/login" className="text-white/70 hover:text-bear-blue">Iniciar Sesión</Link>
+                    <Link href="/contenido" className="text-white/70 hover:text-bear-blue font-medium">
+                      👁️ Ver Contenido
+                    </Link>
+                  </>
                 )}
               </>
             )}
