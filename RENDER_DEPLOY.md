@@ -34,6 +34,17 @@ En **Environment** del servicio, asegúrate de tener al menos:
 
 Copia el resto de variables desde tu `.env.local` (Stripe webhook, Resend, ManyChat, etc.).
 
+### Si usas Docker (build falla con "URL and Key are required")
+
+Las variables **NEXT_PUBLIC_*** deben estar disponibles **durante el build**. En Render:
+
+1. Ve a tu servicio → **Environment**
+2. Añade o edita **NEXT_PUBLIC_SUPABASE_URL** y **NEXT_PUBLIC_SUPABASE_ANON_KEY**
+3. En cada una, activa el scope **Build** (además de Runtime) para que Docker las reciba al hacer `npm run build`
+4. Guarda y haz **Manual Deploy** de nuevo
+
+Sin esto, el prerender de `/login` y otras páginas falla porque el cliente Supabase no tiene URL/key en el build.
+
 ---
 
 ## 3. Si el build falla por memoria
