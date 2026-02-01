@@ -60,6 +60,18 @@ interface GenreFolder {
   videos: VideoFile[]
 }
 
+/** Base URL pública para que las portadas carguen desde el dominio correcto (evita 0.0.0.0 en img src). */
+function getPublicBaseUrl(): string | null {
+  const u = process.env.NEXT_PUBLIC_APP_URL
+  if (typeof u === 'string' && u && !/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?(\/|$)/i.test(u)) {
+    return u.replace(/\/$/, '')
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://bear-beat2027.onrender.com'
+  }
+  return null
+}
+
 /** Construye URL de portada: DB (URL absoluta o path → thumbnail-cdn), o en prod generar desde video (ffmpeg) o placeholder, o local ffmpeg. */
 function buildThumbnailUrl(
   thumbnailUrlFromDb: string | null,
@@ -67,20 +79,22 @@ function buildThumbnailUrl(
   artist: string | null,
   title: string | null
 ): string {
+  let urlPath: string
   if (thumbnailUrlFromDb) {
     if (thumbnailUrlFromDb.startsWith('http://') || thumbnailUrlFromDb.startsWith('https://')) {
       return thumbnailUrlFromDb
     }
-    return `/api/thumbnail-cdn?path=${encodeURIComponent(thumbnailUrlFromDb)}`
-  }
-  if (process.env.NODE_ENV === 'production') {
-    // Generar portada desde el video (extrae frame con ffmpeg, sube a Bunny, guarda en DB). Si falla, redirige a placeholder.
+    urlPath = `/api/thumbnail-cdn?path=${encodeURIComponent(thumbnailUrlFromDb)}`
+  } else if (process.env.NODE_ENV === 'production') {
     const q = new URLSearchParams({ path: relativePath })
     if (artist) q.set('artist', artist)
     if (title) q.set('title', title)
-    return `/api/thumbnail-from-video?${q.toString()}`
+    urlPath = `/api/thumbnail-from-video?${q.toString()}`
+  } else {
+    urlPath = `/api/thumbnail/${encodeURIComponent(relativePath)}`
   }
-  return `/api/thumbnail/${encodeURIComponent(relativePath)}`
+  const base = getPublicBaseUrl()
+  return base ? `${base}${urlPath}` : urlPath
 }
 
 /**
