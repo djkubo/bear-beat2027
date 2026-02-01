@@ -3,7 +3,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import { formatDate, formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 
-export default async function AdminUserDetailPage({ params }: { params: { id: string } }) {
+export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = createServerClient()
   
   const { data: { user: authUser } } = await supabase.auth.getUser()
@@ -13,7 +14,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
   const { data: user } = await supabase
     .from('users')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
   
   if (!user) {
@@ -27,7 +28,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
       *,
       pack:packs(*)
     `)
-    .eq('user_id', params.id)
+    .eq('user_id', id)
     .order('purchased_at', { ascending: false })
   
   const totalSpent = purchases?.reduce((sum, p) => sum + Number(p.amount_paid), 0) || 0
