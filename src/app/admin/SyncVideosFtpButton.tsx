@@ -44,7 +44,10 @@ export function SyncVideosFtpButton() {
       {result && (
         <div className={`mt-3 text-sm p-2 rounded ${result.ok ? 'bg-green-500/20 text-green-800 dark:text-green-200' : 'bg-red-500/20 text-red-800 dark:text-red-200'}`}>
           {result.ok ? (
-            <>✅ {result.message ?? `Listo. Total: ${result.total ?? 0} videos.`}</>
+            <>
+              ✅ {result.message ?? `Listo. Total: ${result.total ?? 0} videos.`}
+              <span className="block mt-1 text-xs opacity-90">Refresca la landing (/) o /contenido para ver los números actualizados.</span>
+            </>
           ) : (
             <>❌ {result.error ?? 'Error'}</>
           )}

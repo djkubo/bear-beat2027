@@ -11,6 +11,9 @@ const execAsync = promisify(exec)
 // API DE VIDEOS - Estructura + Metadata real
 // ==========================================
 
+/** Evitar caché: tras sync FTP los números deben actualizarse de inmediato */
+export const dynamic = 'force-dynamic'
+
 const VIDEOS_BASE_PATH = process.env.VIDEOS_PATH || path.join(process.cwd(), 'Videos Enero 2026')
 const DEMOS_ENABLED = true
 
@@ -121,7 +124,7 @@ export async function GET(req: NextRequest) {
     const totalVideos = structure.reduce((sum, g) => sum + g.videoCount, 0)
     const totalSize = structure.reduce((sum, g) => sum + g.totalSize, 0)
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       pack: {
         id: packId,
@@ -144,6 +147,8 @@ export async function GET(req: NextRequest) {
         canDownload: hasAccess
       }
     })
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return res
 
   } catch (error: any) {
     console.error('Error reading videos:', error)
