@@ -29,6 +29,24 @@ export default async function FixAdminPage({
   const token = params?.token
   const secret = process.env.FIX_ADMIN_SECRET
 
+  // Si pasaron token pero no hay secret o no coincide: avisar que configure Render
+  if (token && (!secret || token !== secret)) {
+    return (
+      <Box>
+        <h1 className="text-xl font-semibold mb-2">Token no válido</h1>
+        <p className="text-muted-foreground text-sm mb-4">
+          En <strong>Render</strong> → tu servicio → <strong>Environment</strong> añade la
+          variable <code className="bg-muted px-1 rounded">FIX_ADMIN_SECRET</code> con valor{' '}
+          <code className="bg-muted px-1 rounded">bearbeat-admin-2027-secreto</code>. Guarda, espera
+          el deploy y vuelve a: /fix-admin?token=bearbeat-admin-2027-secreto
+        </p>
+        <Link href="/login" className="text-bear-blue hover:underline">
+          Ir a login
+        </Link>
+      </Box>
+    )
+  }
+
   // Flujo con token: asignar admin sin sesión (para cuando las cookies fallan en producción)
   if (secret && token === secret) {
     try {
