@@ -794,7 +794,7 @@ export default function CompletePurchasePage() {
                           <div className="flex flex-wrap gap-2 items-center justify-between">
                             <span className="text-gray-500 shrink-0">Usuario:</span>
                             <span className="font-mono text-white flex-1 min-w-0">{ftpCredentials.ftp_username}</span>
-                            <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_username); toast.success('Copiado') }} className="text-bear-blue text-xs font-bold shrink-0">Copiar</button>
+                            <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_username ?? ''); toast.success('Copiado') }} className="text-bear-blue text-xs font-bold shrink-0">Copiar</button>
                           </div>
                           <div className="flex flex-wrap gap-2 items-center justify-between">
                             <span className="text-gray-500 shrink-0">Contraseña:</span>
