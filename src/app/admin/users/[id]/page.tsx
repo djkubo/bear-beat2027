@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { formatDate, formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 
+// Next.js 15: params es Promise
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = createServerClient()
