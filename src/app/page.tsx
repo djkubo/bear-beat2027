@@ -234,8 +234,6 @@ export default function HomePage() {
   const [packInfo, setPackInfo] = useState<PackInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
-  const [activeGenre, setActiveGenre] = useState<string | null>(null)
-  const [showGenresModal, setShowGenresModal] = useState(false)
   const [cdnBaseUrl, setCdnBaseUrl] = useState<string | null>(null)
 
   // Base URL del CDN Bunny (BUNNY_CDN_URL) — el front no ve esa variable, la pedimos al API
@@ -313,9 +311,6 @@ export default function HomePage() {
       if (data.success) {
         setGenres(data.genres)
         setPackInfo(data.pack)
-        if (data.genres.length > 0) {
-          setActiveGenre(data.genres[0].id)
-        }
       }
     } catch (error) {
       // Inventario sigue viniendo de useVideoInventory (Supabase)
@@ -327,9 +322,6 @@ export default function HomePage() {
   const handleCTAClick = (location: string) => {
     trackCTAClick('comprar_oferta', location, 'lanzamiento_2026')
   }
-
-  // Obtener videos del género activo
-  const activeGenreData = genres.find(g => g.id === activeGenre)
 
   // Una sola fuente de verdad: packInfo (mismo fetch que la lista). Fallback a inventory y luego a defaults para enero-2026 (evita "..." en cold start / API lenta).
   const PACK_DEFAULTS = { totalVideos: 1000, genreCount: 17, totalSizeFormatted: '141.28 GB' }
@@ -549,6 +541,25 @@ export default function HomePage() {
           ========================================== */}
       {!userState.hasAccess && (
         <>
+      {/* MARQUEE GÉNEROS - justo debajo del Hero */}
+      <section className="py-6 px-4 overflow-hidden">
+        <div className="overflow-hidden select-none">
+          <div className="flex w-max animate-marquee">
+            {[...genres, ...genres].map((genre) => (
+              <div
+                key={`${genre.id}-${genre.name}`}
+                className="flex-shrink-0 mx-2 w-[140px] md:w-[160px] bg-bear-black border border-bear-blue/30 rounded-2xl p-4 text-center hover:border-bear-blue/60 transition-colors"
+              >
+                <span className="text-3xl mb-2 block">{GENRE_ICONS[genre.id] || GENRE_ICONS.default}</span>
+                <h3 className="font-black text-sm text-bear-blue">{genre.name}</h3>
+                <p className="text-xl font-black my-1">{genre.videoCount}</p>
+                <p className="text-[10px] text-gray-500">videos</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* STATS BAR - DATOS REALES */}
       <section className="py-8 px-4 bg-bear-blue/10 border-y border-bear-blue/30">
         <div className="max-w-5xl mx-auto grid grid-cols-3 gap-4 text-center">
@@ -574,152 +585,123 @@ export default function HomePage() {
       </section>
 
       {/* ==========================================
-          PREVIEW DE VIDEOS - DATOS REALES
+          PREVIEW DE VIDEOS - 6 TARJETAS + PDF
           ========================================== */}
-      <section className="py-16 px-4">
+      <section className="py-12 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-5xl font-black mb-4">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-4xl font-black mb-2">
               👀 Mira lo que vas a recibir
             </h2>
-            <p className="text-gray-400 text-lg">
-              Videos reales del pack. Haz clic para ver un demo.
+            <p className="text-gray-400 text-sm md:text-base">
+              Demos del pack. Haz clic para ver.
             </p>
           </div>
 
-          {/* Tabs de géneros */}
-          <div className="flex flex-wrap justify-center gap-2 mb-8">
-            {genres.map((genre) => (
-              <button
-                key={genre.id}
-                onClick={() => setActiveGenre(genre.id)}
-                className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
-                  activeGenre === genre.id
-                    ? 'bg-bear-blue text-bear-black'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                }`}
+          {/* Grid de 6 tarjetas de video (demos principales) */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+            {genres.flatMap((g) => g.videos).slice(0, 6).map((video) => (
+              <motion.div
+                key={video.id}
+                whileHover={{ scale: 1.03 }}
+                onClick={() => setSelectedVideo(video)}
+                className="bg-white/5 rounded-xl overflow-hidden cursor-pointer group border border-transparent hover:border-bear-blue/50"
               >
-                {GENRE_ICONS[genre.id] || GENRE_ICONS.default} {genre.name}
-                <span className="ml-2 text-xs opacity-70">({genre.videoCount})</span>
-              </button>
+                <div className="aspect-video bg-gray-900 relative overflow-hidden">
+                  {video.thumbnailUrl ? (
+                    <img
+                      src={video.thumbnailUrl}
+                      alt={video.artist}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-bear-blue/20 to-purple-500/20 flex items-center justify-center">
+                      <span className="text-3xl opacity-50">🎬</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="w-12 h-12 bg-bear-blue rounded-full flex items-center justify-center shadow-lg">
+                      <span className="text-xl ml-1">▶</span>
+                    </div>
+                  </div>
+                  {video.duration && (
+                    <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-0.5 rounded text-xs font-mono">
+                      {video.duration}
+                    </div>
+                  )}
+                </div>
+                <div className="p-2">
+                  <p className="font-bold text-xs truncate">{video.artist}</p>
+                  <p className="text-[10px] text-gray-500 truncate">{video.title}</p>
+                </div>
+              </motion.div>
             ))}
           </div>
 
-          {/* Grid de videos del género activo */}
-          {activeGenreData && (
-            <motion.div 
-              key={activeGenre}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+          <p className="text-center">
+            <a
+              href="/api/tracks-pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-gray-500 hover:text-bear-blue transition underline underline-offset-2"
             >
-              {activeGenreData.videos.slice(0, 8).map((video) => (
-                <motion.div
-                  key={video.id}
-                  whileHover={{ scale: 1.03 }}
-                  onClick={() => setSelectedVideo(video)}
-                  className="bg-white/5 rounded-xl overflow-hidden cursor-pointer group border border-transparent hover:border-bear-blue/50"
-                >
-                  {/* Thumbnail REAL del video */}
-                  <div className="aspect-video bg-gray-900 relative overflow-hidden">
-                    {video.thumbnailUrl ? (
-                      <img 
-                        src={video.thumbnailUrl} 
-                        alt={video.artist}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-bear-blue/20 to-purple-500/20 flex items-center justify-center">
-                        <span className="text-4xl opacity-50">🎬</span>
-                      </div>
-                    )}
-                    {/* Overlay de play */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="w-14 h-14 bg-bear-blue rounded-full flex items-center justify-center shadow-lg">
-                        <span className="text-2xl ml-1">▶</span>
-                      </div>
-                    </div>
-                    {/* Duración */}
-                    {video.duration && (
-                      <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-0.5 rounded text-xs font-mono">
-                        {video.duration}
-                      </div>
-                    )}
-                  </div>
-                  {/* Info */}
-                  <div className="p-3">
-                    <p className="font-bold text-sm truncate">{video.artist}</p>
-                    <p className="text-xs text-gray-500 truncate">{video.title}</p>
-                    <div className="flex gap-1 mt-2">
-                      {video.key && <span className="bg-purple-500/30 px-2 py-0.5 rounded text-[10px]">{video.key}</span>}
-                      {video.bpm && <span className="bg-green-500/30 px-2 py-0.5 rounded text-[10px]">{video.bpm}</span>}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-
-          {/* Ver más */}
-          <div className="text-center mt-8">
-            <Link href="/contenido">
-              <button className="bg-white/10 text-white font-bold px-8 py-4 rounded-xl hover:bg-white/20">
-                Ver los {statsLoading ? '...' : totalVideos.toLocaleString()} videos completos →
-              </button>
-            </Link>
-          </div>
+              Ver listado completo de tracks (PDF)
+            </a>
+          </p>
         </div>
       </section>
 
       {/* ==========================================
-          ¿ES BEAR BEAT PARA TI? – Dos tarjetas
+          ¿ES BEAR BEAT PARA TI? – 2 columnas tipo card, iconos grandes
           ========================================== */}
-      <section className="py-12 px-4 bg-white/5 border-y border-white/10">
+      <section className="py-12 px-4 bg-black/40 border-y border-white/10">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl md:text-4xl font-black text-center mb-8">
             ¿Es Bear Beat para ti?
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Tarjeta SÍ – borde verde sutil */}
-            <div className="bg-green-500/5 border-2 border-green-500/40 rounded-2xl p-6 h-full">
-              <h3 className="text-lg font-bold text-green-400 mb-4 flex items-center gap-2">
-                <span>✅</span> SÍ es para ti si...
+            {/* Tarjeta SÍ – borde verde sutil + fondo negro suave */}
+            <div className="bg-black/50 border-2 border-green-500/50 rounded-2xl p-6 h-full shadow-lg">
+              <h3 className="text-lg font-bold text-green-400 mb-5 flex items-center gap-3">
+                <span className="text-4xl md:text-5xl" aria-hidden>✅</span>
+                Para ti si...
               </h3>
               <ul className="space-y-4 text-gray-300 text-sm">
                 <li className="flex gap-3">
-                  <span className="text-green-400 shrink-0">✅</span>
+                  <span className="text-green-400 shrink-0 text-xl" aria-hidden>✅</span>
                   <span><strong className="text-white">Eres DJ de Eventos:</strong> Cobras por tu trabajo y necesitas material que suene y se vea profesional (HD/4K) en pantallas grandes.</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="text-green-400 shrink-0">✅</span>
+                  <span className="text-green-400 shrink-0 text-xl" aria-hidden>✅</span>
                   <span><strong className="text-white">Valoras tu tiempo:</strong> Prefieres pagar una vez y tener 1,000 videos listos y organizados, en lugar de perder 50 horas ripeando de YouTube con mala calidad.</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="text-green-400 shrink-0">✅</span>
+                  <span className="text-green-400 shrink-0 text-xl" aria-hidden>✅</span>
                   <span><strong className="text-white">Buscas Organización:</strong> Quieres carpetas ordenadas por género, con BPM y Key, listas para arrastrar a Rekordbox, Serato o VirtualDJ.</span>
                 </li>
               </ul>
             </div>
-            {/* Tarjeta NO – borde gris/rojo sutil */}
-            <div className="bg-red-500/5 border-2 border-red-500/30 rounded-2xl p-6 h-full">
-              <h3 className="text-lg font-bold text-red-400 mb-4 flex items-center gap-2">
-                <span>❌</span> NO es para ti si...
+            {/* Tarjeta NO – borde rojo/gris sutil + fondo negro suave */}
+            <div className="bg-black/50 border-2 border-red-500/40 rounded-2xl p-6 h-full shadow-lg">
+              <h3 className="text-lg font-bold text-red-400 mb-5 flex items-center gap-3">
+                <span className="text-4xl md:text-5xl" aria-hidden>❌</span>
+                No es para ti si...
               </h3>
               <ul className="space-y-4 text-gray-300 text-sm">
                 <li className="flex gap-3">
-                  <span className="text-red-400 shrink-0">❌</span>
+                  <span className="text-red-400 shrink-0 text-xl" aria-hidden>❌</span>
                   <span><strong className="text-white">Solo buscas 1 canción:</strong> Si solo necesitas el video de moda de esta semana, mejor búscalo en otro lado. Esto es un arsenal completo.</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="text-red-400 shrink-0">❌</span>
+                  <span className="text-red-400 shrink-0 text-xl" aria-hidden>❌</span>
                   <span><strong className="text-white">No usas laptop:</strong> Aunque puedes descargar en el celular, el pack es pesado (141 GB). Necesitas una PC/Mac para sacarle el jugo real.</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="text-red-400 shrink-0">❌</span>
+                  <span className="text-red-400 shrink-0 text-xl" aria-hidden>❌</span>
                   <span><strong className="text-white">Buscas &quot;gratis&quot;:</strong> La calidad, los servidores rápidos y el soporte tienen un costo. Esto es una inversión para tu negocio, no un gasto.</span>
                 </li>
               </ul>
@@ -727,88 +709,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ==========================================
-          GÉNEROS DISPONIBLES - MARQUEE + MODAL
-          ========================================== */}
-      <section className="py-10 px-4 bg-white/5">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl md:text-4xl font-black mb-2">
-              🎵 Todos los géneros que necesitas
-            </h2>
-            <p className="text-gray-400 text-sm md:text-base">
-              Contenido real organizado por género
-            </p>
-          </div>
-
-          {/* Marquee horizontal infinito */}
-          <div className="overflow-hidden select-none">
-            <div className="flex w-max animate-marquee">
-              {[...genres, ...genres].map((genre) => (
-                <div
-                  key={`${genre.id}-${genre.name}`}
-                  className="flex-shrink-0 mx-2 w-[140px] md:w-[160px] bg-bear-black border border-bear-blue/30 rounded-2xl p-4 text-center hover:border-bear-blue/60 transition-colors"
-                >
-                  <span className="text-3xl mb-2 block">{GENRE_ICONS[genre.id] || GENRE_ICONS.default}</span>
-                  <h3 className="font-black text-sm text-bear-blue">{genre.name}</h3>
-                  <p className="text-xl font-black my-1">{genre.videoCount}</p>
-                  <p className="text-[10px] text-gray-500">videos</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="text-center mt-4">
-            <button
-              type="button"
-              onClick={() => setShowGenresModal(true)}
-              className="text-bear-blue text-sm font-bold hover:underline"
-            >
-              Ver lista completa →
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Modal lista completa de géneros */}
-      <AnimatePresence>
-        {showGenresModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowGenresModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-bear-black border-2 border-bear-blue/50 rounded-2xl p-6 max-w-4xl w-full max-h-[85vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-black text-bear-blue">🎵 Lista completa de géneros</h3>
-                <button onClick={() => setShowGenresModal(false)} className="text-white/80 hover:text-white text-2xl leading-none">✕</button>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {genres.map((genre) => (
-                  <div
-                    key={genre.id}
-                    className="bg-white/5 border border-bear-blue/30 rounded-xl p-4 text-center"
-                  >
-                    <span className="text-2xl mb-2 block">{GENRE_ICONS[genre.id] || GENRE_ICONS.default}</span>
-                    <h4 className="font-bold text-bear-blue">{genre.name}</h4>
-                    <p className="text-lg font-black">{genre.videoCount}</p>
-                    <p className="text-xs text-gray-500">videos • {genre.totalSizeFormatted}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* PAIN POINTS */}
       <section className="py-16 px-4">

@@ -64,9 +64,9 @@ export function generateSecurePassword(length: number = 16): string {
 }
 
 /**
- * URL de demo desde Bunny CDN (sin proxy Next.js → evita 503).
+ * URL de demo: Bunny CDN (prioridad) o fallback a /api/demo (proxy Next.js).
  * Usa, en orden: baseUrl (desde /api/cdn-base → BUNNY_CDN_URL), o NEXT_PUBLIC_BUNNY_CDN_URL.
- * encodeURIComponent solo por segmento de ruta (no toda la URL) para espacios/caracteres raros.
+ * Si no hay CDN configurado, devuelve /api/demo/... para que los demos intenten cargar vía API (puede 503 en prod si FTP no está).
  */
 export function getDemoCdnUrl(path: string, baseUrl?: string | null): string {
   const base =
@@ -76,5 +76,6 @@ export function getDemoCdnUrl(path: string, baseUrl?: string | null): string {
       : '')
   const pathNorm = path.replace(/^Videos Enero 2026\/?/i, '').trim()
   const pathEncoded = pathNorm.split('/').map((seg) => encodeURIComponent(seg)).join('/')
-  return base ? `${base}/${pathEncoded}` : ''
+  if (base) return `${base}/${pathEncoded}`
+  return pathEncoded ? `/api/demo/${pathEncoded}` : ''
 }
