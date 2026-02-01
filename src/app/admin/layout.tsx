@@ -12,7 +12,7 @@ export default async function AdminLayout({
   let user = userFromGetUser
   if (!user) {
     const { data: { session } } = await supabase.auth.getSession()
-    user = session?.user ?? undefined
+    user = session?.user ?? null
   }
 
   if (!user) {
