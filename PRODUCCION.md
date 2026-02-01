@@ -200,6 +200,35 @@ Ninguna clave debe estar hardcodeada en el código; todas vienen de variables de
 
 ---
 
+## 5.1 Demos en producción: por qué no funcionan y qué hacer
+
+**Por qué los demos no funcionan en Render**
+
+En producción **no hay carpeta local** de videos: el servidor (Render) no tiene los archivos. Los demos se sirven haciendo **proxy desde tu Storage Box (FTP)**. Si las variables FTP no están configuradas en Render, la API `/api/demo/[...path]` devuelve **503** y el reproductor muestra "Demo no disponible".
+
+**Checklist para que funcionen**
+
+1. **En Render → Environment** añade (con los valores reales de tu Hetzner Storage Box):
+   - `FTP_HOST` = host FTP (ej. `u540473.your-storagebox.de`)
+   - `FTP_USER` = usuario FTP con acceso de **lectura** a la carpeta de videos
+   - `FTP_PASSWORD` = contraseña de ese usuario
+
+   Nombres alternativos que también lee la API: `HETZNER_FTP_HOST`, `HETZNER_FTP_USER`, `HETZNER_FTP_PASSWORD`.
+
+2. **Carpeta base en el FTP:** por defecto la API entra en la carpeta `Videos Enero 2026`. Si la tuya es otra, define `FTP_BASE_PATH` o `FTP_VIDEOS_PATH` en Render con el nombre exacto.
+
+3. **Si el puerto 21 está bloqueado** (algún proveedor o firewall): usa FTPS (puerto 990). En Render añade:
+   - `FTP_SECURE=true`
+   - Opcional: `FTP_PORT=990`
+
+4. **Reinicia el servicio** en Render después de cambiar variables para que las cargue.
+
+5. **Comprueba:** entra en `/contenido`, elige un género y un video; si el demo carga, está bien. Si sigue fallando, en la pestaña Red (DevTools) mira la petición a `/api/demo/...`: si es **503**, el mensaje en el JSON indica si falta configuración FTP o falló la conexión; si es **404**, el path del archivo no coincide con lo que hay en el FTP (revisa `file_path` en la tabla `videos` y la estructura en el Storage Box).
+
+**Resumen:** Los demos **sí pueden funcionar** con la configuración actual del servidor, pero **dependen al 100 % de que Render tenga FTP_HOST, FTP_USER y FTP_PASSWORD** (y, si hace falta, FTP_SECURE=true). Sin esas variables en Render, no hay forma de que el proxy de demos funcione.
+
+---
+
 ## 6. Scripts npm
 
 | Script | Qué hace |

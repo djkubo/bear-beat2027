@@ -12,21 +12,42 @@ import { Client } from 'basic-ftp'
 const VIDEOS_BASE_PATH = process.env.VIDEOS_PATH || path.join(process.cwd(), 'Videos Enero 2026')
 const FTP_BASE = process.env.FTP_BASE_PATH || process.env.FTP_VIDEOS_PATH || 'Videos Enero 2026'
 
+type FtpResult =
+  | { ok: true; status: 200 | 206; stream: PassThrough; headers: Record<string, string> }
+  | { ok: false; reason: 'ftp_connection_failed' | 'file_not_found'; message: string }
+
 async function streamFromFtp(
   filePath: string,
   range: string | null
-): Promise<{ status: 200 | 206; stream: PassThrough; headers: Record<string, string> } | null> {
+): Promise<FtpResult> {
   const ftpHost = process.env.FTP_HOST || process.env.HETZNER_FTP_HOST
   const ftpUser = process.env.FTP_USER || process.env.HETZNER_FTP_USER
   const ftpPassword = process.env.FTP_PASSWORD || process.env.HETZNER_FTP_PASSWORD
-  if (!ftpHost || !ftpUser || !ftpPassword) return null
+  if (!ftpHost || !ftpUser || !ftpPassword) {
+    return { ok: false, reason: 'ftp_connection_failed', message: 'FTP no configurado' }
+  }
+
+  const useSecure = process.env.FTP_SECURE === 'true' || process.env.FTP_USE_TLS === 'true'
+  const ftpPort = process.env.FTP_PORT ? parseInt(process.env.FTP_PORT, 10) : (useSecure ? 990 : 21)
 
   const client = new Client(60 * 1000)
   try {
-    await client.access({ host: ftpHost, user: ftpUser, password: ftpPassword, secure: false })
+    await client.access({
+      host: ftpHost,
+      port: ftpPort,
+      user: ftpUser,
+      password: ftpPassword,
+      secure: useSecure ? 'implicit' : false,
+    })
     await client.cd(FTP_BASE)
-  } catch {
-    return null
+  } catch (err: any) {
+    console.error('Demo FTP connection failed:', err?.message || err)
+    try { client.close() } catch { /* ignore */ }
+    return {
+      ok: false,
+      reason: 'ftp_connection_failed',
+      message: err?.message || 'No se pudo conectar al servidor FTP. Revisa FTP_HOST, FTP_USER, FTP_PASSWORD y, si el host bloquea puerto 21, prueba FTP_SECURE=true (FTPS puerto 990).',
+    }
   }
 
   const decoded = decodeURIComponent(filePath)
@@ -41,7 +62,7 @@ async function streamFromFtp(
       pathToUse = decoded
     } catch {
       try { client.close() } catch { /* ignore */ }
-      return null
+      return { ok: false, reason: 'file_not_found', message: 'Archivo no encontrado en el servidor FTP' }
     }
   }
 
@@ -69,7 +90,7 @@ async function streamFromFtp(
   client.downloadTo(pass, pathToUse, start).catch((err) => pass.destroy(err)).finally(() => {
     try { client.close() } catch { /* ignore */ }
   })
-  return { status, stream: pass, headers }
+  return { ok: true, status, stream: pass, headers }
 }
 
 export async function GET(
@@ -140,20 +161,29 @@ export async function GET(
     const ftpPassword = process.env.FTP_PASSWORD || process.env.HETZNER_FTP_PASSWORD
     if (!ftpHost || !ftpUser || !ftpPassword) {
       return NextResponse.json(
-        { error: 'Demos no disponibles', reason: 'Configura FTP_HOST, FTP_USER y FTP_PASSWORD en Render' },
+        {
+          error: 'Demos no disponibles',
+          reason: 'ftp_not_configured',
+          message: 'En Render → Environment añade FTP_HOST, FTP_USER y FTP_PASSWORD (o HETZNER_FTP_*). Si el host bloquea puerto 21, añade FTP_SECURE=true para FTPS (puerto 990).',
+        },
         { status: 503 }
       )
     }
     const range = req.headers.get('range')
     const ftpResult = await streamFromFtp(filePath, range)
-    if (ftpResult) {
+    if (ftpResult.ok) {
       return new NextResponse(ftpResult.stream as any, {
         status: ftpResult.status,
         headers: ftpResult.headers,
       })
     }
-
-    return NextResponse.json({ error: 'Video no encontrado' }, { status: 404 })
+    if (ftpResult.reason === 'file_not_found') {
+      return NextResponse.json({ error: 'Video no encontrado', reason: 'file_not_found', message: ftpResult.message }, { status: 404 })
+    }
+    return NextResponse.json(
+      { error: 'Demos no disponibles', reason: ftpResult.reason, message: ftpResult.message },
+      { status: 503 }
+    )
   } catch (error: any) {
     console.error('Error streaming video:', error)
     return NextResponse.json(

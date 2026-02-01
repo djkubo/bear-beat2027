@@ -46,6 +46,8 @@ export default function CompletePurchasePage() {
   const [showPassword, setShowPassword] = useState(false)
   const [hasExistingAccount, setHasExistingAccount] = useState(false)
   const [generatedCredentials, setGeneratedCredentials] = useState<{email: string, password: string} | null>(null)
+  const [ftpCredentials, setFtpCredentials] = useState<{ ftp_username?: string; ftp_password?: string; ftp_host?: string } | null>(null)
+  const [showFtpAccordion, setShowFtpAccordion] = useState(false)
 
   // Cargar datos de la compra
   useEffect(() => {
@@ -326,9 +328,16 @@ export default function CompletePurchasePage() {
             phone: phone || purchaseInfo.customer_phone,
           }),
         })
+        const activateData = await activateRes.json().catch(() => ({}))
         if (!activateRes.ok) {
-          const errData = await activateRes.json().catch(() => ({}))
-          throw new Error(errData?.error || 'Error al activar compra')
+          throw new Error(activateData?.error || 'Error al activar compra')
+        }
+        if (activateData.ftp_username) {
+          setFtpCredentials({
+            ftp_username: activateData.ftp_username,
+            ftp_password: activateData.ftp_password,
+            ftp_host: activateData.ftp_host,
+          })
         }
       } catch (dbErr) {
         console.log('Activate API failed (may already exist):', dbErr)
@@ -365,15 +374,9 @@ export default function CompletePurchasePage() {
 
       setState('done')
       
-      // Redirigir después de mostrar éxito
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 3000)
-      
     } catch (err: any) {
       console.error('Activation error:', err)
       toast.error('Error al activar. Contacta soporte.')
-      // Aún así, mandar al dashboard porque el pago sí se hizo
       setTimeout(() => router.push('/dashboard'), 2000)
     }
   }
@@ -396,9 +399,16 @@ export default function CompletePurchasePage() {
             phone: normalizedPhone,
           }),
         })
+        const activateData = await activateRes.json().catch(() => ({}))
         if (!activateRes.ok) {
-          const errData = await activateRes.json().catch(() => ({}))
-          throw new Error(errData?.error || 'Error al activar compra')
+          throw new Error(activateData?.error || 'Error al activar compra')
+        }
+        if (activateData.ftp_username) {
+          setFtpCredentials({
+            ftp_username: activateData.ftp_username,
+            ftp_password: activateData.ftp_password,
+            ftp_host: activateData.ftp_host,
+          })
         }
       } catch (dbErr) {
         console.log('Activate API failed (may already exist):', dbErr)
@@ -448,10 +458,6 @@ export default function CompletePurchasePage() {
       )
 
       setState('done')
-      
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 3000)
       
     } catch (err: any) {
       console.error('Activation error:', err)
@@ -739,75 +745,110 @@ export default function CompletePurchasePage() {
             </motion.div>
           )}
 
-          {/* ==================== DONE ==================== */}
+          {/* ==================== DONE – Página de éxito post-pago ==================== */}
           {state === 'done' && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-center py-8"
+              className="text-center py-6 max-w-lg mx-auto"
             >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring' }}
-                className="text-7xl mb-4"
-              >
-                🚀
-              </motion.div>
-              <h1 className="text-3xl md:text-4xl font-black text-bear-blue mb-4">
-                ¡Acceso Activado!
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }} className="text-7xl mb-4">🎉</motion.div>
+              <h1 className="text-2xl md:text-3xl font-black text-green-400 mb-2">
+                ¡Pago confirmado! Tu acceso está listo
               </h1>
-              <p className="text-xl text-gray-300 mb-6">
-                Ya puedes descargar tus videos
-              </p>
-              
-              {/* Tus claves de acceso */}
-              <div className="bg-green-500/20 border-2 border-green-500 rounded-xl p-6 mb-6 text-left">
-                <h3 className="text-green-400 font-black text-lg mb-4 text-center">
-                  🔐 TU CUENTA – Guarda estos datos
-                </h3>
-                <p className="text-sm text-gray-400 mb-4 text-center">
-                  Guarda estos datos para iniciar sesión después
-                </p>
-                
-                <div className="space-y-3">
-                  <div className="bg-black/30 rounded-lg p-3">
-                    <p className="text-xs text-gray-400 mb-1">📧 Email:</p>
-                    <p className="font-mono text-white text-lg break-all">{generatedCredentials?.email || email}</p>
-                  </div>
-                  
-                  <div className="bg-black/30 rounded-lg p-3">
-                    <p className="text-xs text-gray-400 mb-1">🔑 Contraseña:</p>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-mono text-white text-lg">{generatedCredentials?.password || '••••••••'}</p>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(generatedCredentials?.password || '')
-                          toast.success('Contraseña copiada')
-                        }}
-                        className="bg-bear-blue/20 hover:bg-bear-blue/40 text-bear-blue px-3 py-1 rounded text-sm font-bold transition-colors"
-                      >
-                        Copiar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                
-                <p className="text-xs text-yellow-400 mt-4 text-center">
-                  ⚠️ Toma captura de pantalla o anota estos datos
-                </p>
+              <p className="text-gray-400 mb-8">Elige cómo quieres descargar</p>
+
+              {/* Opción A: Descargar por Web (principal) */}
+              <Link href="/contenido" className="block mb-4">
+                <button className="w-full bg-bear-blue text-bear-black font-black text-xl py-5 rounded-2xl hover:bg-bear-blue/90 transition-colors shadow-lg">
+                  🌐 Descargar por Web
+                </button>
+              </Link>
+              <p className="text-xs text-gray-500 mb-6">Video a video desde el navegador</p>
+
+              {/* Opción B: Datos FTP (acordeón) */}
+              <div className="mb-6">
+                <button
+                  type="button"
+                  onClick={() => setShowFtpAccordion(!showFtpAccordion)}
+                  className="w-full bg-white/5 border-2 border-bear-blue/40 text-white font-bold py-4 px-4 rounded-2xl hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                >
+                  📁 Datos FTP
+                  <span className="text-xl">{showFtpAccordion ? '▲' : '▼'}</span>
+                </button>
+                {showFtpAccordion && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="mt-3 bg-black/40 rounded-xl p-4 text-left overflow-hidden"
+                  >
+                    {ftpCredentials?.ftp_username ? (
+                      <>
+                        <p className="text-xs text-gray-400 mb-3">Guarda estos datos por si el email tarda en llegar:</p>
+                        <div className="space-y-3 text-sm">
+                          <div className="flex flex-wrap gap-2 items-center justify-between">
+                            <span className="text-gray-500 shrink-0">Host:</span>
+                            <span className="font-mono text-white break-all flex-1 min-w-0">{ftpCredentials.ftp_host || `${ftpCredentials.ftp_username}.your-storagebox.de`}</span>
+                            <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_host || ''); toast.success('Copiado') }} className="text-bear-blue text-xs font-bold shrink-0">Copiar</button>
+                          </div>
+                          <div className="flex flex-wrap gap-2 items-center justify-between">
+                            <span className="text-gray-500 shrink-0">Usuario:</span>
+                            <span className="font-mono text-white flex-1 min-w-0">{ftpCredentials.ftp_username}</span>
+                            <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_username); toast.success('Copiado') }} className="text-bear-blue text-xs font-bold shrink-0">Copiar</button>
+                          </div>
+                          <div className="flex flex-wrap gap-2 items-center justify-between">
+                            <span className="text-gray-500 shrink-0">Contraseña:</span>
+                            <span className="font-mono text-white flex-1 min-w-0 truncate">{ftpCredentials.ftp_password}</span>
+                            <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_password || ''); toast.success('Copiado') }} className="text-bear-blue text-xs font-bold shrink-0">Copiar</button>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-gray-400 text-sm">Tus credenciales FTP llegarán por email. También las verás en tu panel.</p>
+                    )}
+                  </motion.div>
+                )}
               </div>
 
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="w-full bg-bear-blue text-bear-black font-black text-xl py-4 rounded-xl hover:bg-bear-blue/90 transition-colors mb-4"
-              >
-                IR A MIS VIDEOS →
-              </button>
-              
-              <p className="text-sm text-gray-500">
-                Ya iniciamos sesión por ti automáticamente
-              </p>
+              {/* Cuenta: ALERTA VISUAL para usuario nuevo (contraseña autogenerada) */}
+              {generatedCredentials?.password && generatedCredentials.password !== '(tu contraseña actual)' ? (
+                <div className="bg-amber-500/15 border-2 border-amber-500/50 rounded-xl p-5 text-left mb-4">
+                  <p className="text-amber-400 font-bold text-sm mb-1">🔐 Guarda estos datos</p>
+                  <p className="text-xs text-gray-400 mb-3">También te los enviamos por email.</p>
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">Email</p>
+                      <p className="text-white font-mono text-sm break-all">{generatedCredentials.email || email}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">Contraseña</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-white text-sm bg-black/30 px-2 py-1 rounded flex-1 min-w-0 truncate">{generatedCredentials.password}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedCredentials.password)
+                            toast.success('Contraseña copiada al portapapeles')
+                          }}
+                          className="bg-bear-blue text-bear-black font-black text-sm px-4 py-2 rounded-lg shrink-0"
+                        >
+                          Copiar Contraseña
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-amber-200/90">Si cierras esta pestaña sin copiarla, podrás recuperar el acceso por email. Guárdala para entrar cuando quieras.</p>
+                </div>
+              ) : (
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-left mb-4">
+                  <p className="text-gray-400 font-bold text-sm mb-1">🔐 Tu cuenta</p>
+                  <p className="text-xs text-gray-500">Email: <span className="text-white font-mono break-all">{generatedCredentials?.email || email}</span></p>
+                </div>
+              )}
+
+              <Link href="/dashboard" className="text-sm text-gray-500 hover:text-bear-blue">
+                Ir a Mi Panel →
+              </Link>
             </motion.div>
           )}
 

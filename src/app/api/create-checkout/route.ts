@@ -101,8 +101,11 @@ export async function POST(req: NextRequest) {
       metadata: {
         pack_id: pack.id.toString(),
         pack_slug: pack.slug,
-        // Si hay usuario logueado, guardar su ID para asociar la compra
-        ...(loggedUser && { user_id: loggedUser.id }),
+        ...(loggedUser && {
+          user_id: loggedUser.id,
+          customer_email: loggedUser.email,
+          ...(loggedUser.name && { customer_name: loggedUser.name }),
+        }),
       },
       billing_address_collection: 'auto',
       phone_number_collection: {

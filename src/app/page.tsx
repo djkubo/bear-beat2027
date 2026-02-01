@@ -494,43 +494,34 @@ export default function HomePage() {
           // HERO PARA NUEVOS USUARIOS
           // ==========================================
           <div className="max-w-5xl mx-auto text-center relative z-10">
-            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-bear-blue font-bold text-base md:text-lg mb-4">
-              ATENCIÓN DJs: Esto es lo que necesitas para dominar 2026
-            </motion.p>
-
-            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-3xl md:text-5xl lg:text-7xl font-black leading-tight mb-6">
-              Descarga{' '}
-              <span className="text-bear-blue">{statsLoading ? '...' : totalVideos.toLocaleString()} Video Remixes</span>
-              {' '}en HD y Cobra Como Profesional
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-3xl md:text-5xl lg:text-6xl font-black leading-tight mb-4">
+              1,000 videos HD para DJs. Un pago. Descarga hoy.
             </motion.h1>
 
-            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl lg:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-              El arsenal completo de videos que usan los DJs que cobran{' '}
-              <strong className="text-white">$15,000+ por evento</strong>. 
-              Organizados en <strong className="text-bear-blue">{statsLoading ? '...' : genreCount} géneros</strong>, listos para usar HOY.
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg md:text-xl text-gray-300 mb-6 max-w-2xl mx-auto">
+              El mismo tipo de contenido que usan los DJs Pro. Organizado por género (BPM + Key incluidos). Listo para usar.
             </motion.p>
 
-            {/* PRECIO GIGANTE VISIBLE */}
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} className="mb-8">
-              <p className="text-6xl md:text-8xl font-black text-bear-blue mb-2">
-                $350<span className="text-3xl md:text-4xl">MXN</span>
-              </p>
-              <p className="text-gray-400 line-through text-xl mb-2">Precio normal: $1,499</p>
-              <p className="text-green-400 font-bold text-lg">Ahorro: $1,149 (77% OFF)</p>
-            </motion.div>
+            {/* 3 bullets antes del CTA */}
+            <motion.ul initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="list-none space-y-2 mb-6 text-left max-w-md mx-auto">
+              <li className="flex items-center gap-2 text-gray-200">
+                <span className="text-bear-blue">✓</span> {statsLoading ? '...' : totalVideos.toLocaleString()} remixes HD
+              </li>
+              <li className="flex items-center gap-2 text-gray-200">
+                <span className="text-bear-blue">✓</span> Descarga Web + FTP
+              </li>
+              <li className="flex items-center gap-2 text-gray-200">
+                <span className="text-bear-blue">✓</span> Pago único $350 MXN
+              </li>
+            </motion.ul>
 
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }} className="mb-8">
-              <p className="text-red-400 font-bold mb-3 text-sm md:text-base">⏰ OFERTA LIMITADA</p>
-              <p className="text-gray-400 text-sm">Últimos {1000 - 847} lugares disponibles</p>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
               <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('hero')}>
-                <button className="bg-bear-blue text-bear-black font-black text-2xl md:text-4xl px-16 py-8 md:py-10 rounded-3xl shadow-2xl shadow-bear-blue/30 hover:scale-105 transition-all">
-                  SÍ, QUIERO ACCESO AHORA →
+                <button className="bg-bear-blue text-bear-black font-black text-xl md:text-3xl px-12 py-6 md:py-8 rounded-3xl shadow-2xl shadow-bear-blue/30 hover:scale-105 transition-all">
+                  QUIERO ACCESO AHORA →
                 </button>
               </Link>
-              <p className="text-sm md:text-base text-gray-400 mt-6 font-bold">✓ Acceso inmediato · ✓ Pago seguro · ✓ Garantía 30 días</p>
+              <p className="text-sm text-gray-500 mt-4">Pago seguro (Stripe) · Garantía 30 días</p>
             </motion.div>
           </div>
         )}
@@ -668,6 +659,59 @@ export default function HomePage() {
       </section>
 
       {/* ==========================================
+          ¿ES BEAR BEAT PARA TI? – Dos tarjetas
+          ========================================== */}
+      <section className="py-12 px-4 bg-white/5 border-y border-white/10">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-2xl md:text-4xl font-black text-center mb-8">
+            ¿Es Bear Beat para ti?
+          </h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Tarjeta SÍ – borde verde sutil */}
+            <div className="bg-green-500/5 border-2 border-green-500/40 rounded-2xl p-6 h-full">
+              <h3 className="text-lg font-bold text-green-400 mb-4 flex items-center gap-2">
+                <span>✅</span> SÍ es para ti si...
+              </h3>
+              <ul className="space-y-4 text-gray-300 text-sm">
+                <li className="flex gap-3">
+                  <span className="text-green-400 shrink-0">✅</span>
+                  <span><strong className="text-white">Eres DJ de Eventos:</strong> Cobras por tu trabajo y necesitas material que suene y se vea profesional (HD/4K) en pantallas grandes.</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-green-400 shrink-0">✅</span>
+                  <span><strong className="text-white">Valoras tu tiempo:</strong> Prefieres pagar una vez y tener 1,000 videos listos y organizados, en lugar de perder 50 horas ripeando de YouTube con mala calidad.</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-green-400 shrink-0">✅</span>
+                  <span><strong className="text-white">Buscas Organización:</strong> Quieres carpetas ordenadas por género, con BPM y Key, listas para arrastrar a Rekordbox, Serato o VirtualDJ.</span>
+                </li>
+              </ul>
+            </div>
+            {/* Tarjeta NO – borde gris/rojo sutil */}
+            <div className="bg-red-500/5 border-2 border-red-500/30 rounded-2xl p-6 h-full">
+              <h3 className="text-lg font-bold text-red-400 mb-4 flex items-center gap-2">
+                <span>❌</span> NO es para ti si...
+              </h3>
+              <ul className="space-y-4 text-gray-300 text-sm">
+                <li className="flex gap-3">
+                  <span className="text-red-400 shrink-0">❌</span>
+                  <span><strong className="text-white">Solo buscas 1 canción:</strong> Si solo necesitas el video de moda de esta semana, mejor búscalo en otro lado. Esto es un arsenal completo.</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-red-400 shrink-0">❌</span>
+                  <span><strong className="text-white">No usas laptop:</strong> Aunque puedes descargar en el celular, el pack es pesado (141 GB). Necesitas una PC/Mac para sacarle el jugo real.</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-red-400 shrink-0">❌</span>
+                  <span><strong className="text-white">Buscas &quot;gratis&quot;:</strong> La calidad, los servidores rápidos y el soporte tienen un costo. Esto es una inversión para tu negocio, no un gasto.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ==========================================
           GÉNEROS DISPONIBLES - DATOS REALES
           ========================================== */}
       <section className="py-16 px-4 bg-white/5">
@@ -772,10 +816,11 @@ export default function HomePage() {
 
           <p className="text-xl text-gray-400 mb-4">Valor total: <span className="text-red-400 line-through font-bold">$8,000+ MXN</span></p>
           
-          <div className="bg-gradient-to-r from-bear-blue/20 to-cyan-500/20 border-2 border-bear-blue rounded-3xl p-8 mb-8">
+          <div className="bg-gradient-to-r from-bear-blue/20 to-cyan-500/20 border-2 border-bear-blue rounded-3xl p-8 mb-6">
             <p className="text-lg text-gray-400 mb-2">Tu precio hoy:</p>
             <div className="text-6xl md:text-8xl font-black text-bear-blue mb-2">$350</div>
-            <p className="text-xl text-gray-400">MXN • Pago único • Acceso de por vida</p>
+            <p className="text-xl text-gray-400 mb-3">MXN • Pago único • Acceso de por vida</p>
+            <p className="text-sm text-green-400 font-semibold">🛡️ Garantía 30 días: si no te gusta, te devolvemos todo.</p>
           </div>
 
           <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('price')}>
