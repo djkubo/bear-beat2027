@@ -1,0 +1,19 @@
+---
+description: Después de cualquier cambio de código, subir a producción y documentar
+alwaysApply: true
+---
+
+# Desplegar y documentar siempre
+
+Después de **cualquier cambio** en el código de Bear Beat:
+
+1. **Subir a producción**
+   - Hacer commit con mensaje claro (qué se cambió y por qué).
+   - Hacer `git push origin main` para que Render despliegue.
+   - No dar por terminada la tarea sin haber hecho push.
+
+2. **Documentar**
+   - Actualizar `DOCUMENTACION_COMPLETA.md` o `PRODUCCION.md` según corresponda (nuevas variables, APIs, flujos, checklist).
+   - Si es un fix puntual, añadir una línea en la sección de cambios recientes o en la doc relevante.
+
+No esperar a que el usuario pida "sube a producción" o "documenta": hacerlo siempre como parte del mismo flujo de trabajo.

@@ -5,6 +5,8 @@
 
 **Documentación exhaustiva (secciones, botones, textos, APIs, flujos):** ver [DOCUMENTACION_COMPLETA.md](DOCUMENTACION_COMPLETA.md).
 
+**Regla del proyecto:** Cualquier cambio de código se sube a producción (`git push origin main`) y se documenta (DOCUMENTACION_COMPLETA.md o este archivo) en el mismo flujo. Ver también `.cursor/rules/deploy-and-docs.mdc`.
+
 ---
 
 ## 1. Páginas que existen (rutas)
