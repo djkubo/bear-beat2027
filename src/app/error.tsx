@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { getMessengerUrl } from '@/config/contact'
 
 // ==========================================
 // PÁGINA DE ERROR - Cuando algo falla
@@ -61,7 +62,7 @@ export default function Error({
         {/* Soporte */}
         <p className="text-sm text-gray-500 mt-8">
           ¿El problema persiste?{' '}
-          <a href="https://m.me/104901938679498" className="text-bear-blue hover:underline">
+          <a href={getMessengerUrl()} className="text-bear-blue hover:underline">
             Contáctanos
           </a>
         </p>

@@ -104,9 +104,15 @@ export async function GET(req: NextRequest) {
       console.log('Error verificando acceso:', e)
     }
 
-    // Leer estructura
-    const structure = await readVideoStructure(VIDEOS_BASE_PATH, hasAccess, withMetadata)
-    
+    // En producción (Render) siempre leer desde Supabase; en local, disco si existe
+    const useDb = process.env.NODE_ENV === 'production' || process.env.USE_VIDEOS_FROM_DB === 'true'
+    let structure: GenreFolder[]
+    if (useDb || !fs.existsSync(VIDEOS_BASE_PATH)) {
+      structure = await readVideoStructureFromDb(supabase, packId, hasAccess)
+    } else {
+      structure = await readVideoStructure(VIDEOS_BASE_PATH, hasAccess, withMetadata)
+    }
+
     const filtered = genre 
       ? structure.filter(g => g.id === genre.toLowerCase())
       : structure
@@ -141,6 +147,103 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error('Error reading videos:', error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  }
+}
+
+/**
+ * Lee estructura desde Supabase (producción: no hay carpeta local)
+ */
+async function readVideoStructureFromDb(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  packSlug: string,
+  hasAccess: boolean
+): Promise<GenreFolder[]> {
+  try {
+    const { data: pack } = await supabase.from('packs').select('id, name').eq('slug', packSlug).single()
+    if (!pack) {
+      console.warn('Pack not found:', packSlug)
+      return []
+    }
+
+    const { data: videosRows, error } = await supabase
+      .from('videos')
+      .select('id, title, artist, duration, resolution, file_size, file_path, thumbnail_url, genre_id, genres(name, slug)')
+      .eq('pack_id', pack.id)
+      .order('artist')
+
+    if (error) {
+      console.error('Error fetching videos from DB:', error)
+      return []
+    }
+
+    if (!videosRows?.length) {
+      // Sin videos en DB: devolver géneros con lista vacía para que la página muestre al menos los géneros
+      const { data: genresRows } = await supabase.from('genres').select('id, name, slug').order('name')
+      return (genresRows || []).map((g) => ({
+        id: (g.slug || g.name.toLowerCase().replace(/\s+/g, '-')),
+        name: g.name,
+        type: 'folder' as const,
+        videoCount: 0,
+        totalSize: 0,
+        totalSizeFormatted: '0 B',
+        videos: [] as VideoFile[],
+      }))
+    }
+
+    type Row = (typeof videosRows)[0] & { genres: { name: string; slug: string } | null }
+    const byGenre = new Map<string, { name: string; slug: string; videos: VideoFile[] }>()
+
+    for (const row of videosRows as Row[]) {
+      const genreName = row.genres?.name ?? 'Otros'
+      const genreSlug = (row.genres?.slug ?? genreName.toLowerCase().replace(/\s+/g, '-')) as string
+      const fileName = row.file_path?.split('/').pop() || row.title || `video-${row.id}`
+      const relativePath = row.file_path || `${genreName}/${fileName}`
+
+      if (!byGenre.has(genreSlug)) {
+        byGenre.set(genreSlug, { name: genreName, slug: genreSlug, videos: [] })
+      }
+      const g = byGenre.get(genreSlug)!
+      const size = Number(row.file_size) || 0
+      g.videos.push({
+        id: String(row.id),
+        name: fileName,
+        displayName: row.artist ? `${row.artist} - ${row.title}` : row.title,
+        artist: row.artist || row.title,
+        title: row.title,
+        type: 'video',
+        size,
+        sizeFormatted: formatBytes(size),
+        path: relativePath,
+        genre: genreName,
+        thumbnailUrl: row.thumbnail_url || `/api/thumbnail/${encodeURIComponent(relativePath)}`,
+        canPreview: DEMOS_ENABLED,
+        canDownload: hasAccess,
+        durationSeconds: row.duration ?? undefined,
+        duration: row.duration ? formatDuration(row.duration) : undefined,
+        resolution: row.resolution ?? undefined,
+      })
+    }
+
+    const genres: GenreFolder[] = []
+    for (const [, g] of byGenre) {
+      const totalSize = g.videos.reduce((sum, v) => sum + v.size, 0)
+      const totalDurationSeconds = g.videos.reduce((sum, v) => sum + (v.durationSeconds || 0), 0)
+      genres.push({
+        id: g.slug,
+        name: g.name,
+        type: 'folder',
+        videoCount: g.videos.length,
+        totalSize,
+        totalSizeFormatted: formatBytes(totalSize),
+        totalDuration: formatDuration(totalDurationSeconds),
+        videos: g.videos,
+      })
+    }
+    genres.sort((a, b) => a.name.localeCompare(b.name))
+    return genres
+  } catch (err) {
+    console.error('readVideoStructureFromDb:', err)
+    return []
   }
 }
 

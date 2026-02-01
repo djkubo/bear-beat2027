@@ -219,7 +219,7 @@ export default function RegisterPage() {
               </h3>
               <div className="space-y-3">
                 {[
-                  'Acceso a demos de +3,000 videos',
+                  'Acceso a demos de videos',
                   'Precios exclusivos de miembro',
                   'Notificaciones de nuevos packs',
                   'Soporte prioritario por WhatsApp',

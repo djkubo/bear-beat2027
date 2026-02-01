@@ -170,7 +170,7 @@ export default function AdminMensajes() {
             <h1 className="text-2xl font-black">✉️ Enviar Mensajes</h1>
             <p className="text-sm text-gray-400">Comunicación con usuarios</p>
           </div>
-          <Link href="/admin/dashboard">
+          <Link href="/admin">
             <button className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
               ← Volver al Dashboard
             </button>
@@ -181,22 +181,22 @@ export default function AdminMensajes() {
       {/* Navegación Admin */}
       <nav className="bg-gray-800/50 border-b border-gray-700 px-6">
         <div className="max-w-7xl mx-auto flex gap-4 overflow-x-auto py-2">
-          <Link href="/admin/dashboard">
+          <Link href="/admin">
             <div className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg whitespace-nowrap">
               📊 Dashboard
             </div>
           </Link>
-          <Link href="/admin/usuarios">
+          <Link href="/admin/users">
             <div className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg whitespace-nowrap">
               👥 Usuarios
             </div>
           </Link>
-          <Link href="/admin/ventas">
+          <Link href="/admin/purchases">
             <div className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg whitespace-nowrap">
               💰 Ventas
             </div>
           </Link>
-          <Link href="/admin/metricas">
+          <Link href="/admin/tracking">
             <div className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg whitespace-nowrap">
               📈 Métricas
             </div>

@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
+import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 
 // ==========================================
 // TIPOS - Datos reales del API
@@ -225,6 +226,9 @@ export default function HomePage() {
     hasAccess: false
   })
 
+  // Inventario en tiempo real desde Supabase (tabla videos)
+  const inventory = useVideoInventory()
+
   // Cargar datos reales al montar
   useEffect(() => {
     trackPageView('home')
@@ -281,7 +285,7 @@ export default function HomePage() {
         }
       }
     } catch (error) {
-      setPackInfo({ totalVideos: 178, totalSizeFormatted: '20 GB', genreCount: 7 })
+      // Inventario sigue viniendo de useVideoInventory (Supabase)
     } finally {
       setLoading(false)
     }
@@ -295,7 +299,7 @@ export default function HomePage() {
   const activeGenreData = genres.find(g => g.id === activeGenre)
 
   return (
-    <div className="min-h-screen bg-bear-black text-white">
+    <div className={`min-h-screen bg-bear-black text-white ${!userState.hasAccess ? 'pb-20 md:pb-0' : ''}`}>
       {/* BANNER SUPERIOR - DIFERENTE SEGÚN ESTADO */}
       {userState.hasAccess ? (
         // ==========================================
@@ -350,6 +354,9 @@ export default function HomePage() {
                 <Link href="/dashboard" className="text-bear-blue font-bold hover:text-white transition">
                   📊 Mi Panel
                 </Link>
+                <Link href="/mi-cuenta" className="text-white/70 hover:text-bear-blue font-medium">
+                  Mi cuenta
+                </Link>
                 <span className="bg-bear-blue/20 text-bear-blue px-3 py-1 rounded-full font-bold text-xs">
                   ✓ Acceso Activo
                 </span>
@@ -358,7 +365,10 @@ export default function HomePage() {
               <>
                 <span className="text-bear-blue font-bold">+2,847 DJs ya tienen acceso</span>
                 {userState.isLoggedIn ? (
-                  <Link href="/dashboard" className="text-white/70 hover:text-bear-blue">Mi Panel</Link>
+                  <>
+                    <Link href="/dashboard" className="text-white/70 hover:text-bear-blue">Mi Panel</Link>
+                    <Link href="/mi-cuenta" className="text-white/70 hover:text-bear-blue">Mi cuenta</Link>
+                  </>
                 ) : (
                   <Link href="/login" className="text-white/70 hover:text-bear-blue">Iniciar Sesión</Link>
                 )}
@@ -395,7 +405,7 @@ export default function HomePage() {
               className="text-3xl md:text-5xl lg:text-6xl font-black leading-tight mb-6"
             >
               Tienes acceso a{' '}
-              <span className="text-bear-blue">{packInfo?.totalVideos || '178'} Video Remixes</span>
+              <span className="text-bear-blue">{inventory.loading ? '...' : inventory.count.toLocaleString()} Video Remixes</span>
             </motion.h1>
 
             <motion.p 
@@ -449,14 +459,14 @@ export default function HomePage() {
 
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-3xl md:text-5xl lg:text-7xl font-black leading-tight mb-6">
               Descarga{' '}
-              <span className="text-bear-blue">{packInfo?.totalVideos || '178'} Video Remixes</span>
+              <span className="text-bear-blue">{inventory.loading ? '...' : inventory.count.toLocaleString()} Video Remixes</span>
               {' '}en HD y Cobra Como Profesional
             </motion.h1>
 
             <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl lg:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
               El arsenal completo de videos que usan los DJs que cobran{' '}
               <strong className="text-white">$15,000+ por evento</strong>. 
-              Organizados en <strong className="text-bear-blue">{packInfo?.genreCount || 7} géneros</strong>, listos para usar HOY.
+              Organizados en <strong className="text-bear-blue">{inventory.loading ? '...' : inventory.genreCount} géneros</strong>, listos para usar HOY.
             </motion.p>
 
             {/* PRECIO GIGANTE VISIBLE */}
@@ -495,19 +505,19 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto grid grid-cols-3 gap-4 text-center">
           <div>
             <div className="text-2xl md:text-4xl font-black text-bear-blue">
-              {loading ? '...' : packInfo?.totalVideos.toLocaleString() || '157'}
+              {inventory.loading ? '...' : inventory.count.toLocaleString()}
             </div>
             <div className="text-xs md:text-sm text-gray-400">Video Remixes</div>
           </div>
           <div>
             <div className="text-2xl md:text-4xl font-black text-bear-blue">
-              {loading ? '...' : packInfo?.genreCount || '7'}
+              {inventory.loading ? '...' : inventory.genreCount}
             </div>
             <div className="text-xs md:text-sm text-gray-400">Géneros</div>
           </div>
           <div>
             <div className="text-2xl md:text-4xl font-black text-bear-blue">
-              {loading ? '...' : packInfo?.totalSizeFormatted || '15 GB'}
+              {inventory.loading ? '...' : inventory.totalSizeFormatted}
             </div>
             <div className="text-xs md:text-sm text-gray-400">De Contenido</div>
           </div>
@@ -609,7 +619,7 @@ export default function HomePage() {
           <div className="text-center mt-8">
             <Link href="/contenido">
               <button className="bg-white/10 text-white font-bold px-8 py-4 rounded-xl hover:bg-white/20">
-                Ver los {packInfo?.totalVideos} videos completos →
+                Ver los {inventory.loading ? '...' : inventory.count.toLocaleString()} videos completos →
               </button>
             </Link>
           </div>
@@ -684,8 +694,8 @@ export default function HomePage() {
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
             {[
-              { icon: '⚡', title: 'Descarga instantánea', desc: `${packInfo?.totalVideos || 157} videos listos en minutos` },
-              { icon: '🎯', title: 'Organizados por género', desc: `${packInfo?.genreCount || 7} categorías para encontrar rápido` },
+              { icon: '⚡', title: 'Descarga instantánea', desc: `${inventory.loading ? '...' : inventory.count.toLocaleString()} videos listos en minutos` },
+              { icon: '🎯', title: 'Organizados por género', desc: `${inventory.loading ? '...' : inventory.genreCount} categorías para encontrar rápido` },
               { icon: '💎', title: 'Calidad profesional', desc: 'HD/4K sin marcas de agua' },
               { icon: '🔄', title: 'Descarga ilimitada', desc: 'Web + FTP para descarga masiva' },
             ].map((benefit, i) => (
@@ -708,7 +718,7 @@ export default function HomePage() {
           
           <div className="space-y-3 mb-8">
             {[
-              { item: `${packInfo?.totalVideos || 157} videos a $10 c/u`, price: `$${((packInfo?.totalVideos || 157) * 10).toLocaleString()}` },
+              { item: `${inventory.loading ? '...' : inventory.count.toLocaleString()} videos a $10 c/u`, price: `$${((inventory.loading ? 0 : inventory.count) * 10).toLocaleString()}` },
               { item: 'Suscripción a pools de videos (anual)', price: '$2,400' },
               { item: 'Tiempo buscando y descargando (40hrs)', price: '$4,000' },
             ].map((row, i) => (
@@ -802,7 +812,7 @@ export default function HomePage() {
             <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-green-400 mb-4">✅ Con Bear Beat</h3>
               <ul className="text-left text-gray-400 space-y-2 text-sm">
-                <li>• {packInfo?.totalVideos || 157} videos descargados hoy</li>
+                <li>• {inventory.loading ? '...' : inventory.count.toLocaleString()} videos descargados hoy</li>
                 <li>• Un solo pago de $350</li>
                 <li>• Arsenal profesional completo</li>
                 <li>• Calidad HD garantizada</li>
@@ -812,7 +822,7 @@ export default function HomePage() {
           
           <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('final')}>
             <button className="bg-bear-blue text-bear-black font-black text-xl md:text-3xl px-12 py-8 rounded-2xl shadow-2xl hover:scale-105 transition-all animate-pulse">
-              SÍ, QUIERO MIS {packInfo?.totalVideos || 157} VIDEOS →
+              SÍ, QUIERO MIS {inventory.loading ? '...' : inventory.count.toLocaleString()} VIDEOS →
             </button>
           </Link>
           <p className="text-sm text-gray-500 mt-4">
@@ -840,6 +850,17 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+      {/* Sticky CTA móvil: precio siempre visible */}
+      {!userState.hasAccess && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-bear-blue border-t-2 border-bear-black p-3 safe-area-pb">
+          <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('sticky_mobile')} className="block w-full">
+            <button className="w-full bg-bear-black text-bear-blue font-black text-lg py-4 rounded-xl">
+              Comprar ahora · $350 MXN
+            </button>
+          </Link>
+        </div>
+      )}
 
       {/* MODAL DE DEMO */}
       <AnimatePresence>

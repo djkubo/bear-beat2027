@@ -17,10 +17,10 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: {
-    default: 'Bear Beat - Video Remixes para DJs 2026 | +178 Videos HD',
+    default: 'Bear Beat - Video Remixes para DJs 2026 | $350 MXN',
     template: '%s | Bear Beat'
   },
-  description: 'Descarga 178 video remixes en HD para DJs. Reggaeton, Cumbia, Bachata, Salsa y más. Organizados por género, con Key y BPM. Pago único $350 MXN. Descarga ilimitada por Web.',
+  description: 'Descarga video remixes en HD para DJs. Reggaeton, Cumbia, Bachata, Salsa y más. Organizados por género, con Key y BPM. Pago único $350 MXN. Descarga ilimitada por Web.',
   keywords: [
     'video remixes', 'videos para dj', 'video pool', 'dj video', 
     'reggaeton videos', 'cumbia videos', 'bachata videos',
@@ -31,13 +31,12 @@ export const metadata: Metadata = {
   creator: 'Bear Beat',
   publisher: 'Bear Beat',
   
-  // Open Graph - Facebook/WhatsApp
   openGraph: {
     type: 'website',
     locale: 'es_MX',
     url: 'https://bearbeat.mx',
     siteName: 'Bear Beat',
-    title: 'Bear Beat - +178 Video Remixes para DJs',
+    title: 'Bear Beat - Video Remixes para DJs 2026 | $350 MXN',
     description: 'El arsenal completo de videos que usan los DJs profesionales. Descarga ilimitada por $350 MXN. Reggaeton, Cumbia, Bachata, Salsa y más.',
     images: [
       {
@@ -52,8 +51,8 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: 'summary_large_image',
-    title: 'Bear Beat - +178 Video Remixes para DJs',
-    description: 'Descarga 178 videos HD para tus eventos. Pago único $350 MXN.',
+    title: 'Bear Beat - Video Remixes para DJs 2026 | $350 MXN',
+    description: 'Descarga videos HD para tus eventos. Pago único $350 MXN.',
     images: ['/og-image.png'],
   },
   
@@ -121,7 +120,7 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'Product',
               name: 'Bear Beat - Pack Video Remixes 2026',
-              description: '178 video remixes HD para DJs profesionales',
+              description: 'Video remixes HD para DJs profesionales. Pago único $350 MXN.',
               brand: {
                 '@type': 'Brand',
                 name: 'Bear Beat'

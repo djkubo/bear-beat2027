@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { getMessengerUrl } from '@/config/contact'
 
 // ==========================================
 // PÁGINA 404 - No encontrado
@@ -46,7 +47,7 @@ export default function NotFound() {
         {/* Soporte */}
         <p className="text-sm text-gray-500 mt-8">
           ¿Necesitas ayuda?{' '}
-          <a href="https://m.me/104901938679498" className="text-bear-blue hover:underline">
+          <a href={getMessengerUrl()} className="text-bear-blue hover:underline">
             Contáctanos
           </a>
         </p>

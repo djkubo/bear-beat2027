@@ -30,7 +30,7 @@ export async function createCheckoutSession({
           currency,
           product_data: {
             name: packName,
-            description: `Acceso completo al ${packName} con 3,000+ videos`,
+            description: `Acceso completo al ${packName} - videos HD para DJs`,
             images: [`${process.env.NEXT_PUBLIC_APP_URL}/pack-cover.jpg`],
           },
           unit_amount: currency === 'mxn' ? priceMXN * 100 : priceUSD * 100,

@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerClient } from '@/lib/supabase/server'
 
-// Pack de prueba para desarrollo (cuando no hay datos en DB)
-const TEST_PACK = {
-  id: 1,
-  slug: 'enero-2026',
-  name: 'Pack Enero 2026',
-  total_videos: 157,
-  price_mxn: 350,
-  price_usd: 19,
-  status: 'available',
+// Fallback solo cuando no hay DB
+async function getPackWithVideoCount(supabase: Awaited<ReturnType<typeof createServerClient>>, packSlug: string) {
+  const { data: packRow } = await supabase.from('packs').select('*').eq('slug', packSlug).eq('status', 'available').single()
+  if (!packRow) return null
+  const { count } = await supabase.from('videos').select('*', { count: 'exact', head: true }).eq('pack_id', packRow.id)
+  return {
+    ...packRow,
+    total_videos: count ?? packRow.total_videos ?? 0,
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -39,27 +39,23 @@ export async function POST(req: NextRequest) {
       console.log('No user logged in')
     }
     
-    // Intentar obtener info del pack de la DB
-    let pack = null
+    let pack: any = null
     try {
-      const { data, error } = await supabase
-        .from('packs')
-        .select('*')
-        .eq('slug', packSlug)
-        .eq('status', 'available')
-        .single()
-      
-      if (!error && data) {
-        pack = data
+      pack = await getPackWithVideoCount(supabase, packSlug)
+      if (!pack) {
+        pack = {
+          id: 1,
+          slug: packSlug,
+          name: 'Pack Enero 2026',
+          total_videos: 0,
+          price_mxn: 350,
+          price_usd: 19,
+          status: 'available',
+        }
       }
     } catch (e) {
-      console.log('DB not available, using test pack')
-    }
-    
-    // Si no hay pack en DB, usar el pack de prueba
-    if (!pack) {
-      console.log('Using TEST_PACK for development')
-      pack = TEST_PACK
+      console.log('DB not available, using fallback pack')
+      pack = { id: 1, slug: packSlug, name: 'Pack Enero 2026', total_videos: 0, price_mxn: 350, price_usd: 19, status: 'available' }
     }
     
     // Precio según moneda

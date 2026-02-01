@@ -2,8 +2,8 @@
 // SISTEMA DE PUSH NOTIFICATIONS
 // ==========================================
 
-// VAPID Keys - Generar en producción con: npx web-push generate-vapid-keys
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U'
+// VAPID Keys - Generar: npx web-push generate-vapid-keys. Sin clave no se registran push.
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
 
 /**
  * Verificar si el navegador soporta notificaciones
@@ -59,6 +59,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
  * Suscribir al usuario a push notifications
  */
 export async function subscribeToPush(): Promise<PushSubscription | null> {
+  if (!VAPID_PUBLIC_KEY) return null
   try {
     // Registrar SW si no está
     const registration = await navigator.serviceWorker.ready

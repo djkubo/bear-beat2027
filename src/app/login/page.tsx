@@ -72,7 +72,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-bear-black text-white">
       {/* Banner superior */}
       <div className="bg-gradient-to-r from-bear-blue via-cyan-400 to-bear-blue text-bear-black py-2 text-center text-sm font-bold">
-        🎉 +3,000 DJs ya tienen acceso • <span className="underline">¿Qué esperas tú?</span>
+        🎉 DJs ya tienen acceso • <span className="underline">¿Qué esperas tú?</span>
       </div>
 
       <div className="flex min-h-[calc(100vh-40px)]">
@@ -94,7 +94,7 @@ export default function LoginPage() {
             </Link>
 
             <h2 className="text-4xl font-black mb-8">
-              Tu biblioteca de <span className="text-bear-blue">+3,000 videos</span> te espera
+              Tu biblioteca de <span className="text-bear-blue">videos</span> te espera
             </h2>
 
             {/* Beneficios */}

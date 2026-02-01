@@ -96,7 +96,7 @@ export default function DiagnosticoPage() {
         <a href="/" style={{ padding: '10px 20px', background: '#333', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
           ← Home
         </a>
-        <a href="/admin/dashboard" style={{ padding: '10px 20px', background: '#0a0', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
+        <a href="/admin" style={{ padding: '10px 20px', background: '#0a0', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
           🎛️ Admin
         </a>
       </div>

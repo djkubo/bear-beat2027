@@ -93,6 +93,19 @@ BUNNY_STREAM_API_KEY=stream_api_key
 
 ---
 
+## 🚀 En producción (Render)
+
+Para que la **descarga por web** funcione en producción (sin disco en el servidor):
+
+1. **Variables en Render:** `BUNNY_CDN_URL`, `BUNNY_TOKEN_KEY`, y opcionalmente `BUNNY_PACK_PATH_PREFIX=packs/enero-2026`.
+2. **Subir archivos a Bunny Storage** con la misma estructura que el catálogo:  
+   `packs/enero-2026/Genre/filename.mp4` (ej. `packs/enero-2026/Bachata/Artista - Título.mp4`).
+3. Cuando un usuario con compra hace clic en “Descargar” en Contenido, `/api/download` **redirige** a una URL firmada de Bunny. No se usa disco en el servidor.
+
+El listado de videos sigue saliendo de Supabase (tabla `videos`). Puedes llenar el catálogo con `npm run db:sync-videos-ftp` (desde Hetzner) o `npm run db:sync-videos` (desde carpeta local).
+
+---
+
 ## 🎬 Tu Estructura Real (Videos Enero 2026)
 
 Tu carpeta actual tiene esta estructura perfecta:

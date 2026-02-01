@@ -20,7 +20,7 @@ export function BenefitsSection() {
     },
     {
       emoji: '🎵',
-      title: '3,000 Videos NUEVOS',
+      title: 'Videos NUEVOS cada mes',
       description: 'Videos HD y 4K de la mejor calidad. Organizados por género. Fácil de encontrar lo que buscas.',
       highlight: 'HD/4K',
     },

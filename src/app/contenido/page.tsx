@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
+import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 
 // ==========================================
 // PÁGINA DE CONTENIDO - Diseño Persuasivo
@@ -61,6 +62,7 @@ export default function ContenidoPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [hasAccess, setHasAccess] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const inventory = useVideoInventory()
 
   useEffect(() => {
     trackPageView('contenido')
@@ -100,8 +102,7 @@ export default function ContenidoPage() {
       }
     } catch (err) {
       console.error('Error cargando videos:', err)
-      // Usar datos de fallback
-      setPackInfo({ totalVideos: 178, totalSizeFormatted: '20 GB', genreCount: 7 })
+      // Inventario sigue viniendo de useVideoInventory (Supabase)
     } finally {
       setLoading(false)
     }
@@ -164,7 +165,7 @@ export default function ContenidoPage() {
           <div className="flex items-center gap-3">
             {hasAccess ? (
               <Link href="/dashboard">
-                <span className="text-green-400 font-bold text-sm">✅ Acceso Activo</span>
+                <span className="text-green-400 font-bold text-sm">✅ Tu acceso está activo</span>
               </Link>
             ) : (
               <>
@@ -189,7 +190,7 @@ export default function ContenidoPage() {
       {!hasAccess && (
         <div className="bg-gradient-to-r from-red-600 to-orange-500 py-3 px-4 text-center">
           <p className="text-sm md:text-base font-bold">
-            ⚠️ SOLO HOY: Acceso a {packInfo?.totalVideos || 157} videos por $350 MXN (precio normal $1,499)
+            ⚠️ SOLO HOY: Acceso a {inventory.loading ? '...' : inventory.count.toLocaleString()} videos por $350 MXN (precio normal $1,499)
             <Link href="/checkout?pack=enero-2026" className="underline ml-2">
               Obtener ahora →
             </Link>
@@ -205,9 +206,9 @@ export default function ContenidoPage() {
               📦 Pack Enero 2026
             </h1>
             <p className="text-xl text-gray-400 mb-6">
-              <span className="text-bear-blue font-bold">{packInfo?.totalVideos || 157}</span> Video Remixes • 
-              <span className="text-bear-blue font-bold"> {packInfo?.genreCount || 7}</span> Géneros • 
-              <span className="text-bear-blue font-bold"> {packInfo?.totalSizeFormatted || '15 GB'}</span>
+<span className="text-bear-blue font-bold">{inventory.loading ? '...' : inventory.count.toLocaleString()}</span> Video Remixes •
+              <span className="text-bear-blue font-bold"> {inventory.loading ? '...' : inventory.genreCount}</span> Géneros • 
+              <span className="text-bear-blue font-bold"> {inventory.loading ? '...' : inventory.totalSizeFormatted}</span>
             </p>
 
             {/* Búsqueda */}
@@ -236,8 +237,8 @@ export default function ContenidoPage() {
           {/* Stats rápidos */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
             {[
-              { icon: '🎬', label: 'Videos', value: packInfo?.totalVideos || 157 },
-              { icon: '🎵', label: 'Géneros', value: packInfo?.genreCount || 7 },
+              { icon: '🎬', label: 'Videos', value: inventory.loading ? '...' : inventory.count },
+              { icon: '🎵', label: 'Géneros', value: inventory.loading ? '...' : inventory.genreCount },
               { icon: '📐', label: 'Calidad', value: '1080p' },
               { icon: '⬇️', label: 'Descarga', value: 'Ilimitada' },
             ].map((stat, i) => (
@@ -485,11 +486,13 @@ export default function ContenidoPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-7xl mb-4">🔒</div>
-              <h3 className="text-3xl font-black mb-2">¡Este contenido es premium!</h3>
-              
+              <h3 className="text-3xl font-black mb-2">OBTENER ACCESO POR $350</h3>
+              <p className="text-gray-400 text-sm mb-4">
+                Para descargar este y todos los videos del pack necesitas acceso.
+              </p>
               {selectedVideo && (
                 <p className="text-gray-400 mb-6">
-                  Para descargar <span className="text-bear-blue font-bold">"{selectedVideo.artist}"</span> y los otros <span className="text-bear-blue font-bold">{packInfo?.totalVideos} videos</span>, obtén tu acceso ahora.
+                  Incluye <span className="text-bear-blue font-bold">"{selectedVideo.artist}"</span> y los otros <span className="text-bear-blue font-bold">{packInfo?.totalVideos} videos</span>.
                 </p>
               )}
               
@@ -507,7 +510,7 @@ export default function ContenidoPage() {
                   className="w-full bg-bear-blue text-bear-black font-black text-xl py-5 rounded-xl hover:bg-bear-blue/90 mb-4"
                   onClick={() => trackCTAClick('paywall_cta', 'contenido')}
                 >
-                  SÍ, QUIERO ACCESO AHORA →
+                  OBTENER ACCESO POR $350 →
                 </button>
               </Link>
               

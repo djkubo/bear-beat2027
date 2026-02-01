@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { generateSignedUrl } from '@/lib/storage/bunny'
 import fs from 'fs'
 import path from 'path'
 
 const VIDEOS_BASE_PATH = process.env.VIDEOS_PATH || path.join(process.cwd(), 'Videos Enero 2026')
 
+// Bunny: prefijo en Storage (ej. packs/enero-2026) — el file viene como Genre/filename.mp4
+const BUNNY_PACK_PREFIX = process.env.BUNNY_PACK_PATH_PREFIX || 'packs/enero-2026'
+const USE_BUNNY = !!(process.env.BUNNY_CDN_URL && process.env.BUNNY_TOKEN_KEY)
+
 /**
  * GET /api/download?file=genre/filename.mp4&stream=true
- * Solo usuarios con compras activas pueden descargar/ver
+ * Solo usuarios con compras activas pueden descargar/ver.
+ * Si Bunny está configurado → redirección a URL firmada (producción).
+ * Si no → sirve desde disco local (desarrollo).
  * stream=true para reproducción inline, sin él descarga el archivo
  */
 export async function GET(req: NextRequest) {
@@ -27,7 +34,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'No autenticado. Inicia sesión.' }, { status: 401 })
     }
     
-    // Verificar si tiene compras
     const { data: purchases, error } = await supabase
       .from('purchases')
       .select('id')
@@ -40,15 +46,20 @@ export async function GET(req: NextRequest) {
       }, { status: 403 })
     }
     
-    // Construir path seguro (prevenir path traversal)
     const sanitizedPath = filePath.replace(/\.\./g, '').replace(/^\//, '')
-    const fullPath = path.join(VIDEOS_BASE_PATH, sanitizedPath)
     
-    // Verificar que el archivo existe y está dentro del directorio permitido
+    // Producción: descarga vía Bunny CDN (URL firmada)
+    if (USE_BUNNY) {
+      const bunnyPath = `${BUNNY_PACK_PREFIX}/${sanitizedPath}`
+      const signedUrl = generateSignedUrl(bunnyPath, 3600, process.env.NEXT_PUBLIC_APP_URL)
+      return NextResponse.redirect(signedUrl)
+    }
+    
+    // Desarrollo: servir desde disco
+    const fullPath = path.join(VIDEOS_BASE_PATH, sanitizedPath)
     if (!fullPath.startsWith(VIDEOS_BASE_PATH)) {
       return NextResponse.json({ error: 'Path inválido' }, { status: 400 })
     }
-    
     if (!fs.existsSync(fullPath)) {
       return NextResponse.json({ error: 'Archivo no encontrado' }, { status: 404 })
     }

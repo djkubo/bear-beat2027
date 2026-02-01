@@ -494,7 +494,7 @@ export default function PreviewPage() {
                 <h3 className="font-bold mb-4">📦 Contenido del Pack Enero 2026</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="bg-bear-blue/10 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-black text-bear-blue">3,247</p>
+                    <p className="text-2xl font-black text-bear-blue">Videos</p>
                     <p className="text-gray-400">Videos</p>
                   </div>
                   <div className="bg-bear-blue/10 rounded-lg p-3 text-center">

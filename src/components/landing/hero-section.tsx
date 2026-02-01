@@ -18,7 +18,7 @@ interface HeroSectionProps {
 
 export function HeroSection({ pack }: HeroSectionProps) {
   const packName = pack?.name || 'Video Remixes Pack 2026'
-  const totalVideos = pack?.total_videos || 3000
+  const totalVideos = pack?.total_videos ?? 0
   const priceМXN = pack?.price_mxn || 350
 
   return (
@@ -54,7 +54,7 @@ export function HeroSection({ pack }: HeroSectionProps) {
 
           {/* Main Heading - ULTRA CLARO */}
           <h1 className="text-5xl sm:text-6xl lg:text-8xl font-extrabold tracking-tight leading-tight">
-            <span className="block mb-2">3,000 Videos</span>
+            <span className="block mb-2">{totalVideos} Video Remixes</span>
             <span className="block bg-gradient-to-r from-bear-blue to-bear-blue/70 bg-clip-text text-transparent">
               Para DJs
             </span>

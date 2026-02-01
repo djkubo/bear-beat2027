@@ -22,7 +22,7 @@ export default async function AdminLayout({
     .eq('id', user.id)
     .single()
   
-  // Si no es admin, redirigir al dashboard normal
+  // Si no es admin, redirigir al dashboard de cliente
   if (userData?.role !== 'admin') {
     redirect('/dashboard')
   }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
+import { getMessengerUrl } from '@/config/contact'
 
 // ==========================================
 // MENÚ MÓVIL HAMBURGER
@@ -23,7 +24,10 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
     ? [
         // USUARIO CON ACCESO PAGADO
         { href: '/dashboard', label: '📊 Mi Panel', icon: '📊', highlight: true },
+        { href: '/portal', label: '🚪 Portal', icon: '🚪' },
         { href: '/contenido', label: '⬇️ Descargar Videos', icon: '⬇️' },
+        { href: '/comunidad', label: '💬 Comunidad VIP', icon: '💬' },
+        { href: '/mi-cuenta', label: '👤 Mi cuenta', icon: '👤' },
         { href: '/', label: '🏠 Inicio', icon: '🏠' },
       ]
     : isLoggedIn 
@@ -33,6 +37,9 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
           { href: '/contenido', label: 'Ver Contenido', icon: '👁️' },
           { href: '/checkout?pack=enero-2026', label: 'Comprar Acceso', icon: '💳', highlight: true },
           { href: '/dashboard', label: 'Mi Panel', icon: '📊' },
+          { href: '/portal', label: 'Portal', icon: '🚪' },
+          { href: '/comunidad', label: 'Comunidad VIP', icon: '💬' },
+          { href: '/mi-cuenta', label: 'Mi cuenta', icon: '👤' },
         ]
       : [
           // USUARIO NO LOGUEADO
@@ -130,7 +137,7 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
                   <p className="text-sm text-gray-500 mb-3">¿Necesitas ayuda?</p>
                   <div className="flex gap-2">
                     <a
-                      href="https://m.me/104901938679498"
+                      href={getMessengerUrl()}
                       target="_blank"
                       className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-bold"
                     >

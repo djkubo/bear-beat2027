@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
-
-// Pack de prueba para desarrollo
-const TEST_PACK = {
-  id: 1,
-  slug: 'enero-2026',
-  name: 'Pack Enero 2026',
-  total_videos: 157,
-}
+import { createServerClient } from '@/lib/supabase/server'
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,7 +10,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Session ID required' }, { status: 400 })
     }
     
-    // Obtener sesión de Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ['payment_intent', 'line_items'],
     })
@@ -26,7 +18,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
     
-    // Verificar que el pago fue exitoso
     if (session.payment_status !== 'paid') {
       return NextResponse.json({ 
         error: 'Payment not completed',
@@ -34,32 +25,45 @@ export async function GET(req: NextRequest) {
       }, { status: 400 })
     }
     
-    // Extraer datos
     const packSlug = session.metadata?.pack_slug || 'enero-2026'
     const packId = session.metadata?.pack_id || '1'
-    // User ID del usuario logueado al momento del pago (si existía)
     const userId = session.metadata?.user_id || null
     
-    // Datos del cliente
     const customerEmail = session.customer_details?.email || session.customer_email || ''
     const customerName = session.customer_details?.name || ''
     const customerPhone = session.customer_details?.phone || ''
     
-    // Monto
     const amount = (session.amount_total || 0) / 100
     const currency = session.currency?.toUpperCase() || 'MXN'
     
-    // Payment Intent ID
     const paymentIntent = typeof session.payment_intent === 'string' 
       ? session.payment_intent 
       : session.payment_intent?.id || ''
     
+    let pack: { id: number; slug: string; name: string; total_videos: number } = {
+      id: parseInt(packId),
+      slug: packSlug,
+      name: 'Pack Enero 2026',
+      total_videos: 0,
+    }
+    try {
+      const supabase = await createServerClient()
+      const { data: packRow } = await supabase.from('packs').select('id, slug, name').eq('slug', packSlug).single()
+      if (packRow) {
+        pack.id = packRow.id
+        pack.slug = packRow.slug
+        pack.name = packRow.name
+        const { count } = await supabase.from('videos').select('*', { count: 'exact', head: true }).eq('pack_id', packRow.id)
+        pack.total_videos = count ?? 0
+      }
+    } catch (_) {}
+    
     return NextResponse.json({
       success: true,
       sessionId,
-      packId: parseInt(packId),
+      packId: pack.id,
       packSlug,
-      pack: TEST_PACK, // En producción, buscar en la DB
+      pack,
       amount,
       currency,
       paymentIntent,

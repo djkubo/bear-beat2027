@@ -66,14 +66,13 @@ open http://localhost:3000
 
 ## 🗄️ Base de Datos
 
-Ver `supabase/schema.sql` para el esquema completo.
+Ejecuta **todo** el archivo `supabase/SETUP_COMPLETO.sql` en el SQL Editor de Supabase. Crea todas las tablas, RLS y datos iniciales (géneros, pack Enero 2026).
 
-Tablas principales:
-- `users` - Usuarios
-- `packs` - Packs mensuales
-- `purchases` - Compras
-- `videos` - Videos en cada pack
-- `genres` - Géneros musicales
+Tablas principales: `users`, `packs`, `genres`, `videos`, `purchases`, `pending_purchases`, `user_events`, `push_subscriptions`, `push_notifications_history`, `ftp_pool`, `conversations`, `messages`.
+
+## 📋 Producción (todo en un solo doc)
+
+**Ver [PRODUCCION.md](PRODUCCION.md)** para: lista de todas las páginas y APIs, variables de entorno, base de datos, checklist y scripts (`db:setup`, `db:sync-videos`, `deploy:env`).
 
 ## 🚀 Deploy
 
@@ -84,6 +83,12 @@ Hosting en **Render**. Conecta tu repo en [render.com](https://render.com):
 3. Start command: `npm run start`
 4. Configura las variables de entorno desde `.env.local`
 5. Push a `main` para auto-deploy
+
+## 👤 Admin y Dashboard
+
+- **Panel de admin** (`/admin`): usuarios, compras, packs, pendientes, tracking, chatbot, push. Solo usuarios con `role = 'admin'` en la tabla `users`. Crear admin: `UPDATE users SET role = 'admin' WHERE email = 'tu@email.com';`
+- **Dashboard cliente** (`/dashboard`): usuario logueado ve sus packs y credenciales FTP.
+- **Listado de videos en producción:** en Render no hay carpeta local; el listado se sirve desde Supabase. Poblar catálogo: `npm run db:sync-videos` (una vez, desde tu máquina con la carpeta de videos). Ver `RENDER_DEPLOY.md` y `INSTALACION.md`.
 
 ## 📝 Variables de Entorno Requeridas
 

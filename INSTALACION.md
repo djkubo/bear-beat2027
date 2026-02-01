@@ -41,13 +41,15 @@ pnpm install
    - **Project URL**: `https://xxxxx.supabase.co`
    - **anon public key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6...`
 
-### 2.3 Ejecutar Schema SQL
+### 2.3 Ejecutar setup completo de base de datos
 
 1. Ve a SQL Editor en Supabase Dashboard
 2. Crea una nueva query
-3. Copia y pega el contenido de `supabase/schema.sql`
+3. Copia y pega **todo** el contenido de `supabase/SETUP_COMPLETO.sql`
 4. Ejecuta la query (Run)
 5. Verifica que se crearon todas las tablas
+
+**Incluye:** `users`, `packs`, `genres`, `videos`, `purchases`, `pending_purchases`, `user_events`, `push_subscriptions`, `push_notifications_history`, `ftp_pool`, `conversations`, `messages`, géneros de ejemplo, pack Enero 2026 y políticas RLS (incluidas para que el **panel de admin** y el **dashboard de cliente** funcionen).
 
 ---
 
@@ -116,6 +118,22 @@ Abre http://localhost:3000
 
 ---
 
+## 👤 PASO 5b: Crear usuario admin (opcional)
+
+Para acceder al **panel de administración** (`/admin`):
+
+1. En Supabase: **Authentication** → **Users** → **Add user** (email + contraseña).
+2. En **SQL Editor** ejecuta (sustituye el email por el tuyo):
+   ```sql
+   UPDATE users SET role = 'admin' WHERE email = 'tu@email.com';
+   ```
+   Si el usuario aún no existe en la tabla `users`, créalo desde la app registrándote en `/register` y luego ejecuta el `UPDATE` anterior.
+3. Inicia sesión en `/login` y entra a **https://tu-dominio.com/admin**.
+
+En **producción (Render)** el admin está en: **https://bear-beat2027.onrender.com/admin**.
+
+---
+
 ## ✅ PASO 6: Verificación
 
 ### 6.1 Verificar que funciona:
@@ -123,18 +141,18 @@ Abre http://localhost:3000
 - ✅ Landing page se ve correctamente
 - ✅ Sección de géneros muestra datos de ejemplo
 - ✅ Pricing section muestra $350 MXN
+- ✅ `/login` y `/register` funcionan
+- ✅ `/dashboard` (tras login con usuario con compra) muestra acceso y FTP
+- ✅ `/admin` (tras login con usuario `role = 'admin'`) muestra panel admin: usuarios, compras, packs, pending, tracking, chatbot, push, etc.
 - ✅ No hay errores en consola
 
 ### 6.2 Verificar Base de Datos
 
 1. Ve a Supabase Dashboard → Table Editor
-2. Verifica que existen estas tablas:
-   - `users`
-   - `packs`
-   - `purchases`
-   - `genres` (con datos de ejemplo)
-   - `videos`
-   - `bundles`
+2. Verifica que existen estas tablas (todas creadas por `SETUP_COMPLETO.sql`):
+   - `users`, `packs`, `genres`, `videos`, `purchases`, `pending_purchases`
+   - `user_events`, `push_subscriptions`, `push_notifications_history`, `ftp_pool`
+   - `conversations`, `messages` (para admin/chatbot)
 
 ### 6.3 Verificar Géneros
 

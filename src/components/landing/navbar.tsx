@@ -3,10 +3,17 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 export function NavBar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setIsLoggedIn(!!user))
+  }, [])
 
   return (
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b">
@@ -40,11 +47,20 @@ export function NavBar() {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link href="/login">
-              <Button variant="ghost" size="sm">
-                Iniciar Sesión
-              </Button>
-            </Link>
+            {isLoggedIn ? (
+              <>
+                <Link href="/dashboard">
+                  <Button variant="ghost" size="sm">Mi Panel</Button>
+                </Link>
+                <Link href="/mi-cuenta">
+                  <Button variant="ghost" size="sm">Mi cuenta</Button>
+                </Link>
+              </>
+            ) : (
+              <Link href="/login">
+                <Button variant="ghost" size="sm">Iniciar Sesión</Button>
+              </Link>
+            )}
             <Link href="/checkout">
               <Button size="sm" className="btn-pulse bg-bear-blue text-bear-black hover:bg-bear-blue/90 font-bold">
                 Comprar $350 MXN
@@ -99,11 +115,20 @@ export function NavBar() {
               FAQ
             </Link>
             <div className="pt-4 pb-2 space-y-2">
-              <Link href="/login" className="block">
-                <Button variant="outline" className="w-full">
-                  Iniciar Sesión
-                </Button>
-              </Link>
+              {isLoggedIn ? (
+                <>
+                  <Link href="/dashboard" className="block" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full">Mi Panel</Button>
+                  </Link>
+                  <Link href="/mi-cuenta" className="block" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full">Mi cuenta</Button>
+                  </Link>
+                </>
+              ) : (
+                <Link href="/login" className="block" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full">Iniciar Sesión</Button>
+                </Link>
+              )}
               <Link href="/checkout" className="block">
                 <Button className="w-full">
                   Comprar $350 MXN

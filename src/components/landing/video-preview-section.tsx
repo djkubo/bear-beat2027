@@ -28,7 +28,7 @@ export function VideoPreviewSection() {
             Ve ejemplos GRATIS
           </h2>
           <p className="text-xl text-muted-foreground">
-            Estos son algunos de los 3,000 videos que obtendrás
+            Estos son algunos de los videos que obtendrás
           </p>
         </div>
 

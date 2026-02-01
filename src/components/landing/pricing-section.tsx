@@ -16,7 +16,7 @@ interface PricingSectionProps {
 export function PricingSection({ pack }: PricingSectionProps) {
   const packName = pack?.name || 'Video Remixes Pack 2026'
   const slug = pack?.slug || 'pack-enero-2026'
-  const totalVideos = pack?.total_videos || 3000
+  const totalVideos = pack?.total_videos ?? 0
   const totalSize = pack?.total_size_gb || 500
   const priceMXN = pack?.price_mxn || 350
   const priceUSD = pack?.price_usd || 18

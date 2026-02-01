@@ -161,7 +161,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                       {/* Credenciales FTP */}
                       {purchase.ftp_username && (
                         <div className="bg-bear-blue/5 rounded-lg p-4 border-2 border-bear-blue/30">
-                          <div className="text-sm font-bold mb-2">🔑 Credenciales FTP:</div>
+                          <div className="text-sm font-bold mb-2">🔑 Tus claves FTP:</div>
                           <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                             <div>
                               <span className="text-muted-foreground">Usuario:</span>

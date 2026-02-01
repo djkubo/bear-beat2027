@@ -43,7 +43,7 @@ export default function AdminPushPage() {
     {
       name: '💳 Recordatorio Pago',
       title: 'Tu pago está pendiente',
-      body: 'Completa tu compra y obtén acceso inmediato a +3,000 videos.',
+      body: 'Completa tu compra y obtén acceso inmediato a todos los videos.',
       url: '/checkout'
     },
     {

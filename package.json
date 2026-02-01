@@ -9,7 +9,10 @@
     "start": "node scripts/start.js",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "db:setup": "node scripts/run-supabase-sql.js supabase/SETUP_COMPLETO.sql"
+    "db:setup": "node scripts/run-supabase-sql.js supabase/SETUP_COMPLETO.sql",
+    "db:sync-videos": "node scripts/sync-videos-to-supabase.js",
+    "db:sync-videos-ftp": "node scripts/sync-videos-from-ftp.js",
+    "deploy:env": "node scripts/render-set-env.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.0",
@@ -25,6 +28,7 @@
     "@supabase/supabase-js": "^2.40.0",
     "@tanstack/react-query": "^5.28.0",
     "archiver": "^7.0.1",
+    "basic-ftp": "^5.1.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.3.0",

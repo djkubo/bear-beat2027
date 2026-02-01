@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { trackPageView } from '@/lib/tracking'
+import { getMessengerUrl } from '@/config/contact'
 
 // ==========================================
 // DASHBOARD - Panel Premium con Instrucciones
@@ -20,6 +21,7 @@ interface Purchase {
   ftp_username?: string
   ftp_password?: string
   purchased_at: string
+  pack?: { name: string; slug: string } | null
 }
 
 interface UserProfile {
@@ -72,10 +74,10 @@ export default function DashboardPage() {
         setUser(profile)
       }
 
-      // Obtener compras (sin filtro de status)
+      // Obtener compras con nombre del pack (credenciales FTP reales vienen en cada compra)
       const { data: purchasesData } = await supabase
         .from('purchases')
-        .select('*')
+        .select('*, pack:packs(name, slug)')
         .eq('user_id', authUser.id)
         .order('purchased_at', { ascending: false })
 
@@ -93,11 +95,13 @@ export default function DashboardPage() {
     setTimeout(() => setCopied(null), 2000)
   }
 
-  const ftp = user ? {
+  // Credenciales FTP reales desde la compra (generadas en complete-purchase)
+  const purchaseWithFtp = purchases.find(p => p.ftp_username && p.ftp_password)
+  const ftp = purchaseWithFtp ? {
     host: 'ftp.bearbeat.mx',
     port: '21',
-    user: `dj_${user.id.substring(0, 8)}`,
-    pass: `BB${user.id.substring(0, 12)}!`
+    user: purchaseWithFtp.ftp_username,
+    pass: purchaseWithFtp.ftp_password
   } : null
 
   if (loading) {
@@ -120,6 +124,12 @@ export default function DashboardPage() {
             <span className="font-bold text-bear-blue">BEAR BEAT</span>
           </Link>
           <div className="flex items-center gap-4">
+            <Link href="/portal" className="text-sm text-gray-400 hover:text-bear-blue hidden md:inline">
+              Portal
+            </Link>
+            <Link href="/mi-cuenta" className="text-sm text-bear-blue hover:underline hidden md:inline">
+              Mi cuenta
+            </Link>
             <span className="text-sm text-gray-400 hidden md:block">{user.email}</span>
             <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/')} className="text-sm text-gray-500 hover:text-white">
               Salir
@@ -127,6 +137,30 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
+
+      {/* MIS COMPRAS - Qué pack compró */}
+      {purchases.length > 0 && (
+        <section className="py-6 px-4 border-b border-bear-blue/20">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-lg font-bold text-bear-blue mb-4">📦 Mis compras</h2>
+            <div className="space-y-3">
+              {purchases.map((p) => (
+                <div key={p.id} className="bg-white/5 rounded-xl p-4 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-bold">{(p as any).pack?.name ?? (p as any).packs?.name ?? `Pack #${p.pack_id}`}</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(p.purchased_at).toLocaleDateString('es-MX', { dateStyle: 'long' })} · {p.currency} ${p.amount_paid}
+                    </p>
+                  </div>
+                  {p.ftp_username && (
+                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">FTP activo</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* HERO DE ÉXITO */}
       <section className="py-12 px-4 bg-gradient-to-b from-bear-blue/20 to-transparent">
@@ -252,12 +286,12 @@ export default function DashboardPage() {
                   </ul>
                 </div>
 
-                {ftp && (
+                {ftp ? (
                   <>
-                    {/* CREDENCIALES */}
+                    {/* CREDENCIALES REALES (desde la compra en Supabase) */}
                     <div className="bg-black/50 rounded-2xl p-6 mb-6">
                       <h3 className="font-bold text-sm text-purple-400 mb-4 flex items-center gap-2">
-                        🔐 TUS CREDENCIALES FTP (PRIVADAS)
+                        🔐 TUS CLAVES DE DESCARGA FTP (PRIVADAS)
                       </h3>
                       
                       <div className="space-y-3">
@@ -271,7 +305,7 @@ export default function DashboardPage() {
                               <p className="text-xs text-gray-500">{item.label}</p>
                               <p className="font-mono text-lg">{item.value}</p>
                             </div>
-                            <button onClick={() => copy(item.value, item.key)} className="text-2xl hover:scale-110 transition-transform">
+                            <button onClick={() => copy(item.value ?? '', item.key)} className="text-2xl hover:scale-110 transition-transform">
                               {copied === item.key ? '✅' : '📋'}
                             </button>
                           </div>
@@ -287,7 +321,7 @@ export default function DashboardPage() {
                             <button onClick={() => setShowPassword(!showPassword)} className="text-2xl hover:scale-110">
                               {showPassword ? '🙈' : '👁️'}
                             </button>
-                            <button onClick={() => copy(ftp.pass, 'pass')} className="text-2xl hover:scale-110">
+                            <button onClick={() => copy(ftp.pass ?? '', 'pass')} className="text-2xl hover:scale-110">
                               {copied === 'pass' ? '✅' : '📋'}
                             </button>
                           </div>
@@ -325,9 +359,29 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   </>
+                ) : (
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6">
+                    <p className="text-amber-200 font-bold mb-2">⏳ Tus claves de descarga FTP en proceso</p>
+                    <p className="text-sm text-gray-400">
+                      Tus credenciales FTP se generan al activar tu compra. Si acabas de pagar, espera unos minutos y recarga la página. Si ya pasó más tiempo, contacta soporte.
+                    </p>
+                  </div>
                 )}
               </div>
             )}
+          </motion.div>
+
+          {/* HISTORIAL DE DESCARGAS (placeholder; sin tabla de descargas por ahora) */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mt-8 bg-white/5 border border-bear-blue/20 rounded-2xl p-6"
+          >
+            <h3 className="font-bold text-bear-blue mb-4">📥 Historial de descargas</h3>
+            <p className="text-gray-400 text-sm">
+              Aquí aparecerán tus descargas recientes cuando uses el explorador web o FTP. Por ahora no hay registros.
+            </p>
           </motion.div>
 
           {/* SOPORTE */}
@@ -346,7 +400,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <a href="https://m.me/104901938679498" target="_blank" className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 flex items-center gap-2">
+                <a href={getMessengerUrl()} target="_blank" className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 flex items-center gap-2">
                   💬 Messenger
                 </a>
                 <a href="https://wa.me/5215512345678?text=Hola%2C%20necesito%20ayuda%20con%20Bear%20Beat" target="_blank" className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700 flex items-center gap-2">

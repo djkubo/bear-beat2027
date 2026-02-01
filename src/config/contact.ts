@@ -14,9 +14,9 @@ export const CONTACT_CONFIG = {
   // Email de soporte
   email: 'soporte@bearbeat.mx',
 
-  // Facebook Messenger
+  // Facebook Messenger (usa NEXT_PUBLIC_MANYCHAT_PAGE_ID si está definido)
   messenger: {
-    pageId: '104901938679498',
+    pageId: (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_MANYCHAT_PAGE_ID) || '104901938679498',
   },
 
   // Redes sociales

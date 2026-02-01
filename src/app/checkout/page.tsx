@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { trackCTAClick } from '@/lib/tracking'
+import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 
 // ==========================================
 // EMBUDO DE CONVERSIÓN - CHECKOUT PERFECTO
@@ -18,6 +19,7 @@ type Step = 'select' | 'processing' | 'redirect'
 export default function CheckoutPage() {
   const searchParams = useSearchParams()
   const packSlug = searchParams.get('pack') || 'pack-enero-2026'
+  const inventory = useVideoInventory()
   
   const [step, setStep] = useState<Step>('select')
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null)
@@ -131,7 +133,7 @@ export default function CheckoutPage() {
                         📦 Pack Enero 2026 - Video Remixes
                       </h1>
                       <p className="text-gray-400">
-                        178 videos HD • Descarga ilimitada • Pago único
+                        {inventory.loading ? '...' : inventory.count.toLocaleString()} videos HD • Descarga ilimitada • Pago único
                       </p>
                     </div>
                     <div className="text-right">
@@ -141,6 +143,19 @@ export default function CheckoutPage() {
                       <div className="text-sm text-gray-400">{currencyLabel} • Pago único</div>
                     </div>
                   </div>
+                </div>
+
+                {/* Garantías de seguridad - candado, protección */}
+                <div className="flex flex-wrap items-center justify-center gap-4 py-4 mb-6 rounded-xl bg-white/5 border border-bear-blue/20">
+                  <span className="flex items-center gap-2 text-sm text-gray-300">
+                    <span className="text-xl">🔒</span> Pago seguro (Stripe)
+                  </span>
+                  <span className="flex items-center gap-2 text-sm text-gray-300">
+                    <span className="text-xl">🛡️</span> Protección al comprador
+                  </span>
+                  <span className="flex items-center gap-2 text-sm text-gray-300">
+                    <span className="text-xl">✅</span> Garantía 30 días
+                  </span>
                 </div>
 
                 {/* Error message */}

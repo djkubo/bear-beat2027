@@ -13,6 +13,7 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { 
   syncUserWithManyChat, 
   trackPurchaseWithManyChat,
+  trackPaymentSuccess,
   trackRegistration,
   trackLogin,
   setUserTrackingInfo,
@@ -149,15 +150,21 @@ export default function CompletePurchasePage() {
         console.log('DB not available, continuing with Stripe data')
       }
 
-      // Si Stripe también falló, mostrar error
       if (!stripeRes.ok) {
-        setError(stripeData.error || 'No se pudo verificar el pago')
+        const msg = String(stripeData?.error || stripeData?.status || '')
+        if (msg.includes('Payment not completed') || msg.includes('unpaid')) {
+          setError('Tu pago no se completó. Si usaste tarjeta y falló, prueba con OXXO o SPEI desde el checkout.')
+        } else if (msg.toLowerCase().includes('card') || msg.includes('402')) {
+          setError('Tu tarjeta no pasó. No te preocupes: intenta de nuevo con OXXO o transferencia SPEI (desde la página de pago).')
+        } else {
+          setError('No pudimos verificar tu pago. ¿Intentaste con OXXO o SPEI? Si ya pagaste, espera unos minutos y recarga; si no, vuelve al checkout y elige otro método.')
+        }
         setState('error')
       }
       
     } catch (err) {
       console.error('Error loading purchase:', err)
-      setError('Error al cargar tu compra. Contacta soporte.')
+      setError('No pudimos cargar tu compra. Si acabas de pagar, espera 1 minuto y recarga la página. Si sigue igual, escribe a soporte con tu email de pago.')
       setState('error')
     }
   }
@@ -322,7 +329,7 @@ export default function CompletePurchasePage() {
         console.log('DB insert failed (may already exist):', dbErr)
       }
 
-      // Tracking
+      // Tracking: ManyChat + Facebook Pixel Purchase (valor real para conversiones)
       try {
         await trackPurchaseWithManyChat({
           email: email || purchaseInfo.customer_email || '',
@@ -332,11 +339,20 @@ export default function CompletePurchasePage() {
           currency: purchaseInfo?.currency || 'MXN',
           paymentMethod: 'card',
         })
+        trackPaymentSuccess(
+          userId,
+          purchaseInfo?.pack_id || 1,
+          purchaseInfo?.amount_paid ?? 350,
+          purchaseInfo?.pack?.name,
+          purchaseInfo?.currency || 'MXN',
+          email || purchaseInfo?.customer_email,
+          phone
+        )
       } catch (trackErr) {
         console.log('Tracking error (non-critical):', trackErr)
       }
 
-      // Guardar credenciales para mostrar (aunque ya tiene cuenta)
+      // Guardar datos de acceso para mostrar (aunque ya tiene cuenta)
       setGeneratedCredentials({ 
         email: email || purchaseInfo.customer_email || '', 
         password: '(tu contraseña actual)' 
@@ -424,9 +440,19 @@ export default function CompletePurchasePage() {
         trackRegistration(userId, 'email', email, normalizedPhone)
       }
 
+      // Facebook Pixel Purchase con valor real
+      trackPaymentSuccess(
+        userId,
+        purchaseData?.pack_id || 1,
+        purchaseData?.amount_paid ?? 350,
+        purchaseData?.pack?.name,
+        purchaseData?.currency || 'MXN',
+        email,
+        normalizedPhone
+      )
+
       setState('done')
       
-      // Redirigir después de mostrar éxito
       setTimeout(() => {
         router.push('/dashboard')
       }, 3000)
@@ -739,10 +765,10 @@ export default function CompletePurchasePage() {
                 Ya puedes descargar tus videos
               </p>
               
-              {/* Credenciales */}
+              {/* Tus claves de acceso */}
               <div className="bg-green-500/20 border-2 border-green-500 rounded-xl p-6 mb-6 text-left">
                 <h3 className="text-green-400 font-black text-lg mb-4 text-center">
-                  🔐 TUS DATOS DE ACCESO
+                  🔐 TU CUENTA – Guarda estos datos
                 </h3>
                 <p className="text-sm text-gray-400 mb-4 text-center">
                   Guarda estos datos para iniciar sesión después
@@ -780,7 +806,7 @@ export default function CompletePurchasePage() {
                 onClick={() => router.push('/dashboard')}
                 className="w-full bg-bear-blue text-bear-black font-black text-xl py-4 rounded-xl hover:bg-bear-blue/90 transition-colors mb-4"
               >
-                IR A MI DASHBOARD →
+                IR A MIS VIDEOS →
               </button>
               
               <p className="text-sm text-gray-500">
@@ -799,16 +825,20 @@ export default function CompletePurchasePage() {
               <div className="text-6xl mb-6">😕</div>
               <h2 className="text-2xl font-bold mb-4">Algo salió mal</h2>
               <p className="text-gray-400 mb-6">{error}</p>
+              <p className="text-sm text-yellow-400 mb-6">¿Qué puedes hacer? Intenta con OXXO o SPEI desde el checkout, o contacta soporte con tu email de pago.</p>
               <div className="space-y-3">
                 <Link 
-                  href="/"
+                  href="/checkout?pack=enero-2026"
                   className="block w-full bg-bear-blue text-bear-black font-bold py-3 rounded-xl"
                 >
+                  Volver a pagar (OXXO / SPEI / Tarjeta)
+                </Link>
+                <Link href="/" className="block w-full bg-white/10 text-white font-bold py-3 rounded-xl text-center">
                   Volver al inicio
                 </Link>
                 <a 
                   href="mailto:soporte@bearbeat.com"
-                  className="block w-full bg-white/10 text-white font-bold py-3 rounded-xl"
+                  className="block w-full bg-white/10 text-white font-bold py-3 rounded-xl text-center"
                 >
                   Contactar soporte
                 </a>

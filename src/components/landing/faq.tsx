@@ -14,7 +14,7 @@ export function FAQ() {
     },
     {
       question: '¿Qué obtengo?',
-      answer: '3,000 videos de música para DJs. Son videos que ves en pantallas de fiestas y eventos.',
+      answer: 'Videos de música para DJs. Son videos que ves en pantallas de fiestas y eventos. El número se actualiza según el contenido disponible.',
       emoji: '🎬',
     },
     {
