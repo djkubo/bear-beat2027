@@ -268,6 +268,7 @@ Nada de conteos ni precios hardcodeados; todo desde Supabase o APIs. Ver REGLAS_
 - **CRO embudo (2026-02):** Landing con H1 "1,000 videos HD...", sección Para quién es/NO es, garantía 30 días; create-checkout con metadata customer_email/customer_name en Stripe; complete-purchase con mensaje "¡Pago confirmado!", credenciales FTP visibles, botones Descargar por Web y Datos FTP. E2E Playwright en `e2e/purchase-flow.spec.ts`. Ver DOCUMENTACION_COMPLETA.md §19.5 y docs/CRO_EMBUDO_COPY.md.
 - **Fix build (2026-02):** complete-purchase: `ftp_username` opcional en writeText → uso de `?? ''` para tipo string (build TypeScript en Render). Ver DOCUMENTACION_COMPLETA.md §19.6.
 - **Bunny CDN demos (2026-02):** Demos apuntan directo a Bunny (evita 503). Front usa `BUNNY_CDN_URL` vía GET `/api/cdn-base`; `getDemoCdnUrl` en `src/lib/utils.ts`. Añadir `BUNNY_CDN_URL=https://tu-zona.b-cdn.net` en .env.local y `npm run deploy:env`; guía Pull Zone: [docs/BUNNY_PULL_ZONE_SETUP.md](docs/BUNNY_PULL_ZONE_SETUP.md). Script `render-set-env.js` sube vars Bunny desde .env/.env.local.
+- **Datos en tiempo real + metadata (2026-02):** Totales (videos, géneros, tamaño) vienen solo de `/api/videos` / `useVideoInventory` (sin 1.000/141 GB estáticos). Sync FTP (admin + script) parsea key/bpm del nombre de archivo, actualiza `packs.total_videos` y `total_size_gb` tras insertar. Migración Supabase ejecutada: columnas `key` y `bpm` en `videos`. Protección demos: clic derecho, arrastre y abrir en nueva ventana bloqueados. Ver [docs/METADATA_VIDEOS.md](docs/METADATA_VIDEOS.md).
 
 ---
 
