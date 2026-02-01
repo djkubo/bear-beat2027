@@ -65,7 +65,7 @@ function getBaseUrlForThumbnails(): string {
   return ''
 }
 
-/** Construye URL de portada (siempre relativa: /api/placeholder/thumb?... o /api/thumbnail/...). En producción sin thumbnail en DB usamos placeholder para cargar al instante. */
+/** Construye URL de portada. En producción sin thumbnail en DB usamos thumbnail-from-video (extrae frame del video en el server); si falla, esa ruta redirige al placeholder. */
 function buildThumbnailUrl(
   thumbnailUrlFromDb: string | null,
   relativePath: string,
@@ -81,9 +81,10 @@ function buildThumbnailUrl(
     urlPath = `/api/thumbnail-cdn?path=${encodeURIComponent(thumbnailUrlFromDb)}`
   } else if (process.env.NODE_ENV === 'production') {
     const q = new URLSearchParams()
+    q.set('path', relativePath)
     if (artist) q.set('artist', artist)
     if (title) q.set('title', title)
-    urlPath = `/api/placeholder/thumb?${q.toString()}`
+    urlPath = `/api/thumbnail-from-video?${q.toString()}`
   } else {
     urlPath = `/api/thumbnail/${encodeURIComponent(relativePath)}`
   }

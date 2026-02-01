@@ -63,6 +63,11 @@
   }
 }
 
+/* Ocultar scrollbar en carruseles (mantener scroll funcional) */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 10px;

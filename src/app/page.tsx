@@ -295,8 +295,11 @@ export default function HomePage() {
   const [genres, setGenres] = useState<Genre[]>([])
   const [packInfo, setPackInfo] = useState<PackInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [popularVideos, setPopularVideos] = useState<Video[]>([])
+  const [lastDownloaded, setLastDownloaded] = useState<Video | null>(null)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [cdnBaseUrl, setCdnBaseUrl] = useState<string | null>(null)
+  const popularCarouselRef = useRef<HTMLDivElement>(null)
 
   // Base URL del CDN Bunny (BUNNY_CDN_URL) — el front no ve esa variable, la pedimos al API
   useEffect(() => {
@@ -368,11 +371,18 @@ export default function HomePage() {
 
   const cargarVideos = async () => {
     try {
-      const res = await fetch(`/api/videos?pack=enero-2026&statsOnly=1&_=${Date.now()}`, { cache: 'no-store', headers: { Pragma: 'no-cache', 'Cache-Control': 'no-cache' } })
-      const data = await res.json()
+      const [videosRes, popularRes] = await Promise.all([
+        fetch(`/api/videos?pack=enero-2026&statsOnly=1&_=${Date.now()}`, { cache: 'no-store', headers: { Pragma: 'no-cache', 'Cache-Control': 'no-cache' } }),
+        fetch('/api/videos/popular?pack=enero-2026&limit=10', { cache: 'no-store' }),
+      ])
+      const data = await videosRes.json()
       if (data.success) {
         setGenres(data.genres)
         setPackInfo(data.pack)
+      }
+      const popularData = await popularRes.json()
+      if (popularData.success && Array.isArray(popularData.videos)) {
+        setPopularVideos(popularData.videos)
       }
     } catch (error) {
       // Inventario sigue viniendo de useVideoInventory (Supabase)
@@ -380,6 +390,15 @@ export default function HomePage() {
       setLoading(false)
     }
   }
+
+  // Última descarga del usuario (solo si está logueado)
+  useEffect(() => {
+    if (!userState.isLoggedIn) return
+    fetch('/api/videos/last-downloaded', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((d) => d.success && d.video && setLastDownloaded(d.video))
+      .catch(() => {})
+  }, [userState.isLoggedIn])
 
   const handleCTAClick = (location: string) => {
     trackCTAClick('comprar_oferta', location, 'lanzamiento_2026')
@@ -645,6 +664,64 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* LOS 10 VIDEOS MÁS POPULARES - Carrusel con flechas (estilo VideoRemixesPack) */}
+      <section className="py-10 px-4 border-b border-bear-blue/20">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-xl md:text-2xl font-black mb-2 text-bear-blue">
+            Los 10 videos más populares
+          </h2>
+          <p className="text-gray-400 text-sm mb-6">
+            Los más descargados por la comunidad. Haz clic para ver demo.
+          </p>
+          <div className="relative flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Anterior"
+              onClick={() => popularCarouselRef.current?.scrollBy({ left: -320, behavior: 'smooth' })}
+              className="hidden md:flex shrink-0 w-10 h-10 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue hover:bg-bear-blue/40 transition-colors"
+            >
+              ←
+            </button>
+            <div
+              ref={popularCarouselRef}
+              className="flex gap-4 overflow-x-auto overflow-y-hidden pb-2 scroll-smooth snap-x snap-mandatory scrollbar-hide"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {(popularVideos.length > 0 ? popularVideos : genres.flatMap((g) => g.videos).slice(0, 10)).map((video) => (
+                <div key={video.id} className="shrink-0 w-[180px] md:w-[200px] snap-start">
+                  <VideoCard video={video} onSelect={() => setSelectedVideo(video)} />
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              aria-label="Siguiente"
+              onClick={() => popularCarouselRef.current?.scrollBy({ left: 320, behavior: 'smooth' })}
+              className="hidden md:flex shrink-0 w-10 h-10 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue hover:bg-bear-blue/40 transition-colors"
+            >
+              →
+            </button>
+          </div>
+          {popularVideos.length === 0 && !loading && (
+            <p className="text-gray-500 text-sm mt-2">Pronto aparecerán los más descargados.</p>
+          )}
+        </div>
+      </section>
+
+      {/* ÚLTIMA DESCARGA (solo si el usuario está logueado y tiene al menos una) */}
+      {lastDownloaded && (
+        <section className="py-6 px-4 bg-black/30 border-b border-white/5">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-lg font-bold text-bear-blue mb-3">Última descarga</h2>
+            <div className="flex justify-start">
+              <div className="w-[160px] md:w-[180px] shrink-0">
+                <VideoCard video={lastDownloaded} onSelect={() => setSelectedVideo(lastDownloaded)} />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ==========================================
           PREVIEW DE VIDEOS - 6 TARJETAS + PDF

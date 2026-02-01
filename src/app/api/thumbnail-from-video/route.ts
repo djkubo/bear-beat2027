@@ -10,6 +10,18 @@ import { promisify } from 'util'
 const execAsync = promisify(exec)
 const BUNNY_PACK_PREFIX = process.env.BUNNY_PACK_PATH_PREFIX || 'packs/enero-2026'
 const MAX_VIDEO_CHUNK = 12 * 1024 * 1024 // 12 MB para poder extraer frame ~1s
+const MAX_CONCURRENT_GENERATIONS = 3 // Evitar saturar el server con muchas peticiones ffmpeg a la vez
+
+const activeGenerations = { count: 0 }
+const pathsInProgress = new Set<string>()
+
+function redirectToPlaceholder(req: NextRequest) {
+  const artist = req.nextUrl.searchParams.get('artist') || ''
+  const title = req.nextUrl.searchParams.get('title') || ''
+  return NextResponse.redirect(
+    new URL(`/api/placeholder/thumb?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`, req.url)
+  )
+}
 
 /**
  * GET /api/thumbnail-from-video?path=Genre/Video.mp4
@@ -24,6 +36,12 @@ export async function GET(req: NextRequest) {
   }
   const sanitized = pathParam.replace(/^\//, '')
   const pathJpg = sanitized.replace(/\.(mp4|mov|avi|mkv)$/i, '.jpg')
+
+  // Límite de concurrencia: no lanzar más de N generaciones a la vez
+  if (pathsInProgress.has(sanitized)) return redirectToPlaceholder(req)
+  if (activeGenerations.count >= MAX_CONCURRENT_GENERATIONS) return redirectToPlaceholder(req)
+  pathsInProgress.add(sanitized)
+  activeGenerations.count += 1
 
   const tmpDir = os.tmpdir()
   const id = Math.random().toString(36).slice(2, 10)
@@ -51,7 +69,7 @@ export async function GET(req: NextRequest) {
     const signedUrl = generateSignedUrl(`${BUNNY_PACK_PREFIX}/${sanitized}`, 300)
     const res = await fetch(signedUrl, {
       headers: { Range: `bytes=0-${MAX_VIDEO_CHUNK - 1}` },
-      signal: AbortSignal.timeout(25000),
+      signal: AbortSignal.timeout(18000),
     })
     if (!res.ok) throw new Error(`Video fetch: ${res.status}`)
     const buf = Buffer.from(await res.arrayBuffer())
@@ -84,12 +102,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL(`/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`, req.url))
   } catch (e) {
     console.warn('thumbnail-from-video:', e)
-    const artist = req.nextUrl.searchParams.get('artist') || ''
-    const title = req.nextUrl.searchParams.get('title') || ''
-    return NextResponse.redirect(
-      new URL(`/api/placeholder/thumb?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`, req.url)
-    )
+    return redirectToPlaceholder(req)
   } finally {
+    pathsInProgress.delete(sanitized)
+    activeGenerations.count = Math.max(0, activeGenerations.count - 1)
     try {
       if (fs.existsSync(tmpVideo)) fs.unlinkSync(tmpVideo)
     } catch {

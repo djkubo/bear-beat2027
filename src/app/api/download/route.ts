@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     
     const { data: purchases, error } = await supabase
       .from('purchases')
-      .select('id')
+      .select('id, pack_id')
       .eq('user_id', user.id)
     
     if (error || !purchases || purchases.length === 0) {
@@ -58,6 +58,13 @@ export async function GET(req: NextRequest) {
     if (USE_BUNNY) {
       const bunnyPath = `${BUNNY_PACK_PREFIX}/${sanitizedPath}`
       const signedUrl = generateSignedUrl(bunnyPath, 3600, process.env.NEXT_PUBLIC_APP_URL)
+      // Registrar descarga para "Los más populares" y "Última descarga"
+      await supabase.from('downloads').insert({
+        user_id: user.id,
+        pack_id: purchases[0].pack_id,
+        file_path: sanitizedPath,
+        download_method: 'web',
+      }).then(() => {}).catch(() => {})
       return NextResponse.redirect(signedUrl)
     }
     
