@@ -4,9 +4,12 @@ import Script from 'next/script'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 
-// Para evitar "unavailable due to traffic permission settings" en Meta, pon NEXT_PUBLIC_META_PIXEL_DISABLED=true
+// En producción no cargar el pixel por defecto (evita "unavailable" en consola). Para activar: NEXT_PUBLIC_META_PIXEL_ENABLED=true
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || '1325763147585869'
 const META_PIXEL_DISABLED = process.env.NEXT_PUBLIC_META_PIXEL_DISABLED === 'true'
+const META_PIXEL_ENABLED_IN_PROD = process.env.NEXT_PUBLIC_META_PIXEL_ENABLED === 'true'
+const IS_PROD = process.env.NODE_ENV === 'production'
+const DONT_LOAD_PIXEL = META_PIXEL_DISABLED || !META_PIXEL_ID || (IS_PROD && !META_PIXEL_ENABLED_IN_PROD)
 
 // Declaración de tipos para fbq
 declare global {
@@ -102,8 +105,8 @@ export function MetaPixel() {
     }
   }, [pathname, searchParams])
 
-  // No cargar pixel si está deshabilitado o no hay ID (evita errores "unavailable" en consola)
-  if (META_PIXEL_DISABLED || !META_PIXEL_ID) return null
+  // No cargar pixel si está deshabilitado, no hay ID, o en producción sin ENABLED (evita "unavailable" en consola)
+  if (DONT_LOAD_PIXEL) return null
 
   return (
     <>

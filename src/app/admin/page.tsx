@@ -6,8 +6,11 @@ import { SyncVideosFtpButton } from './SyncVideosFtpButton'
 
 export default async function AdminDashboardPage() {
   const supabase = await createServerClient()
-  
-  const { data: { session } } = await supabase.auth.getSession()
+  let { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) session = { user } as typeof session
+  }
   const user = session?.user
   if (!user) redirect('/login')
   

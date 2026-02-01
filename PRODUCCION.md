@@ -89,7 +89,15 @@ Incluye: tablas, RLS, políticas, `is_admin()`, `get_admin_stats()`, géneros, p
 npm run db:setup
 ```
 
-**Crear admin (en Supabase SQL Editor o tras registro):**
+**Crear admin y dar compra de prueba (test@bearbeat.com):**  
+Ejecuta en Supabase → SQL Editor el archivo **`supabase/FIX_TEST_USER_ADMIN_AND_PURCHASE.sql`**. Ese script:
+1. Sincroniza el usuario de Auth a `public.users` y le pone `role = 'admin'`.
+2. Le asigna una compra del pack `enero-2026` para que pueda descargar.
+3. (Opcional) Crea un trigger para que futuros usuarios de Auth tengan fila en `public.users`.
+
+Si el usuario no existe en Auth, créalo antes en **Authentication > Users > Add user** (email + contraseña).
+
+**Solo marcar admin (si ya existe en public.users):**
 ```sql
 UPDATE users SET role = 'admin' WHERE email = 'tu@email.com';
 ```
@@ -183,9 +191,10 @@ Ninguna clave debe estar hardcodeada en el código; todas vienen de variables de
 5. **Comprobar**
    - https://bear-beat2027.onrender.com
    - https://bear-beat2027.onrender.com/contenido (listado de videos si hiciste sync).
-   - https://bear-beat2027.onrender.com/admin (con usuario admin; si no hay sesión redirige a `/login?redirect=/admin`).
+   - https://bear-beat2027.onrender.com/admin (con usuario admin; ejecuta `supabase/FIX_TEST_USER_ADMIN_AND_PURCHASE.sql` si no entras).
    - https://bear-beat2027.onrender.com/dashboard (con usuario logueado).
-   - Descarga: sesión y compra se validan con cookies; si falla, ver middleware y auth callback (DOCUMENTACION_COMPLETA.md §19).
+   - Descarga: requiere sesión + compra; mismo script da compra a test@bearbeat.com.
+   - **Demos:** en producción los demos se sirven por proxy FTP; en Render deben estar `FTP_HOST`, `FTP_USER`, `FTP_PASSWORD` para que funcionen.
 
 ---
 

@@ -7,11 +7,14 @@ export default async function AdminLayout({
   children: React.ReactNode
 }) {
   const supabase = await createServerClient()
-  
-  // getSession() lee la cookie sin refrescar; en Server Components getUser() puede fallar al refrescar
-  const { data: { session } } = await supabase.auth.getSession()
+  // getSession() primero; si no hay sesión (ej. cookie no leída en prod), intentar getUser() una vez
+  let { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) session = { user } as typeof session
+  }
   const user = session?.user
-  
+
   if (!user) {
     redirect('/login?redirect=/admin')
   }

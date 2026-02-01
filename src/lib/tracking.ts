@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/client'
 import {
   fbTrackPageView,
   fbTrackViewContent,
@@ -98,42 +97,34 @@ export async function trackEvent({
   phone,
 }: TrackEventParams) {
   try {
-    const supabase = createClient()
     const sessionId = getSessionId()
     const browserInfo = getBrowserInfo()
-    
-    // Obtener atribución (de dónde viene el usuario)
     const attribution = getAttributionForAPI()
     const trafficSource = getTrafficSource()
-    
-    // 1. Guardar en Supabase con atribución (insert defensivo: no romper si la tabla/RLS falla)
-    const { error: insertError } = await supabase.from('user_events').insert({
-      session_id: sessionId?.slice(0, 255) || null,
-      user_id: userId || null,
-      event_type: String(eventType).slice(0, 50),
-      event_name: eventName ? String(eventName).slice(0, 255) : null,
-      event_data: {
-        ...(typeof eventData === 'object' && eventData !== null ? eventData : {}),
-        attribution: {
-          source: trafficSource?.source,
-          medium: trafficSource?.medium,
-          campaign: trafficSource?.campaign,
-          is_ad: trafficSource?.isAd,
-          display_name: trafficSource?.displayName,
+
+    // 1. Guardar evento vía API (evita 400 directo a Supabase desde el cliente)
+    fetch('/api/track-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        eventType,
+        eventName,
+        eventData: {
+          ...(typeof eventData === 'object' && eventData !== null ? eventData : {}),
+          attribution: {
+            source: trafficSource?.source,
+            medium: trafficSource?.medium,
+            campaign: trafficSource?.campaign,
+            is_ad: trafficSource?.isAd,
+            display_name: trafficSource?.displayName,
+          },
+          pageUrl: browserInfo.pageUrl,
+          referrer: browserInfo.referrer,
         },
-      },
-      page_url: browserInfo.pageUrl ? String(browserInfo.pageUrl).slice(0, 2048) : null,
-      referrer: browserInfo.referrer ? String(browserInfo.referrer).slice(0, 2048) : null,
-      user_agent: browserInfo.userAgent ? String(browserInfo.userAgent).slice(0, 512) : null,
-      utm_source: attribution?.utm_source?.slice(0, 100) || null,
-      utm_medium: attribution?.utm_medium?.slice(0, 100) || null,
-      utm_campaign: attribution?.utm_campaign?.slice(0, 255) || null,
-    })
-    if (insertError && insertError.code !== '23505') {
-      // Ignorar 400/RLS en silencio para no llenar consola; 23505 = duplicate
-      if (process.env.NODE_ENV === 'development') console.warn('user_events insert:', insertError.message)
-    }
-    
+        userId: userId || undefined,
+      }),
+    }).catch(() => {})
+
     // 2. Enviar a ManyChat si tenemos email o teléfono
     const userEmail = email || getUserEmail()
     const userPhone = phone || getUserPhone()

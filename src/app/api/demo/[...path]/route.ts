@@ -29,19 +29,24 @@ async function streamFromFtp(
     return null
   }
 
-  const remotePath = decodeURIComponent(filePath)
+  const decoded = decodeURIComponent(filePath)
+  const normalized = decoded.replace(/\u2013/g, '-') // en dash → guión
+  let pathToUse = normalized
   let fileSize: number
   try {
-    fileSize = await client.size(remotePath)
+    fileSize = await client.size(normalized)
   } catch {
-    try { client.close() } catch { /* ignore */ }
-    return null
+    try {
+      fileSize = await client.size(decoded)
+      pathToUse = decoded
+    } catch {
+      try { client.close() } catch { /* ignore */ }
+      return null
+    }
   }
 
   const pass = new PassThrough()
   let start = 0
-  let end = fileSize - 1
-  let status: 200 | 206 = 200
   const headers: Record<string, string> = {
     'Content-Type': 'video/mp4',
     'Accept-Ranges': 'bytes',
@@ -50,18 +55,18 @@ async function streamFromFtp(
     'X-Content-Type-Options': 'nosniff',
   }
 
+  let status: 200 | 206 = 200
   if (range) {
     const parts = range.replace(/bytes=/, '').split('-')
     start = parseInt(parts[0], 10) || 0
     status = 206
-    const lengthFromStart = fileSize - start
     headers['Content-Range'] = `bytes ${start}-${fileSize - 1}/${fileSize}`
-    headers['Content-Length'] = String(lengthFromStart)
+    headers['Content-Length'] = String(fileSize - start)
   } else {
     headers['Content-Length'] = String(fileSize)
   }
 
-  client.downloadTo(pass, remotePath, start).catch((err) => pass.destroy(err)).finally(() => {
+  client.downloadTo(pass, pathToUse, start).catch((err) => pass.destroy(err)).finally(() => {
     try { client.close() } catch { /* ignore */ }
   })
   return { status, stream: pass, headers }
@@ -130,6 +135,15 @@ export async function GET(
     }
 
     // 2) Producción: proxy desde FTP
+    const ftpHost = process.env.FTP_HOST || process.env.HETZNER_FTP_HOST
+    const ftpUser = process.env.FTP_USER || process.env.HETZNER_FTP_USER
+    const ftpPassword = process.env.FTP_PASSWORD || process.env.HETZNER_FTP_PASSWORD
+    if (!ftpHost || !ftpUser || !ftpPassword) {
+      return NextResponse.json(
+        { error: 'Demos no disponibles', reason: 'Configura FTP_HOST, FTP_USER y FTP_PASSWORD en Render' },
+        { status: 503 }
+      )
+    }
     const range = req.headers.get('range')
     const ftpResult = await streamFromFtp(filePath, range)
     if (ftpResult) {
