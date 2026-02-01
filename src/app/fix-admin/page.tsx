@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createBypassToken } from '@/lib/admin-bypass'
 
 const ALLOWED_EMAIL = 'test@bearbeat.com'
 
@@ -100,17 +101,18 @@ export default async function FixAdminPage({
           </Box>
         )
       }
+      const bypassToken = createBypassToken()
       return (
         <Box>
           <h1 className="text-xl font-semibold mb-2">Listo</h1>
           <p className="text-green-600 text-sm mb-4">
-            Admin asignado a {ALLOWED_EMAIL}. Inicia sesión y entra a /admin.
+            Admin asignado a {ALLOWED_EMAIL}. Entra al panel (válido 15 min sin login).
           </p>
           <Link
-            href="/login?redirect=/admin"
+            href={bypassToken ? `/admin-enter?t=${bypassToken}` : '/login?redirect=/admin'}
             className="inline-block px-4 py-2 bg-bear-blue text-white rounded-lg font-medium"
           >
-            Ir a iniciar sesión →
+            {bypassToken ? 'Entrar al panel admin →' : 'Ir a iniciar sesión →'}
           </Link>
         </Box>
       )

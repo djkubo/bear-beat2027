@@ -1,13 +1,20 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createServerClient } from '@/lib/supabase/server'
+import { verifyBypassCookie, COOKIE_NAME } from '@/lib/admin-bypass'
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const cookieStore = await cookies()
+  const bypassCookie = cookieStore.get(COOKIE_NAME)?.value
+  if (bypassCookie && verifyBypassCookie(bypassCookie)) {
+    return <>{children}</>
+  }
+
   const supabase = await createServerClient()
-  // getUser() es la fuente fiable (valida JWT). getSession() como fallback por si hay diferencia de contexto.
   const { data: { user: userFromGetUser } } = await supabase.auth.getUser()
   let user = userFromGetUser
   if (!user) {
@@ -18,18 +25,16 @@ export default async function AdminLayout({
   if (!user) {
     redirect('/login?redirect=/admin')
   }
-  
-  // Verificar que sea admin
+
   const { data: userData } = await supabase
     .from('users')
     .select('role')
     .eq('id', user.id)
     .single()
-  
-  // Si no es admin, redirigir al dashboard de cliente
+
   if (userData?.role !== 'admin') {
     redirect('/dashboard')
   }
-  
+
   return <>{children}</>
 }

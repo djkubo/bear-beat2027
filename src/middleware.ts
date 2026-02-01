@@ -1,12 +1,24 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { verifyBypassCookieEdge, COOKIE_NAME } from '@/lib/admin-bypass-edge'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: { headers: request.headers },
   })
 
+  const pathname = request.nextUrl.pathname
+
   try {
+    // Rutas /admin: permitir si hay cookie de bypass (tras /fix-admin cuando la sesión no persiste)
+    if (pathname.startsWith('/admin')) {
+      const bypassCookie = request.cookies.get(COOKIE_NAME)?.value
+      const secret = process.env.FIX_ADMIN_SECRET
+      if (bypassCookie && secret && (await verifyBypassCookieEdge(bypassCookie, secret))) {
+        return response
+      }
+    }
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -24,17 +36,13 @@ export async function middleware(request: NextRequest) {
       }
     )
 
-    // Refrescar sesión (getUser valida/refresca el token)
     const { data: { user } } = await supabase.auth.getUser()
-    const pathname = request.nextUrl.pathname
 
-    // Rutas /admin: si no hay usuario, redirigir a login desde aquí (mismo contexto de cookies que el layout)
     if (pathname.startsWith('/admin')) {
       if (!user) {
         const redirectUrl = new URL('/login', request.url)
         redirectUrl.searchParams.set('redirect', '/admin')
         const redirectRes = NextResponse.redirect(redirectUrl)
-        // Copiar cookies actualizadas al redirect para no perder sesión refrescada
         response.cookies.getAll().forEach((c) => redirectRes.cookies.set(c.name, c.value))
         return redirectRes
       }
