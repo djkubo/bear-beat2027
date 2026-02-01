@@ -104,10 +104,11 @@ export async function GET(req: NextRequest) {
       console.log('Error verificando acceso:', e)
     }
 
-    // En producción (Render) siempre leer desde Supabase; en local, disco si existe
-    const useDb = process.env.NODE_ENV === 'production' || process.env.USE_VIDEOS_FROM_DB === 'true'
+    // En producción (Render) OBLIGATORIAMENTE solo DB; en local, DB si USE_VIDEOS_FROM_DB o no hay carpeta
     let structure: GenreFolder[]
-    if (useDb || !fs.existsSync(VIDEOS_BASE_PATH)) {
+    if (process.env.NODE_ENV === 'production') {
+      structure = await readVideoStructureFromDb(supabase, packId, hasAccess)
+    } else if (process.env.USE_VIDEOS_FROM_DB === 'true' || !fs.existsSync(VIDEOS_BASE_PATH)) {
       structure = await readVideoStructureFromDb(supabase, packId, hasAccess)
     } else {
       structure = await readVideoStructure(VIDEOS_BASE_PATH, hasAccess, withMetadata)

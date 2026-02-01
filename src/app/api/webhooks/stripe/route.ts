@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   // Procesar el evento
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as any
-    const packId = Number(session.metadata.pack_id)
+    const packId = Math.max(1, parseInt(session.metadata?.pack_id || '1', 10) || 1)
 
     try {
       // 1. Crear registro de COMPRA PENDIENTE (pago exitoso, datos pendientes)
@@ -122,13 +122,4 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ received: true })
-}
-
-function generateSecurePassword(length: number = 16): string {
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
-  let password = ''
-  for (let i = 0; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length))
-  }
-  return password
 }

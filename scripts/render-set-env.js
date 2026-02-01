@@ -98,6 +98,7 @@ async function main() {
   }
 
   console.log('\n✅ Listo. Haz un Manual Deploy en Render para que el build use las nuevas variables.')
+  console.log('   Si usas FTP real (Hetzner) o descargas por Bunny, añade HETZNER_ROBOT_*, HETZNER_STORAGEBOX_ID y BUNNY_* en .env.local y vuelve a ejecutar deploy:env, o configúralas en Render → Environment.')
 }
 
 main().catch((e) => {

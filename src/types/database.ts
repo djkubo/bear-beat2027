@@ -273,6 +273,59 @@ export interface Database {
           created_at?: string
         }
       }
+      pending_purchases: {
+        Row: {
+          id: number
+          stripe_session_id: string | null
+          stripe_payment_intent: string | null
+          pack_id: number | null
+          amount_paid: number | null
+          currency: string | null
+          payment_provider: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          status: string | null
+          payment_status: string | null
+          user_id: string | null
+          completed_at: string | null
+          expires_at: string | null
+        }
+        Insert: {
+          id?: number
+          stripe_session_id?: string | null
+          stripe_payment_intent?: string | null
+          pack_id?: number | null
+          amount_paid?: number | null
+          currency?: string | null
+          payment_provider?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          status?: string | null
+          payment_status?: string | null
+          user_id?: string | null
+          completed_at?: string | null
+          expires_at?: string | null
+        }
+        Update: {
+          id?: number
+          stripe_session_id?: string | null
+          stripe_payment_intent?: string | null
+          pack_id?: number | null
+          amount_paid?: number | null
+          currency?: string | null
+          payment_provider?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          status?: string | null
+          payment_status?: string | null
+          user_id?: string | null
+          completed_at?: string | null
+          expires_at?: string | null
+        }
+      }
     }
   }
 }

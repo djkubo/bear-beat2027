@@ -84,19 +84,20 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient()
 
-    await admin
+    // Cast a any: el cliente tipado con Database infiere never para pending_purchases/purchases en build
+    await (admin as any)
       .from('pending_purchases')
       .update({
         user_id: userId,
         status: 'completed',
         customer_email: customerEmail,
-        customer_name: name,
-        customer_phone: phone,
+        customer_name: name ?? null,
+        customer_phone: phone ?? null,
         completed_at: new Date().toISOString(),
       })
       .eq('stripe_session_id', sessionId)
 
-    const { error: insertError } = await admin.from('purchases').insert({
+    const { error: insertError } = await (admin as any).from('purchases').insert({
       user_id: userId,
       pack_id: packId,
       amount_paid: amountPaid,
