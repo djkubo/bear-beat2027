@@ -66,10 +66,9 @@ Si en producción la sesión no llega al servidor (te pide login al entrar a /fi
 
 1. En **Render** → tu servicio → **Environment** → añade una variable:
    - **Key:** `FIX_ADMIN_SECRET`
-   - **Value:** una contraseña larga y aleatoria (ej. `abc123xyz789`). Guárdala en un lugar seguro.
+   - **Value:** `bearbeat-admin-2027-secreto` (guardado también en `.env.example`).
 2. Guarda y espera a que se redepliegue.
-3. En el navegador abre: `https://bear-beat2027.onrender.com/fix-admin?token=abc123xyz789`  
-   (sustituye `abc123xyz789` por el valor que pusiste en `FIX_ADMIN_SECRET`).
+3. En el navegador abre: `https://bear-beat2027.onrender.com/fix-admin?token=bearbeat-admin-2027-secreto`
 4. Deberías ver "Listo. Admin asignado a test@bearbeat.com".
 5. Entra a **https://bear-beat2027.onrender.com/login**, inicia sesión con test@bearbeat.com y luego a **/admin**.
 
