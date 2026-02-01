@@ -138,8 +138,8 @@ async function getStatsAndPreview(
     .order('artist')
     .limit(6)
 
-  type Row = (typeof previewRows)[0] & { genres: { name: string; slug: string } | null }
-  const previewVideos: VideoFile[] = (previewRows || []).map((row: Row) => {
+  type PreviewRow = NonNullable<typeof previewRows>[number] & { genres: { name: string; slug: string } | null }
+  const previewVideos: VideoFile[] = (previewRows || []).map((row: PreviewRow) => {
     const folderFromPath = row.file_path?.split('/')[0]
     const genreName = row.genres?.name ?? folderFromPath ?? 'Sin género'
     const genreSlug = (row.genres?.slug ?? genreName.toLowerCase().replace(/\s+/g, '-').replace(/ñ/g, 'n')) as string
