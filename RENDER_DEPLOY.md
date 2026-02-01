@@ -16,6 +16,8 @@ En tu Web Service → **Settings**:
 
 El script `scripts/start.js` ya escucha en `0.0.0.0` y usa la variable `PORT` de Render.
 
+**Portadas de video (thumbnails):** La app puede generar portadas desde el MP4 (extrae un frame con ffmpeg). Para que funcione en Render, el servidor debe tener **ffmpeg**. Si usas **Docker** (Settings → Build & Deploy → Docker), el `Dockerfile` del repo ya instala ffmpeg. Si usas build nativo (Node), añade el buildpack [heroku-buildpack-ffmpeg](https://github.com/jonathanong/heroku-buildpack-ffmpeg) en Render.
+
 ---
 
 ## 2. Variables de entorno obligatorias

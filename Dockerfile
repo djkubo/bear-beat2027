@@ -1,6 +1,9 @@
 # Bear Beat - Next.js para Render
 FROM node:20-alpine AS base
 
+# ffmpeg para generar portadas desde el video (frame a 1s)
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 
 # Build args: Render debe tener NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY

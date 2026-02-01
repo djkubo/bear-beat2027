@@ -114,6 +114,7 @@ export async function POST() {
       file_path: string
       file_size: number
       resolution: string
+      thumbnail_url: string | null
       key: string | null
       bpm: string | null
     }> = []
@@ -143,10 +144,22 @@ export async function POST() {
         try {
           const fileList = await ftpClient.list(genreName)
           const videoFiles = fileList.filter((f) => !f.isDirectory && /\.(mp4|mov|avi|mkv)$/i.test(f.name))
+          const imageNames = new Set(
+            fileList.filter((f) => !f.isDirectory && /\.(jpg|jpeg|png|webp)$/i.test(f.name)).map((f) => f.name)
+          )
           const genreId: number | null = genreByName.get(genreName.toLowerCase()) ?? null
 
           for (const file of videoFiles) {
             const relativePath = `${genreName}/${file.name}`
+            const baseName = file.name.replace(/\.(mp4|mov|avi|mkv)$/i, '')
+            const thumbJpg = `${baseName}.jpg`
+            const thumbPng = `${baseName}.png`
+            const thumbWebp = `${baseName}.webp`
+            let thumbnail_url: string | null = null
+            if (imageNames.has(thumbJpg)) thumbnail_url = `${genreName}/${thumbJpg}`
+            else if (imageNames.has(thumbPng)) thumbnail_url = `${genreName}/${thumbPng}`
+            else if (imageNames.has(thumbWebp)) thumbnail_url = `${genreName}/${thumbWebp}`
+
             const { key, bpm, nameWithoutKeyBpm } = parseKeyBpmFromFilename(file.name)
             const parts = nameWithoutKeyBpm.split(' - ')
             const artist = parts.length >= 2 ? parts[0].trim() : nameWithoutKeyBpm
@@ -162,6 +175,7 @@ export async function POST() {
               file_path: relativePath,
               file_size: fileSize,
               resolution: '1080p',
+              thumbnail_url,
               key,
               bpm,
             })

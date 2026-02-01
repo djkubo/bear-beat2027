@@ -26,7 +26,22 @@ Después de la migración, vuelve a ejecutar el sync desde FTP para que se relle
 
 ## Duration y portadas (thumbnails)
 
-El FTP solo da nombre y tamaño; **no** podemos obtener duration ni generar portadas desde el servidor (Render) sin tener los archivos.
+### Portadas automáticas desde el video (producción)
+
+En producción, si un video no tiene `thumbnail_url` en la DB, la app intenta **generar la portada desde el propio MP4**:
+
+1. Al cargar la lista de videos, se devuelve la URL `/api/thumbnail-from-video?path=Género/Video.mp4`.
+2. La primera vez que el navegador pide esa URL, el servidor:
+   - Descarga los primeros ~12 MB del video desde Bunny CDN.
+   - Usa **ffmpeg** para extraer un frame a 1 segundo (o el primer frame si falla).
+   - Sube la imagen a Bunny Storage (misma ruta que el video, extensión `.jpg`).
+   - Actualiza `thumbnail_url` en la tabla `videos`.
+   - Redirige a la imagen en el CDN.
+3. Las siguientes veces ese video ya tiene `thumbnail_url` en la DB, así que se sirve la imagen directamente desde el CDN.
+
+**Requisito:** El servidor debe tener **ffmpeg** instalado. Si despliegas con **Docker** (Render → Settings → Dockerfile), el `Dockerfile` del proyecto ya incluye `apk add ffmpeg`. Si usas build nativo (sin Docker), añade un buildpack que instale ffmpeg (por ejemplo [heroku-buildpack-ffmpeg](https://github.com/jonathanong/heroku-buildpack-ffmpeg)) en Render → Settings → Build & Deploy → Buildpack.
+
+Si ffmpeg no está disponible o falla la descarga, se muestra el placeholder con las iniciales del artista.
 
 ### Opción 1: Script local con ffprobe/ffmpeg
 

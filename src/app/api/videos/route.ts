@@ -60,6 +60,29 @@ interface GenreFolder {
   videos: VideoFile[]
 }
 
+/** Construye URL de portada: DB (URL absoluta o path → thumbnail-cdn), o en prod generar desde video (ffmpeg) o placeholder, o local ffmpeg. */
+function buildThumbnailUrl(
+  thumbnailUrlFromDb: string | null,
+  relativePath: string,
+  artist: string | null,
+  title: string | null
+): string {
+  if (thumbnailUrlFromDb) {
+    if (thumbnailUrlFromDb.startsWith('http://') || thumbnailUrlFromDb.startsWith('https://')) {
+      return thumbnailUrlFromDb
+    }
+    return `/api/thumbnail-cdn?path=${encodeURIComponent(thumbnailUrlFromDb)}`
+  }
+  if (process.env.NODE_ENV === 'production') {
+    // Generar portada desde el video (extrae frame con ffmpeg, sube a Bunny, guarda en DB). Si falla, redirige a placeholder.
+    const q = new URLSearchParams({ path: relativePath })
+    if (artist) q.set('artist', artist)
+    if (title) q.set('title', title)
+    return `/api/thumbnail-from-video?${q.toString()}`
+  }
+  return `/api/thumbnail/${encodeURIComponent(relativePath)}`
+}
+
 /**
  * GET /api/videos
  */
@@ -224,11 +247,8 @@ async function readVideoStructureFromDb(
         sizeFormatted: formatBytes(size),
         path: relativePath,
         genre: genreName,
-        // Portada: DB, o en local thumbnail por path; en producción sin thumbnail_url usamos placeholder por artista/título para que siempre haya imagen.
-        thumbnailUrl: row.thumbnail_url
-          || (process.env.NODE_ENV === 'production'
-            ? `/api/placeholder/thumb?artist=${encodeURIComponent(row.artist || '')}&title=${encodeURIComponent(row.title || '')}`
-            : `/api/thumbnail/${encodeURIComponent(relativePath)}`),
+        // Portada: 1) URL en DB (absoluta o path); 2) en prod intentar imagen en CDN (mismo path .jpg); 3) placeholder o local ffmpeg.
+        thumbnailUrl: buildThumbnailUrl(row.thumbnail_url, relativePath, row.artist, row.title),
         canPreview: DEMOS_ENABLED,
         canDownload: hasAccess,
         durationSeconds: row.duration ?? undefined,
