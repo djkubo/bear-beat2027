@@ -224,8 +224,11 @@ async function readVideoStructureFromDb(
         sizeFormatted: formatBytes(size),
         path: relativePath,
         genre: genreName,
-        // En producción no hay archivos locales: /api/thumbnail redirige a favicon. Si no hay thumbnail_url en DB, no pedir thumbnail (front muestra placeholder).
-        thumbnailUrl: row.thumbnail_url || (process.env.NODE_ENV === 'production' ? undefined : `/api/thumbnail/${encodeURIComponent(relativePath)}`),
+        // Portada: DB, o en local thumbnail por path; en producción sin thumbnail_url usamos placeholder por artista/título para que siempre haya imagen.
+        thumbnailUrl: row.thumbnail_url
+          || (process.env.NODE_ENV === 'production'
+            ? `/api/placeholder/thumb?artist=${encodeURIComponent(row.artist || '')}&title=${encodeURIComponent(row.title || '')}`
+            : `/api/thumbnail/${encodeURIComponent(relativePath)}`),
         canPreview: DEMOS_ENABLED,
         canDownload: hasAccess,
         durationSeconds: row.duration ?? undefined,
