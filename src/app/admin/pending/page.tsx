@@ -24,6 +24,14 @@ export default async function AdminPendingPurchasesPage() {
     .order('completed_at', { ascending: false })
     .limit(20)
 
+  // Obtener eventos recientes (user_events)
+  const { data: eventsData } = await supabase
+    .from('user_events')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(50)
+  const events = eventsData ?? []
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-bear-blue/5 via-background to-bear-black/5">
       {/* Header */}
