@@ -60,20 +60,12 @@ interface GenreFolder {
   videos: VideoFile[]
 }
 
-/** Base URL para portadas: usa X-Forwarded-Host (dominio real tras proxy) para no devolver 0.0.0.0. */
-function getBaseUrlFromRequest(req: NextRequest): string {
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host')
-  if (host && !/^(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(host)) {
-    const proto = req.headers.get('x-forwarded-proto') || 'https'
-    return `${proto}://${host}`.replace(/\/$/, '')
-  }
-  if (process.env.NODE_ENV === 'production') {
-    return 'https://bear-beat2027.onrender.com'
-  }
+/** URLs relativas: el navegador resuelve contra el origen actual (funciona en cualquier dominio sin hardcodear). */
+function getBaseUrlForThumbnails(): string {
   return ''
 }
 
-/** Construye URL de portada; baseUrl = dominio real de la petición (evita 0.0.0.0). En producción sin thumbnail en DB usamos placeholder directo para que cargue al instante (thumbnail-from-video puede fallar por timeout/ffmpeg). */
+/** Construye URL de portada (siempre relativa: /api/placeholder/thumb?... o /api/thumbnail/...). En producción sin thumbnail en DB usamos placeholder para cargar al instante. */
 function buildThumbnailUrl(
   thumbnailUrlFromDb: string | null,
   relativePath: string,
@@ -99,6 +91,119 @@ function buildThumbnailUrl(
 }
 
 /**
+ * Ruta ligera: solo conteos + 6 videos de preview (para landing). Evita cargar 1000+ filas y construir thumbnails.
+ */
+async function getStatsAndPreview(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  packId: string,
+  hasAccess: boolean,
+  baseUrl: string
+): Promise<{ totalVideos: number; totalSize: number; genreCount: number; totalPurchases: number; previewGenres: GenreFolder[] }> {
+  const { data: pack } = await supabase.from('packs').select('id').eq('slug', packId).single()
+  if (!pack) return { totalVideos: 0, totalSize: 0, genreCount: 0, totalPurchases: 0, previewGenres: [] }
+
+  const [videosRes, purchasesRes] = await Promise.all([
+    supabase.from('videos').select('*', { count: 'exact', head: true }).eq('pack_id', pack.id),
+    supabase.from('purchases').select('*', { count: 'exact', head: true }).eq('pack_id', pack.id),
+  ])
+  const totalVideos = videosRes.count ?? 0
+  const totalPurchasesCount = purchasesRes.count ?? 0
+
+  let totalSize = 0
+  const genreIds = new Set<string>()
+  const PAGE_SIZE = 1000
+  let offset = 0
+  let hasMore = true
+  while (hasMore) {
+    const { data: page } = await supabase
+      .from('videos')
+      .select('file_size, genre_id')
+      .eq('pack_id', pack.id)
+      .range(offset, offset + PAGE_SIZE - 1)
+    if (!page?.length) break
+    for (const row of page) {
+      totalSize += Number(row.file_size) || 0
+      if (row.genre_id) genreIds.add(String(row.genre_id))
+    }
+    hasMore = page.length === PAGE_SIZE
+    offset += PAGE_SIZE
+    if (offset >= 10000) break
+  }
+
+  const { data: previewRows } = await supabase
+    .from('videos')
+    .select('id, title, artist, duration, resolution, file_size, file_path, thumbnail_url, genre_id, key, bpm, genres(name, slug)')
+    .eq('pack_id', pack.id)
+    .order('artist')
+    .limit(6)
+
+  type Row = (typeof previewRows)[0] & { genres: { name: string; slug: string } | null }
+  const previewVideos: VideoFile[] = (previewRows || []).map((row: Row) => {
+    const folderFromPath = row.file_path?.split('/')[0]
+    const genreName = row.genres?.name ?? folderFromPath ?? 'Sin género'
+    const genreSlug = (row.genres?.slug ?? genreName.toLowerCase().replace(/\s+/g, '-').replace(/ñ/g, 'n')) as string
+    const fileName = row.file_path?.split('/').pop() || row.title || `video-${row.id}`
+    const relativePath = row.file_path || `${genreName}/${fileName}`
+    const size = Number(row.file_size) || 0
+    return {
+      id: String(row.id),
+      name: fileName,
+      displayName: row.artist ? `${row.artist} - ${row.title}` : row.title,
+      artist: row.artist || row.title,
+      title: row.title,
+      type: 'video' as const,
+      size,
+      sizeFormatted: formatBytes(size),
+      path: relativePath,
+      genre: genreName,
+      thumbnailUrl: buildThumbnailUrl(row.thumbnail_url, relativePath, row.artist, row.title, baseUrl),
+      canPreview: DEMOS_ENABLED,
+      canDownload: hasAccess,
+      durationSeconds: row.duration ?? undefined,
+      duration: row.duration ? formatDuration(row.duration) : undefined,
+      resolution: row.resolution ?? undefined,
+      key: row.key ?? undefined,
+      bpm: row.bpm ?? undefined,
+    }
+  })
+
+  // Nombres de géneros para el marquee (sin traer todos los videos)
+  const genreIdsList = Array.from(genreIds)
+  const { data: genreRows } = genreIdsList.length
+    ? await supabase.from('genres').select('id, name, slug').in('id', genreIdsList)
+    : { data: [] }
+  const estimatedPerGenre = genreIds.size > 0 ? Math.ceil(totalVideos / genreIds.size) : 0
+  const marqueeGenres: GenreFolder[] = (genreRows || []).map((g: { id: string; name: string; slug: string }) => ({
+    id: (g.slug || g.name.toLowerCase().replace(/\s+/g, '-')),
+    name: g.name,
+    type: 'folder' as const,
+    videoCount: estimatedPerGenre,
+    totalSize: 0,
+    totalSizeFormatted: '0 B',
+    videos: [],
+  }))
+  const previewGenres: GenreFolder[] = previewVideos.length
+    ? [{
+        id: 'preview',
+        name: 'Preview',
+        type: 'folder' as const,
+        videoCount: previewVideos.length,
+        totalSize: previewVideos.reduce((s, v) => s + v.size, 0),
+        totalSizeFormatted: formatBytes(previewVideos.reduce((s, v) => s + v.size, 0)),
+        videos: previewVideos,
+      }]
+    : []
+
+  return {
+    totalVideos,
+    totalSize,
+    genreCount: genreIds.size,
+    totalPurchases: totalPurchasesCount,
+    previewGenres: [...marqueeGenres, ...previewGenres],
+  }
+}
+
+/**
  * GET /api/videos
  */
 export async function GET(req: NextRequest) {
@@ -107,19 +212,20 @@ export async function GET(req: NextRequest) {
     const packId = searchParams.get('pack') || 'enero-2026'
     const genre = searchParams.get('genre')
     const withMetadata = searchParams.get('metadata') === 'true'
-    
+    const statsOnly = searchParams.get('statsOnly') === '1'
+
     // Verificar acceso del usuario
     let hasAccess = false
     let userId: string | null = null
     let userName: string | null = null
     let userEmail: string | null = null
     const supabase = await createServerClient()
-    
+
     try {
       const { data: { user } } = await supabase.auth.getUser()
       userId = user?.id || null
       userEmail = user?.email || null
-      
+
       if (user) {
         // Buscar nombre del usuario
         const { data: userProfile } = await supabase
@@ -127,15 +233,15 @@ export async function GET(req: NextRequest) {
           .select('name')
           .eq('id', user.id)
           .single()
-        
+
         userName = userProfile?.name || user.email?.split('@')[0] || null
-        
+
         // Buscar si tiene alguna compra
         const { data: purchases, error } = await supabase
           .from('purchases')
           .select('id, pack_id')
           .eq('user_id', user.id)
-        
+
         if (!error && purchases && purchases.length > 0) {
           hasAccess = true
           console.log('Usuario tiene acceso:', user.email, 'Compras:', purchases.length)
@@ -145,7 +251,38 @@ export async function GET(req: NextRequest) {
       console.log('Error verificando acceso:', e)
     }
 
-    const baseUrl = getBaseUrlFromRequest(req)
+    const baseUrl = getBaseUrlForThumbnails()
+
+    if (statsOnly) {
+      const stats = await getStatsAndPreview(supabase, packId, hasAccess, baseUrl)
+      const res = NextResponse.json({
+        success: true,
+        pack: {
+          id: packId,
+          name: 'Pack Enero 2026',
+          totalVideos: stats.totalVideos,
+          totalSize: stats.totalSize,
+          totalSizeFormatted: formatBytes(stats.totalSize),
+          genreCount: stats.genreCount,
+          totalPurchases: stats.totalPurchases,
+        },
+        genres: stats.previewGenres,
+        userId,
+        userName,
+        userEmail,
+        hasAccess,
+        userAccess: {
+          isAuthenticated: !!userId,
+          hasPurchased: hasAccess,
+          canPreview: DEMOS_ENABLED,
+          canDownload: hasAccess,
+        },
+      })
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+      res.headers.set('Pragma', 'no-cache')
+      return res
+    }
+
     // En producción (Render) OBLIGATORIAMENTE solo DB; en local, DB si USE_VIDEOS_FROM_DB o no hay carpeta
     let structure: GenreFolder[]
     if (process.env.NODE_ENV === 'production') {
@@ -224,17 +361,27 @@ async function readVideoStructureFromDb(
       return []
     }
 
-    // Supabase devuelve max 1000 por defecto; usar range() para traer hasta 10k filas
-    const { data: videosRows, error } = await supabase
-      .from('videos')
-      .select('id, title, artist, duration, resolution, file_size, file_path, thumbnail_url, genre_id, key, bpm, genres(name, slug)')
-      .eq('pack_id', pack.id)
-      .order('artist')
-      .range(0, 9999)
-
-    if (error) {
-      console.error('Error fetching videos from DB:', error)
-      return []
+    // Supabase limita a 1000 filas por petición; paginar para traer todos los videos del pack
+    const PAGE_SIZE = 1000
+    const videosRows: any[] = []
+    let offset = 0
+    let hasMore = true
+    while (hasMore) {
+      const { data: page, error } = await supabase
+        .from('videos')
+        .select('id, title, artist, duration, resolution, file_size, file_path, thumbnail_url, genre_id, key, bpm, genres(name, slug)')
+        .eq('pack_id', pack.id)
+        .order('artist')
+        .range(offset, offset + PAGE_SIZE - 1)
+      if (error) {
+        console.error('Error fetching videos from DB:', error)
+        return []
+      }
+      if (!page?.length) break
+      videosRows.push(...page)
+      hasMore = page.length === PAGE_SIZE
+      offset += PAGE_SIZE
+      if (videosRows.length >= 10000) break
     }
 
     if (!videosRows?.length) {
