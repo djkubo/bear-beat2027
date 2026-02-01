@@ -511,6 +511,15 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 - `NEXT_PUBLIC_MANYCHAT_PAGE_ID`: si no está definida, el widget de ManyChat no se carga.
 - `NEXT_PUBLIC_APP_URL`: usada en redirects de thumbnail y en callbacks; debe ser la URL pública de la app (ej. `https://bear-beat2027.onrender.com`).
 
+### 19.5 CRO embudo (landing, checkout, complete-purchase, E2E)
+- **Landing** (`src/app/page.tsx`): H1 hero "1,000 videos HD para DJs. Un pago. Descarga hoy."; subtítulo y 3 bullets (1,000 remixes HD, Descarga Web + FTP, Pago único $350 MXN); microcopy "Pago seguro (Stripe) · Garantía 30 días" bajo el CTA; sección "Para quién es / Para quién NO es" (dos columnas SÍ/NO); garantía 30 días en una línea dentro de la sección Precio. CTA principal "QUIERO ACCESO AHORA →".
+- **Checkout Stripe** (`src/app/api/create-checkout/route.ts`): metadata de sesión Stripe con `customer_email` y `customer_name` cuando el usuario está logueado (para post-pago y tracking). `success_url` ya apunta a `/complete-purchase?session_id={CHECKOUT_SESSION_ID}`.
+- **Complete-purchase** (`src/app/complete-purchase/page.tsx`): mensaje principal "¡Pago confirmado! Tu acceso está listo"; dos opciones destacadas: botón "Descargar por Web" → `/contenido` y acordeón "Datos FTP" con credenciales (host, usuario, contraseña) y botones Copiar; credenciales User/Pass visibles; para usuario nuevo (contraseña autogenerada), bloque amarillo "Guarda estos datos" con botón "Copiar Contraseña". Sin redirect automático a dashboard; el usuario permanece en la página de éxito.
+- **E2E Playwright**: `e2e/purchase-flow.spec.ts` — test corto "pasos 1-3" (landing → CTA → checkout → redirección a Stripe) y test completo (compra con tarjeta test hasta /contenido). Config en `playwright.config.ts`; proyecto Firefox por defecto; `npm run test:e2e` (servidor en 3000). Ver `docs/CRO_EMBUDO_COPY.md` para auditoría CRO y copy.
+
+### 19.6 Fixes recientes (build y tipos)
+- **complete-purchase** (2026-02): `navigator.clipboard.writeText(ftpCredentials.ftp_username)` — `ftp_username` es opcional (`string | undefined`); se usa `ftpCredentials.ftp_username ?? ''` para cumplir el tipo `string` y que el build TypeScript en Render pase.
+
 ---
 
 *Documentación generada para Bear Beat 2027. Para detalles de despliegue y checklist ver PRODUCCION.md.*
