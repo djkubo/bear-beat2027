@@ -60,24 +60,26 @@ interface GenreFolder {
   videos: VideoFile[]
 }
 
-/** Base URL pública para que las portadas carguen desde el dominio correcto (evita 0.0.0.0 en img src). */
-function getPublicBaseUrl(): string | null {
-  const u = process.env.NEXT_PUBLIC_APP_URL
-  if (typeof u === 'string' && u && !/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?(\/|$)/i.test(u)) {
-    return u.replace(/\/$/, '')
+/** Base URL para portadas: usa X-Forwarded-Host (dominio real tras proxy) para no devolver 0.0.0.0. */
+function getBaseUrlFromRequest(req: NextRequest): string {
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host')
+  if (host && !/^(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(host)) {
+    const proto = req.headers.get('x-forwarded-proto') || 'https'
+    return `${proto}://${host}`.replace(/\/$/, '')
   }
   if (process.env.NODE_ENV === 'production') {
     return 'https://bear-beat2027.onrender.com'
   }
-  return null
+  return ''
 }
 
-/** Construye URL de portada: DB (URL absoluta o path → thumbnail-cdn), o en prod generar desde video (ffmpeg) o placeholder, o local ffmpeg. */
+/** Construye URL de portada; baseUrl = dominio real de la petición (evita 0.0.0.0). */
 function buildThumbnailUrl(
   thumbnailUrlFromDb: string | null,
   relativePath: string,
   artist: string | null,
-  title: string | null
+  title: string | null,
+  baseUrl: string
 ): string {
   let urlPath: string
   if (thumbnailUrlFromDb) {
@@ -93,8 +95,7 @@ function buildThumbnailUrl(
   } else {
     urlPath = `/api/thumbnail/${encodeURIComponent(relativePath)}`
   }
-  const base = getPublicBaseUrl()
-  return base ? `${base}${urlPath}` : urlPath
+  return baseUrl ? `${baseUrl}${urlPath}` : urlPath
 }
 
 /**
@@ -144,12 +145,13 @@ export async function GET(req: NextRequest) {
       console.log('Error verificando acceso:', e)
     }
 
+    const baseUrl = getBaseUrlFromRequest(req)
     // En producción (Render) OBLIGATORIAMENTE solo DB; en local, DB si USE_VIDEOS_FROM_DB o no hay carpeta
     let structure: GenreFolder[]
     if (process.env.NODE_ENV === 'production') {
-      structure = await readVideoStructureFromDb(supabase, packId, hasAccess)
+      structure = await readVideoStructureFromDb(supabase, packId, hasAccess, baseUrl)
     } else if (process.env.USE_VIDEOS_FROM_DB === 'true' || !fs.existsSync(VIDEOS_BASE_PATH)) {
-      structure = await readVideoStructureFromDb(supabase, packId, hasAccess)
+      structure = await readVideoStructureFromDb(supabase, packId, hasAccess, baseUrl)
     } else {
       structure = await readVideoStructure(VIDEOS_BASE_PATH, hasAccess, withMetadata)
     }
@@ -212,7 +214,8 @@ export async function GET(req: NextRequest) {
 async function readVideoStructureFromDb(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   packSlug: string,
-  hasAccess: boolean
+  hasAccess: boolean,
+  baseUrl: string
 ): Promise<GenreFolder[]> {
   try {
     const { data: pack } = await supabase.from('packs').select('id, name').eq('slug', packSlug).single()
@@ -275,7 +278,7 @@ async function readVideoStructureFromDb(
         path: relativePath,
         genre: genreName,
         // Portada: 1) URL en DB (absoluta o path); 2) en prod intentar imagen en CDN (mismo path .jpg); 3) placeholder o local ffmpeg.
-        thumbnailUrl: buildThumbnailUrl(row.thumbnail_url, relativePath, row.artist, row.title),
+        thumbnailUrl: buildThumbnailUrl(row.thumbnail_url, relativePath, row.artist, row.title, baseUrl),
         canPreview: DEMOS_ENABLED,
         canDownload: hasAccess,
         durationSeconds: row.duration ?? undefined,
