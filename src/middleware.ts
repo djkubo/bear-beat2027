@@ -32,6 +32,8 @@ export async function middleware(request: NextRequest) {
       if (allowedByBypass) {
         return response
       }
+      // Para /admin sin bypass: dejar pasar; el layout (Node) lee sesión con cookies.get
+      return response
     }
 
     const isProd = process.env.NODE_ENV === 'production'
@@ -67,18 +69,6 @@ export async function middleware(request: NextRequest) {
         cookieOptions: { path: '/', sameSite: 'lax', secure: isProd },
       }
     )
-
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (pathname.startsWith('/admin')) {
-      if (!user) {
-        const redirectUrl = new URL('/login', request.url)
-        redirectUrl.searchParams.set('redirect', '/admin')
-        const redirectRes = NextResponse.redirect(redirectUrl)
-        response.cookies.getAll().forEach((c) => redirectRes.cookies.set(c.name, c.value))
-        return redirectRes
-      }
-    }
   } catch (_e) {
     // Ignorar errores; dejar que el layout decida
   }
