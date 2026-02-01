@@ -70,3 +70,23 @@ Si pasa eso, ya está todo bien.
 | Authentication → URL Configuration → **Redirect URLs** | `https://bear-beat2027.onrender.com/**` (y opcional `http://localhost:3000/**`) |
 
 Solo tienes que hacerlo una vez. Después el login en producción debería funcionar bien.
+
+---
+
+## Si aún no puedes entrar al panel admin
+
+Si ya configuraste Supabase (Site URL + Redirect URLs) pero **al ir a /admin te manda otra vez al login o al dashboard**, usa el **acceso directo** (bypass). Funciona aunque la sesión no persista.
+
+**Requisito:** En **Render** → tu servicio → **Environment** debe existir la variable **FIX_ADMIN_SECRET** con valor **bearbeat-admin-2027-secreto**. Si no está, añádela, guarda y espera el deploy.
+
+**Pasos:**
+
+1. Abre en el navegador **esta URL** (cópiala tal cual):
+   ```
+   https://bear-beat2027.onrender.com/fix-admin?token=bearbeat-admin-2027-secreto
+   ```
+2. Deberías ver un mensaje tipo "Admin asignado a test@bearbeat.com" y un botón **"Entrar al panel admin →"**.
+3. Haz **clic** en ese botón.
+4. Te llevará al panel admin. Tendrás acceso durante **15 minutos** sin tener que iniciar sesión de nuevo.
+
+Si en el paso 1 ves "Token no válido", es que **FIX_ADMIN_SECRET** no está en Render o no coincide con `bearbeat-admin-2027-secreto`. Añádela en Environment y vuelve a intentar.

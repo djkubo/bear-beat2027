@@ -524,6 +524,7 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 - **Problema:** En producción, el cliente de Supabase (`createBrowserClient` de `@supabase/ssr`) recibía solo `cookieOptions`; al hacer destructuring, `cookies` quedaba `undefined` y al usar `cookies.get` / `cookies.remove` se producía `TypeError: Cannot read properties of undefined (reading 'get'/'remove')`.
 - **Solución:** En `src/lib/supabase/client.ts` se pasa también `cookies: {}` junto con `cookieOptions`. Así la librería usa `document.cookie` en el navegador cuando no hay funciones de cookies.
 - **Configuración Supabase en producción:** Site URL y Redirect URLs deben estar configurados en Supabase (Authentication → URL Configuration). Guía paso a paso en `docs/CHECKLIST_SUPABASE_PRODUCCION.md`. Opcional: script `npm run supabase:set-auth-urls` con `SUPABASE_ACCESS_TOKEN` en `.env.local`.
+- **Entrar al admin cuando la sesión no persiste:** En Render debe existir **FIX_ADMIN_SECRET** (ej. `bearbeat-admin-2027-secreto`). Visitar `/fix-admin?token=VALOR_DE_FIX_ADMIN_SECRET` → asignar admin a test@bearbeat.com → clic en "Entrar al panel admin" → cookie de bypass 15 min. Ver `docs/CHECKLIST_SUPABASE_PRODUCCION.md` sección "Si aún no puedes entrar al panel admin". Middleware permite bypass por formato de cookie si en Edge no hay secreto; el layout (Node) verifica con secreto.
 
 ---
 

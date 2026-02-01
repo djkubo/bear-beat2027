@@ -2,6 +2,15 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifyBypassCookieEdge, COOKIE_NAME } from '@/lib/admin-bypass-edge'
 
+/** Formato cookie bypass: expiry.sign (dos partes). En Edge puede no existir FIX_ADMIN_SECRET; el layout (Node) verifica con secreto. */
+function looksLikeBypassCookie(value: string | undefined): boolean {
+  if (!value) return false
+  const parts = value.split('.')
+  if (parts.length !== 2) return false
+  const expiry = parseInt(parts[0], 10)
+  return !isNaN(expiry) && expiry > 0
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: { headers: request.headers },
@@ -14,7 +23,13 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/admin')) {
       const bypassCookie = request.cookies.get(COOKIE_NAME)?.value
       const secret = process.env.FIX_ADMIN_SECRET
-      if (bypassCookie && secret && (await verifyBypassCookieEdge(bypassCookie, secret))) {
+      // Verificar con secreto en Edge si está disponible; si no, dejar pasar si tiene formato válido (layout verifica)
+      const allowedByBypass =
+        bypassCookie &&
+        (secret
+          ? await verifyBypassCookieEdge(bypassCookie, secret)
+          : looksLikeBypassCookie(bypassCookie))
+      if (allowedByBypass) {
         return response
       }
     }
