@@ -1,19 +1,31 @@
 ---
-description: Después de cualquier cambio de código, subir a producción y documentar
+description: Subir todo a producción y actualizar toda la documentación tras cada cambio
 alwaysApply: true
 ---
 
-# Desplegar y documentar siempre
+# Subir a producción y documentar siempre
 
 Después de **cualquier cambio** en el código de Bear Beat:
 
-1. **Subir a producción**
-   - Hacer commit con mensaje claro (qué se cambió y por qué).
-   - Hacer `git push origin main` para que Render despliegue.
-   - No dar por terminada la tarea sin haber hecho push.
+## 1. Subir TODO a producción
 
-2. **Documentar**
-   - Actualizar `DOCUMENTACION_COMPLETA.md` o `PRODUCCION.md` según corresponda (nuevas variables, APIs, flujos, checklist).
-   - Si es un fix puntual, añadir una línea en la sección de cambios recientes o en la doc relevante.
+- Incluir en el commit **todos** los archivos modificados o nuevos relacionados con el cambio (no dejar nada solo "local").
+- Mensaje de commit claro: qué se cambió y por qué (ej. `fix: cookies undefined en Supabase client (login en producción)`).
+- Hacer **siempre** `git push origin main` para que Render despliegue.
+- No dar por terminada la tarea sin haber hecho push. No esperar a que el usuario pida "sube a producción".
 
-No esperar a que el usuario pida "sube a producción" o "documenta": hacerlo siempre como parte del mismo flujo de trabajo.
+## 2. Documentar los cambios
+
+- Describir el cambio en la documentación relevante:
+  - **Fix o feature puntual:** `DOCUMENTACION_COMPLETA.md` → sección 19 (Cambios recientes), añadir subsección o párrafo.
+  - **Variables de entorno:** actualizar `.env.example` y/o `DOCUMENTACION_COMPLETA.md` (Variables de entorno).
+  - **Nuevo flujo o API:** actualizar `DOCUMENTACION_COMPLETA.md`, `INVENTARIO_COMPLETO_WEB.md` o `ESTADO_PROYECTO.md` según corresponda.
+  - **Checklist o pasos manuales:** crear o actualizar archivos en `docs/` (ej. `docs/CHECKLIST_SUPABASE_PRODUCCION.md`).
+
+## 3. Actualizar TODA la documentación afectada
+
+- Si el cambio afecta a varios temas (auth, env, deploy, UI), actualizar **cada** doc que lo mencione.
+- Revisar: `REGLAS_PROYECTO.md`, `PRODUCCION.md`, `CHECKLIST_LANZAMIENTO.md`, `docs/*.md`, y las secciones de `DOCUMENTACION_COMPLETA.md` tocadas por el cambio.
+- Mantener coherencia: mismos nombres, mismas URLs, misma versión de pasos.
+
+No esperar a que el usuario pida "documenta" o "actualiza la doc": hacerlo siempre como parte del mismo flujo de trabajo que el código y el push.

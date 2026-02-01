@@ -31,6 +31,27 @@
 
 ---
 
+## Despliegue y documentación (obligatorio)
+
+Tras **cualquier cambio** de código:
+
+1. **Subir todo a producción**
+   - Commit con todos los archivos relacionados al cambio.
+   - Mensaje de commit claro (qué y por qué).
+   - `git push origin main` para que Render despliegue. No dejar el cambio solo en local.
+
+2. **Documentar los cambios**
+   - Actualizar `DOCUMENTACION_COMPLETA.md` (sección 19 u otra según el cambio).
+   - Si hay nuevas variables, pasos o checklists: actualizar `.env.example`, `docs/` y la doc que corresponda.
+
+3. **Actualizar toda la documentación afectada**
+   - Cualquier doc que hable del área tocada (auth, env, deploy, UI) debe quedar al día.
+   - Revisar: `REGLAS_PROYECTO.md`, `PRODUCCION.md`, `CHECKLIST_LANZAMIENTO.md`, `docs/*.md`.
+
+La regla del agente (`.cursor/rules/deploy-and-docs.mdc`) aplica esto siempre; no esperar a que lo pida el usuario.
+
+---
+
 ## Documentación de referencia
 
 - **Estado actual del sistema:** `ESTADO_PROYECTO.md`

@@ -520,6 +520,11 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 ### 19.6 Fixes recientes (build y tipos)
 - **complete-purchase** (2026-02): `navigator.clipboard.writeText(ftpCredentials.ftp_username)` — `ftp_username` es opcional (`string | undefined`); se usa `ftpCredentials.ftp_username ?? ''` para cumplir el tipo `string` y que el build TypeScript en Render pase.
 
+### 19.7 Supabase client en navegador (login en producción)
+- **Problema:** En producción, el cliente de Supabase (`createBrowserClient` de `@supabase/ssr`) recibía solo `cookieOptions`; al hacer destructuring, `cookies` quedaba `undefined` y al usar `cookies.get` / `cookies.remove` se producía `TypeError: Cannot read properties of undefined (reading 'get'/'remove')`.
+- **Solución:** En `src/lib/supabase/client.ts` se pasa también `cookies: {}` junto con `cookieOptions`. Así la librería usa `document.cookie` en el navegador cuando no hay funciones de cookies.
+- **Configuración Supabase en producción:** Site URL y Redirect URLs deben estar configurados en Supabase (Authentication → URL Configuration). Guía paso a paso en `docs/CHECKLIST_SUPABASE_PRODUCCION.md`. Opcional: script `npm run supabase:set-auth-urls` con `SUPABASE_ACCESS_TOKEN` en `.env.local`.
+
 ---
 
-*Documentación generada para Bear Beat 2027. Para detalles de despliegue y checklist ver PRODUCCION.md.*
+*Documentación generada para Bear Beat 2027. Para detalles de despliegue y checklist ver PRODUCCION.md. Tras cualquier cambio: subir a producción (git push) y actualizar esta doc y la afectada.*
