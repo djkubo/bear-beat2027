@@ -313,20 +313,25 @@ export default function CompletePurchasePage() {
   // Activar compra para usuario YA LOGUEADO
   const activatePurchaseForLoggedUser = async (userId: string, purchaseInfo: any) => {
     try {
-      // Guardar la compra en la base de datos
+      // Activar compra en el servidor (crea FTP real en Hetzner si está configurado)
       try {
-        await supabase.from('purchases').insert({
-          user_id: userId,
-          pack_id: purchaseInfo.pack_id || 1,
-          amount_paid: purchaseInfo.amount_paid || 350,
-          currency: purchaseInfo.currency || 'MXN',
-          payment_provider: purchaseInfo.payment_provider || 'stripe',
-          payment_id: purchaseInfo.stripe_payment_intent || sessionId,
-          ftp_username: `dj_${userId.slice(0, 8)}`,
-          ftp_password: generatePassword(),
+        const activateRes = await fetch('/api/complete-purchase/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            userId,
+            email: email || purchaseInfo.customer_email,
+            name: purchaseInfo.customer_name,
+            phone: phone || purchaseInfo.customer_phone,
+          }),
         })
+        if (!activateRes.ok) {
+          const errData = await activateRes.json().catch(() => ({}))
+          throw new Error(errData?.error || 'Error al activar compra')
+        }
       } catch (dbErr) {
-        console.log('DB insert failed (may already exist):', dbErr)
+        console.log('Activate API failed (may already exist):', dbErr)
       }
 
       // Tracking: ManyChat + Facebook Pixel Purchase (valor real para conversiones)
@@ -378,34 +383,25 @@ export default function CompletePurchasePage() {
     try {
       const normalizedPhone = normalizePhoneNumber(phone, country) || phone
 
-      // Intentar guardar en base de datos (puede fallar si no está configurada)
+      // Activar compra en el servidor (crea FTP real en Hetzner si está configurado)
       try {
-        // Actualizar pending purchase
-        await supabase
-          .from('pending_purchases')
-          .update({
-            user_id: userId,
-            status: 'completed',
-            customer_email: email,
-            customer_name: name,
-            customer_phone: normalizedPhone,
-            completed_at: new Date().toISOString(),
-          })
-          .eq('stripe_session_id', sessionId)
-
-        // Crear purchase definitiva
-        await supabase.from('purchases').insert({
-          user_id: userId,
-          pack_id: purchaseData.pack_id || 1,
-          amount_paid: purchaseData.amount_paid || 350,
-          currency: purchaseData.currency || 'MXN',
-          payment_provider: purchaseData.payment_provider || 'stripe',
-          payment_id: purchaseData.stripe_payment_intent || sessionId,
-          ftp_username: `dj_${userId.slice(0, 8)}`,
-          ftp_password: generatePassword(),
+        const activateRes = await fetch('/api/complete-purchase/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            userId,
+            email,
+            name,
+            phone: normalizedPhone,
+          }),
         })
+        if (!activateRes.ok) {
+          const errData = await activateRes.json().catch(() => ({}))
+          throw new Error(errData?.error || 'Error al activar compra')
+        }
       } catch (dbErr) {
-        console.log('DB not available for activation, continuing...')
+        console.log('Activate API failed (may already exist):', dbErr)
       }
 
       // Sincronizar ManyChat (puede fallar si no está configurado)

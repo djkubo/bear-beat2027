@@ -95,10 +95,13 @@ export default function DashboardPage() {
     setTimeout(() => setCopied(null), 2000)
   }
 
-  // Credenciales FTP reales desde la compra (generadas en complete-purchase)
+  // Credenciales FTP desde la compra (reales si está configurado Hetzner Robot API)
   const purchaseWithFtp = purchases.find(p => p.ftp_username && p.ftp_password)
+  const ftpHost = purchaseWithFtp?.ftp_username?.includes('-sub')
+    ? `${purchaseWithFtp.ftp_username}.your-storagebox.de`
+    : (typeof process.env.NEXT_PUBLIC_FTP_HOST === 'string' ? process.env.NEXT_PUBLIC_FTP_HOST : 'ftp.bearbeat.mx')
   const ftp = purchaseWithFtp ? {
-    host: 'ftp.bearbeat.mx',
+    host: ftpHost,
     port: '21',
     user: purchaseWithFtp.ftp_username,
     pass: purchaseWithFtp.ftp_password
