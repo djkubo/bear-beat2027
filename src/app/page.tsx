@@ -335,56 +335,63 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* NAVBAR */}
-      <header className="py-4 md:py-6 px-4 border-b border-bear-blue/20">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Image 
+      {/* NAVBAR - UX clara: marca | acciones (CTA principal + secundaria) */}
+      <header className="sticky top-0 z-50 py-3 md:py-4 px-4 border-b border-white/10 bg-bear-black/95 backdrop-blur-sm">
+        <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
+          {/* Marca */}
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+            <Image
               src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png"
-              alt="Bear Beat" width={50} height={50} className="w-10 h-10 md:w-12 md:h-12"
+              alt="Bear Beat"
+              width={44}
+              height={44}
+              className="w-9 h-9 md:w-10 md:h-10"
             />
-            <span className="text-xl md:text-2xl font-black text-bear-blue">BEAR BEAT</span>
-          </div>
-          <div className="hidden md:flex items-center gap-6 text-sm">
+            <span className="text-lg md:text-xl font-black text-bear-blue tracking-tight">BEAR BEAT</span>
+          </Link>
+
+          {/* Acciones desktop */}
+          <nav className="hidden md:flex items-center gap-3" aria-label="Navegación principal">
             {userState.hasAccess ? (
               <>
-                <Link href="/dashboard" className="text-bear-blue font-bold hover:text-white transition">
-                  📊 Mi Panel
+                <Link href="/dashboard" className="text-sm font-semibold text-bear-blue hover:text-white transition px-3 py-2 rounded-lg hover:bg-bear-blue/10">
+                  Mi Panel
                 </Link>
-                <Link href="/mi-cuenta" className="text-white/70 hover:text-bear-blue font-medium">
+                <Link href="/mi-cuenta" className="text-sm text-white/70 hover:text-white transition px-3 py-2 rounded-lg hover:bg-white/5">
                   Mi cuenta
                 </Link>
-                <Link href="/contenido" className="text-white/70 hover:text-bear-blue font-medium">
-                  👁️ Ver Contenido
+                <Link href="/contenido" className="text-sm font-bold text-bear-black bg-bear-blue hover:bg-bear-blue/90 transition px-4 py-2.5 rounded-lg">
+                  Ver Contenido
                 </Link>
-                <span className="bg-bear-blue/20 text-bear-blue px-3 py-1 rounded-full font-bold text-xs">
-                  ✓ Acceso Activo
+                <span className="text-xs font-bold text-green-400 bg-green-400/10 px-2.5 py-1 rounded-full border border-green-400/30">
+                  Acceso activo
                 </span>
+              </>
+            ) : userState.isLoggedIn ? (
+              <>
+                <Link href="/dashboard" className="text-sm text-white/70 hover:text-white transition px-3 py-2 rounded-lg hover:bg-white/5">
+                  Mi Panel
+                </Link>
+                <Link href="/mi-cuenta" className="text-sm text-white/70 hover:text-white transition px-3 py-2 rounded-lg hover:bg-white/5">
+                  Mi cuenta
+                </Link>
+                <Link href="/contenido" className="text-sm font-bold text-bear-black bg-bear-blue hover:bg-bear-blue/90 transition px-4 py-2.5 rounded-lg">
+                  Ver Contenido
+                </Link>
               </>
             ) : (
               <>
-                <span className="text-bear-blue font-bold">+2,847 DJs ya tienen acceso</span>
-                {userState.isLoggedIn ? (
-                  <>
-                    <Link href="/dashboard" className="text-white/70 hover:text-bear-blue">Mi Panel</Link>
-                    <Link href="/mi-cuenta" className="text-white/70 hover:text-bear-blue">Mi cuenta</Link>
-                    <Link href="/contenido" className="text-white/70 hover:text-bear-blue font-medium">
-                      👁️ Ver Contenido
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link href="/login" className="text-white/70 hover:text-bear-blue">Iniciar Sesión</Link>
-                    <Link href="/contenido" className="text-white/70 hover:text-bear-blue font-medium">
-                      👁️ Ver Contenido
-                    </Link>
-                  </>
-                )}
+                <span className="text-xs text-white/50 mr-1 hidden lg:inline">+2,847 DJs con acceso</span>
+                <Link href="/login" className="text-sm text-white/80 hover:text-white transition px-3 py-2 rounded-lg hover:bg-white/5">
+                  Iniciar sesión
+                </Link>
+                <Link href="/contenido" className="text-sm font-bold text-bear-black bg-bear-blue hover:bg-bear-blue/90 transition px-4 py-2.5 rounded-lg">
+                  Ver Contenido
+                </Link>
               </>
             )}
-          </div>
-          
-          {/* Menú móvil */}
+          </nav>
+
           <MobileMenu currentPath="/" userHasAccess={userState.hasAccess} isLoggedIn={userState.isLoggedIn} />
         </div>
       </header>

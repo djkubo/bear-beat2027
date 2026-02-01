@@ -61,8 +61,13 @@ export default function ContenidoPage() {
   const [showPaywall, setShowPaywall] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [hasAccess, setHasAccess] = useState(false)
+  const [posterError, setPosterError] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const inventory = useVideoInventory()
+
+  useEffect(() => {
+    setPosterError(false)
+  }, [selectedVideo?.id])
 
   useEffect(() => {
     trackPageView('contenido')
@@ -305,6 +310,11 @@ export default function ContenidoPage() {
                             <div className="flex-1 min-w-0">
                               <p className="font-bold truncate">{video.artist}</p>
                               <p className="text-sm text-gray-400 truncate">{video.title}</p>
+                              {(video.duration || video.sizeFormatted) && (
+                                <p className="text-xs text-gray-500 truncate">
+                                  {[video.duration, video.sizeFormatted].filter(Boolean).join(' • ')}
+                                </p>
+                              )}
                             </div>
                             <div className="hidden md:flex gap-2">
                               {video.key && (
@@ -346,6 +356,24 @@ export default function ContenidoPage() {
                     className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4"
                     onContextMenu={(e) => { e.preventDefault(); if (!hasAccess) setShowPaywall(true) }}
                   >
+                    {/* Portada: thumbnail o fallback con inicial del artista */}
+                    <div className="absolute inset-0 z-0">
+                      {selectedVideo.thumbnailUrl && !posterError ? (
+                        <img
+                          src={selectedVideo.thumbnailUrl}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={() => setPosterError(true)}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-bear-blue/30 to-purple-500/30 flex items-center justify-center">
+                          <span className="text-6xl md:text-8xl font-black text-white/60 select-none">
+                            {(selectedVideo.artist || selectedVideo.title || 'V')[0].toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Watermark */}
                     <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
                       <p className="text-white/30 text-3xl md:text-5xl font-black rotate-[-25deg] select-none whitespace-nowrap">
@@ -353,13 +381,12 @@ export default function ContenidoPage() {
                       </p>
                     </div>
 
-                    {/* Video real con poster/thumbnail */}
+                    {/* Video real (sin poster: la portada va en capa inferior) */}
                     <video
                       ref={videoRef}
                       key={selectedVideo.path}
                       src={`/api/demo/${encodeURIComponent(selectedVideo.path)}`}
-                      poster={selectedVideo.thumbnailUrl}
-                      className="w-full h-full object-contain"
+                      className="relative z-10 w-full h-full object-contain"
                       controls
                       controlsList="nodownload noplaybackrate"
                       disablePictureInPicture
@@ -386,14 +413,20 @@ export default function ContenidoPage() {
                     )}
                   </div>
 
-                  {/* Info del video */}
+                  {/* Info del video - metadatos en tiempo real */}
                   <div className="space-y-3">
                     <div>
                       <p className="font-black text-lg">{selectedVideo.artist}</p>
                       <p className="text-gray-400">{selectedVideo.title}</p>
+                      {(selectedVideo.duration || selectedVideo.sizeFormatted) && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {[selectedVideo.duration, selectedVideo.sizeFormatted].filter(Boolean).join(' • ')}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-2 text-sm">
                       <span className="bg-bear-blue/20 text-bear-blue px-3 py-1 rounded-full">{selectedVideo.genre}</span>
+                      {selectedVideo.resolution && <span className="bg-gray-500/20 text-gray-300 px-3 py-1 rounded-full">{selectedVideo.resolution}</span>}
                       {selectedVideo.key && <span className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full">{selectedVideo.key}</span>}
                       {selectedVideo.bpm && <span className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full">{selectedVideo.bpm} BPM</span>}
                     </div>
