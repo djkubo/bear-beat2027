@@ -161,6 +161,17 @@ export async function GET(req: NextRequest) {
     const totalVideos = structure.reduce((sum, g) => sum + g.videoCount, 0)
     const totalSize = structure.reduce((sum, g) => sum + g.totalSize, 0)
 
+    let totalPurchases = 0
+    try {
+      const { data: packRow } = await supabase.from('packs').select('id').eq('slug', packId).single()
+      if (packRow) {
+        const { count } = await supabase.from('purchases').select('*', { count: 'exact', head: true }).eq('pack_id', packRow.id)
+        totalPurchases = count ?? 0
+      }
+    } catch {
+      // ignore
+    }
+
     const res = NextResponse.json({
       success: true,
       pack: {
@@ -169,7 +180,8 @@ export async function GET(req: NextRequest) {
         totalVideos,
         totalSize,
         totalSizeFormatted: formatBytes(totalSize),
-        genreCount: structure.length
+        genreCount: structure.length,
+        totalPurchases
       },
       genres: filtered,
       // Info del usuario para el frontend
@@ -184,7 +196,8 @@ export async function GET(req: NextRequest) {
         canDownload: hasAccess
       }
     })
-    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    res.headers.set('Pragma', 'no-cache')
     return res
 
   } catch (error: any) {

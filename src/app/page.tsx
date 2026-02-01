@@ -41,6 +41,7 @@ interface PackInfo {
   totalVideos: number
   totalSizeFormatted: string
   genreCount: number
+  totalPurchases?: number
 }
 
 // Estado del usuario
@@ -92,12 +93,13 @@ function CountdownTimer({ endDate }: { endDate: Date }) {
 
 function ScarcityBar({ sold, total }: { sold: number; total: number }) {
   const safeTotal = Math.max(1, total)
-  const percentage = total <= 0 ? 0 : (sold / safeTotal) * 100
+  const soldCap = Math.min(sold, safeTotal)
+  const percentage = total <= 0 ? 0 : (soldCap / safeTotal) * 100
   return (
     <div className="w-full">
       <div className="flex justify-between text-sm mb-2">
         <span className="font-bold text-red-500">⚠️ {Math.max(0, total - sold)} lugares disponibles</span>
-        <span className="text-gray-400">{sold}/{total || 0} vendidos</span>
+        <span className="text-gray-400">{sold.toLocaleString()}/{total.toLocaleString()} vendidos</span>
       </div>
       <div className="h-4 bg-gray-800 rounded-full overflow-hidden">
         <motion.div 
@@ -366,7 +368,7 @@ export default function HomePage() {
 
   const cargarVideos = async () => {
     try {
-      const res = await fetch('/api/videos?pack=enero-2026', { cache: 'no-store' })
+      const res = await fetch('/api/videos?pack=enero-2026', { cache: 'no-store', headers: { Pragma: 'no-cache' } })
       const data = await res.json()
       if (data.success) {
         setGenres(data.genres)
@@ -387,6 +389,7 @@ export default function HomePage() {
   const totalVideos = packInfo?.totalVideos ?? inventory.count ?? 0
   const genreCount = packInfo?.genreCount ?? inventory.genreCount ?? 0
   const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted ?? '0 B'
+  const totalPurchases = packInfo?.totalPurchases ?? inventory.totalPurchases ?? 0
   const statsLoading = !statsTimedOut && ((loading && !packInfo) || inventory.loading)
 
   return (
@@ -823,11 +826,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SCARCITY - solo si hay datos cargados */}
+      {/* SCARCITY - datos en tiempo real: vendidos = compras reales, total = videos del pack */}
       {!statsLoading && totalVideos > 0 && (
         <section className="py-8 px-4 bg-red-500/10 border-y border-red-500/30">
           <div className="max-w-xl mx-auto">
-            <ScarcityBar sold={Math.max(0, totalVideos - 153)} total={totalVideos} />
+            <ScarcityBar sold={totalPurchases} total={totalVideos} />
           </div>
         </section>
       )}

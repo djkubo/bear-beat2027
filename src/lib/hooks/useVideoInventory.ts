@@ -6,6 +6,7 @@ export interface VideoInventory {
   count: number
   totalSizeFormatted: string
   genreCount: number
+  totalPurchases: number
   loading: boolean
   error: string | null
 }
@@ -18,6 +19,7 @@ export function useVideoInventory(): VideoInventory {
   const [count, setCount] = useState(0)
   const [totalSizeFormatted, setTotalSizeFormatted] = useState('0 B')
   const [genreCount, setGenreCount] = useState(0)
+  const [totalPurchases, setTotalPurchases] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,6 +36,7 @@ export function useVideoInventory(): VideoInventory {
           setCount(0)
           setTotalSizeFormatted('0 B')
           setGenreCount(0)
+          setTotalPurchases(0)
           if (data.error) setError(data.error)
           return
         }
@@ -41,11 +44,13 @@ export function useVideoInventory(): VideoInventory {
         setCount(data.pack.totalVideos ?? 0)
         setTotalSizeFormatted(data.pack.totalSizeFormatted ?? '0 B')
         setGenreCount(data.pack.genreCount ?? 0)
+        setTotalPurchases(data.pack.totalPurchases ?? 0)
       } catch (e: any) {
         setError(e?.message || 'Error cargando inventario')
         setCount(0)
         setTotalSizeFormatted('0 B')
         setGenreCount(0)
+        setTotalPurchases(0)
       } finally {
         setLoading(false)
       }
@@ -58,6 +63,7 @@ export function useVideoInventory(): VideoInventory {
     count,
     totalSizeFormatted,
     genreCount,
+    totalPurchases,
     loading,
     error,
   }
