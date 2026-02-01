@@ -224,13 +224,13 @@ async function readVideoStructureFromDb(
       return []
     }
 
-    // Supabase limita por defecto a 1000 filas; necesitamos traer todos los videos del pack
+    // Supabase devuelve max 1000 por defecto; usar range() para traer hasta 10k filas
     const { data: videosRows, error } = await supabase
       .from('videos')
       .select('id, title, artist, duration, resolution, file_size, file_path, thumbnail_url, genre_id, key, bpm, genres(name, slug)')
       .eq('pack_id', pack.id)
       .order('artist')
-      .limit(10000)
+      .range(0, 9999)
 
     if (error) {
       console.error('Error fetching videos from DB:', error)

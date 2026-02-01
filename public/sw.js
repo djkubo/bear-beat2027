@@ -16,6 +16,13 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim())
 })
 
+// No cachear /api/ para que portadas y datos en tiempo real siempre vengan frescos
+self.addEventListener('fetch', (event) => {
+  if (event.request.url.includes('/api/')) {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }))
+  }
+})
+
 // Recibir notificación push
 self.addEventListener('push', (event) => {
   console.log('[SW] Push recibido:', event)

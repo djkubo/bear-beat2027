@@ -368,7 +368,7 @@ export default function HomePage() {
 
   const cargarVideos = async () => {
     try {
-      const res = await fetch('/api/videos?pack=enero-2026', { cache: 'no-store', headers: { Pragma: 'no-cache' } })
+      const res = await fetch(`/api/videos?pack=enero-2026&_=${Date.now()}`, { cache: 'no-store', headers: { Pragma: 'no-cache', 'Cache-Control': 'no-cache' } })
       const data = await res.json()
       if (data.success) {
         setGenres(data.genres)
