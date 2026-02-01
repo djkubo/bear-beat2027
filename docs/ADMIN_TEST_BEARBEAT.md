@@ -60,7 +60,16 @@ ON CONFLICT (id) DO UPDATE SET
 
 Luego comprueba de nuevo con el `SELECT` del apartado 1: debe salir **role = 'admin'**.
 
-## 4. Si sigue sin dejarte entrar
+## 4. Producción: URLs de Auth en Supabase
+
+Si en **producción** (p. ej. bear-beat2027.onrender.com) inicias sesión y al ir a `/fix-admin` o `/admin` te vuelve a pedir login, las cookies de sesión pueden no estar asociadas a tu dominio. En el **proyecto de Supabase que usa producción**:
+
+1. **Authentication** → **URL Configuration**.
+2. **Site URL:** `https://bear-beat2027.onrender.com` (o tu URL de producción).
+3. **Redirect URLs:** incluir `https://bear-beat2027.onrender.com/**` (o tu dominio + `/**`).
+4. Guardar y volver a intentar: cerrar sesión, iniciar sesión de nuevo en la URL de producción, luego ir a `/fix-admin`.
+
+## 5. Si sigue sin dejarte entrar
 
 - Cierra sesión en la app, vuelve a iniciar sesión con test@bearbeat.com y prueba otra vez `/admin`.
 - Comprueba que la app en producción usa las variables de entorno del **mismo** proyecto de Supabase donde ejecutaste el SQL.

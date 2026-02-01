@@ -32,14 +32,16 @@ export default function LoginPage() {
       if (error) throw error
 
       toast.success('¡Bienvenido de vuelta! Redirigiendo...')
-      
-      // Usar window.location para asegurar navegación completa con nueva sesión
+
+      const params = new URLSearchParams(window.location.search)
+      const redirectTo = params.get('redirect') || '/dashboard'
+      await supabase.auth.getSession() // fuerza que la sesión se sincronice a cookies
+
+      // Redirección completa para que el servidor reciba las cookies en la siguiente petición
+      const delay = redirectTo.includes('/admin') || redirectTo.includes('/fix-admin') ? 1200 : 600
       setTimeout(() => {
-        // Obtener redirect de URL si existe
-        const params = new URLSearchParams(window.location.search)
-        const redirectTo = params.get('redirect') || '/dashboard'
         window.location.href = redirectTo
-      }, 500)
+      }, delay)
       
     } catch (error: any) {
       console.error('Error:', error)
