@@ -19,6 +19,7 @@ export async function middleware(request: NextRequest) {
       }
     }
 
+    const isProd = process.env.NODE_ENV === 'production'
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -28,11 +29,14 @@ export async function middleware(request: NextRequest) {
             return request.cookies.getAll()
           },
           setAll(cookiesToSet: { name: string; value: string; options?: unknown }[]) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options as Record<string, unknown>)
-            )
+            cookiesToSet.forEach(({ name, value, options }) => {
+              const opts = { ...(options as Record<string, unknown>), path: '/', sameSite: 'lax' as const }
+              if (isProd) (opts as Record<string, unknown>).secure = true
+              response.cookies.set(name, value, opts)
+            })
           },
         },
+        cookieOptions: { path: '/', sameSite: 'lax', secure: isProd },
       }
     )
 

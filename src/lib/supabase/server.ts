@@ -1,6 +1,8 @@
 import { createServerClient as createClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+const isProd = process.env.NODE_ENV === 'production'
+
 export async function createServerClient() {
   const cookieStore = await cookies()
 
@@ -14,13 +16,20 @@ export async function createServerClient() {
         },
         setAll(cookiesToSet: { name: string; value: string; options?: unknown }[]) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options as Record<string, unknown>)
-            )
+            cookiesToSet.forEach(({ name, value, options }) => {
+              const opts = { ...(options as Record<string, unknown>), path: '/', sameSite: 'lax' as const }
+              if (isProd) (opts as Record<string, unknown>).secure = true
+              cookieStore.set(name, value, opts)
+            })
           } catch {
             // Server component, ignore
           }
         },
+      },
+      cookieOptions: {
+        path: '/',
+        sameSite: 'lax',
+        secure: isProd,
       },
     }
   )

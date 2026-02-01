@@ -3,6 +3,8 @@
 **URL producción:** https://bear-beat2027.onrender.com  
 **Hosting:** Render | **DB:** Supabase | **Pagos:** Stripe (+ PayPal, OXXO, SPEI)
 
+**⚠️ Si el login no persiste en producción:** [CHECKLIST Supabase (Site URL + Redirect URLs)](docs/CHECKLIST_SUPABASE_PRODUCCION.md) — obligatorio una vez por proyecto.
+
 **Documentación exhaustiva (secciones, botones, textos, APIs, flujos):** ver [DOCUMENTACION_COMPLETA.md](DOCUMENTACION_COMPLETA.md).
 
 **Regla del proyecto:** Cualquier cambio de código se sube a producción (`git push origin main`) y se documenta (DOCUMENTACION_COMPLETA.md o este archivo) en el mismo flujo. Ver también `.cursor/rules/deploy-and-docs.mdc`.
