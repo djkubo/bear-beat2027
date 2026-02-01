@@ -10,6 +10,7 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "db:setup": "node scripts/run-supabase-sql.js supabase/SETUP_COMPLETO.sql",
+    "db:admin-test": "node scripts/run-supabase-sql.js supabase/HACER_ADMIN_TEST_BEARBEAT.sql",
     "db:sync-videos": "node scripts/sync-videos-to-supabase.js",
     "db:sync-videos-ftp": "node scripts/sync-videos-from-ftp.js",
     "db:update-videos-metadata": "node scripts/update-videos-metadata.js",
