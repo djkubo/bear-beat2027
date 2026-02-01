@@ -43,6 +43,19 @@ export async function middleware(request: NextRequest) {
           getAll() {
             return request.cookies.getAll()
           },
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options?: unknown) {
+            const opts = { ...(options as Record<string, unknown>), path: '/', sameSite: 'lax' as const }
+            if (isProd) (opts as Record<string, unknown>).secure = true
+            response.cookies.set(name, value, opts)
+          },
+          remove(name: string, options?: unknown) {
+            const opts = { ...(options as Record<string, unknown>), path: '/', sameSite: 'lax' as const, maxAge: 0 }
+            if (isProd) (opts as Record<string, unknown>).secure = true
+            response.cookies.set(name, '', opts)
+          },
           setAll(cookiesToSet: { name: string; value: string; options?: unknown }[]) {
             cookiesToSet.forEach(({ name, value, options }) => {
               const opts = { ...(options as Record<string, unknown>), path: '/', sameSite: 'lax' as const }

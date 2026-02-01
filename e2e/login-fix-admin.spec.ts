@@ -36,4 +36,18 @@ test.describe('Login + fix-admin', () => {
       page.getByText(/listo|admin asignado|token no válido|fix_admin_secret|opción b/i)
     ).toBeVisible({ timeout: 10000 })
   })
+
+  test('login y luego ir a /admin no debe redirigir a login (sesión leída en middleware)', async ({ page }) => {
+    test.setTimeout(60000)
+    await page.goto(`${BASE_URL}/login?redirect=/admin`, { waitUntil: 'networkidle' })
+    await page.getByPlaceholder(/tu@email\.com|email/i).fill(TEST_EMAIL)
+    await page.getByPlaceholder(/contraseña|password/i).fill(TEST_PASSWORD)
+    await page.getByRole('button', { name: /entrar a mi cuenta/i }).click()
+    await page.waitForURL(/\/(admin|dashboard|login)/, { timeout: 20000 })
+    if (page.url().includes('/dashboard')) {
+      await page.goto(`${BASE_URL}/admin`, { waitUntil: 'networkidle' })
+      await page.waitForURL(/\/(admin|login|dashboard)/, { timeout: 10000 })
+    }
+    expect(page.url()).not.toMatch(/\/login\?.*redirect=.*admin/)
+  })
 })
