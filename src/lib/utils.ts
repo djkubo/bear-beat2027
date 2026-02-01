@@ -62,3 +62,19 @@ export function generateSecurePassword(length: number = 16): string {
   }
   return password
 }
+
+/**
+ * URL de demo desde Bunny CDN (sin proxy Next.js → evita 503).
+ * Usa, en orden: baseUrl (desde /api/cdn-base → BUNNY_CDN_URL), o NEXT_PUBLIC_BUNNY_CDN_URL.
+ * encodeURIComponent solo por segmento de ruta (no toda la URL) para espacios/caracteres raros.
+ */
+export function getDemoCdnUrl(path: string, baseUrl?: string | null): string {
+  const base =
+    (typeof baseUrl === 'string' && baseUrl && baseUrl.replace(/\/$/, '')) ||
+    (typeof process.env.NEXT_PUBLIC_BUNNY_CDN_URL === 'string' && process.env.NEXT_PUBLIC_BUNNY_CDN_URL
+      ? process.env.NEXT_PUBLIC_BUNNY_CDN_URL.replace(/\/$/, '')
+      : '')
+  const pathNorm = path.replace(/^Videos Enero 2026\/?/i, '').trim()
+  const pathEncoded = pathNorm.split('/').map((seg) => encodeURIComponent(seg)).join('/')
+  return base ? `${base}/${pathEncoded}` : ''
+}

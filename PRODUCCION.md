@@ -270,7 +270,32 @@ Nada de conteos ni precios hardcodeados; todo desde Supabase o APIs. Ver REGLAS_
 
 ---
 
-## 9. Documentación relacionada
+## 9. Render MCP (auto-debug desde Cursor)
+
+Para que el agente pueda depurar Render (logs, deploys, métricas) desde Cursor, configurar el [Render MCP Server](https://render.com/docs/mcp-server). **Guía paso a paso (sin programación):** [docs/CONFIGURAR_RENDER_MCP_EN_CURSOR.md](docs/CONFIGURAR_RENDER_MCP_EN_CURSOR.md).
+
+1. **API key:** Crear en [Render → Account Settings → API Keys](https://dashboard.render.com/settings#api-keys). La key da acceso a todos los workspaces y servicios de la cuenta.
+2. **Cursor:** Añadir en `~/.cursor/mcp.json`:
+   ```json
+   {
+     "mcpServers": {
+       "render": {
+         "url": "https://mcp.render.com/mcp",
+         "headers": {
+           "Authorization": "Bearer <TU_RENDER_API_KEY>"
+         }
+       }
+     }
+   }
+   ```
+3. **Workspace:** En Cursor, indicar el workspace de Render (ej. "Set my Render workspace to [nombre del workspace]").
+4. **Ejemplos de prompts para Bear Beat:** "Pull the most recent error-level logs for my Bear Beat service", "List my Render services", "Why isn't my site at bear-beat2027.onrender.com working?", "What was the last deploy status for my web service?".
+
+El MCP permite: listar servicios y deploys, ver logs (por nivel, filtros), métricas (CPU, memoria, respuestas), consultas SQL read-only a Postgres, y **actualizar env vars** de un servicio. No permite disparar deploys ni borrar recursos. Ver [docs oficiales](https://render.com/docs/mcp-server).
+
+---
+
+## 10. Documentación relacionada
 
 - **README.md** – Resumen, stack, instalación, admin/dashboard.
 - **INSTALACION.md** – Pasos detallados de instalación y crear admin.

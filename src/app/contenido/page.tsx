@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
+import { getDemoCdnUrl } from '@/lib/utils'
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
@@ -63,6 +64,7 @@ export default function ContenidoPage() {
   const [hasAccess, setHasAccess] = useState(false)
   const [posterError, setPosterError] = useState(false)
   const [demoError, setDemoError] = useState(false)
+  const [cdnBaseUrl, setCdnBaseUrl] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const inventory = useVideoInventory()
 
@@ -75,6 +77,14 @@ export default function ContenidoPage() {
     trackPageView('contenido')
     verificarAcceso()
     loadVideos()
+  }, [])
+
+  // Base URL del CDN Bunny (BUNNY_CDN_URL) — el front no ve esa variable, la pedimos al API
+  useEffect(() => {
+    fetch('/api/cdn-base')
+      .then((res) => res.json())
+      .then((data) => typeof data?.baseUrl === 'string' && data.baseUrl && setCdnBaseUrl(data.baseUrl))
+      .catch(() => {})
   }, [])
 
   const verificarAcceso = async () => {
@@ -383,17 +393,30 @@ export default function ContenidoPage() {
                       </p>
                     </div>
 
-                    {/* Video real o mensaje si demo no disponible (503) */}
-                    {demoError ? (
-                      <div className="relative z-10 w-full h-full flex flex-col items-center justify-center bg-gray-900/90 text-gray-400 p-6 text-center">
-                        <p className="text-lg font-bold text-white/80 mb-2">Demo no disponible</p>
-                        <p className="text-sm">El servidor de demos no está configurado o el archivo no está disponible.</p>
-                      </div>
-                    ) : (
+                    {/* Video desde Bunny CDN directo (BUNNY_CDN_URL) o mensaje si no config / error */}
+                    {(() => {
+                      const demoUrl = getDemoCdnUrl(selectedVideo.path, cdnBaseUrl)
+                      if (demoError) {
+                        return (
+                          <div className="relative z-10 w-full h-full flex flex-col items-center justify-center bg-gray-900/90 text-gray-400 p-6 text-center">
+                            <p className="text-lg font-bold text-white/80 mb-2">Demo no disponible</p>
+                            <p className="text-sm">Revisa BUNNY_CDN_URL en .env o que el archivo exista en el CDN.</p>
+                          </div>
+                        )
+                      }
+                      if (!demoUrl) {
+                        return (
+                          <div className="relative z-10 w-full h-full flex flex-col items-center justify-center bg-gray-900/90 text-gray-400 p-6 text-center">
+                            <p className="text-lg font-bold text-white/80 mb-2">Demo no configurado</p>
+                            <p className="text-sm">Añade BUNNY_CDN_URL en .env.local (ej: https://bear-beat.b-cdn.net).</p>
+                          </div>
+                        )
+                      }
+                      return (
                     <video
                       ref={videoRef}
                       key={selectedVideo.path}
-                      src={`/api/demo/${encodeURIComponent(selectedVideo.path)}`}
+                      src={demoUrl}
                       className="relative z-10 w-full h-full object-contain"
                       controls
                       controlsList="nodownload noplaybackrate"
@@ -404,7 +427,8 @@ export default function ContenidoPage() {
                       preload="metadata"
                       onError={() => setDemoError(true)}
                     />
-                    )}
+                      )
+                    })()}
 
                     {/* Badge DEMO */}
                     <div className="absolute top-3 right-3 z-10">

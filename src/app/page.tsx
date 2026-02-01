@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
+import { getDemoCdnUrl } from '@/lib/utils'
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
@@ -109,10 +110,11 @@ function ScarcityBar({ sold, total }: { sold: number; total: number }) {
   )
 }
 
-// Reproductor de demo inline
-function DemoPlayer({ video, onClose, hasAccess = false }: { video: Video; onClose: () => void; hasAccess?: boolean }) {
+// Reproductor de demo inline — URL directa a Bunny CDN (BUNNY_CDN_URL o NEXT_PUBLIC_BUNNY_CDN_URL)
+function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl }: { video: Video; onClose: () => void; hasAccess?: boolean; cdnBaseUrl?: string | null }) {
   const [downloading, setDownloading] = useState(false)
   const [demoError, setDemoError] = useState(false)
+  const demoSrc = hasAccess ? `/api/download?file=${encodeURIComponent(video.path)}&stream=true` : getDemoCdnUrl(video.path, cdnBaseUrl)
   
   const handleDownload = async () => {
     setDownloading(true)
@@ -154,11 +156,16 @@ function DemoPlayer({ video, onClose, hasAccess = false }: { video: Video; onClo
           {demoError && !hasAccess ? (
             <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900/90 text-gray-400 p-6 text-center">
               <p className="text-lg font-bold text-white/80 mb-2">Demo no disponible</p>
-              <p className="text-sm">El servidor de demos no está configurado o el archivo no está disponible.</p>
+              <p className="text-sm">Revisa BUNNY_CDN_URL en .env o que el archivo exista en el CDN.</p>
+            </div>
+          ) : !demoSrc && !hasAccess ? (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900/90 text-gray-400 p-6 text-center">
+              <p className="text-lg font-bold text-white/80 mb-2">Demo no configurado</p>
+              <p className="text-sm">Añade BUNNY_CDN_URL en .env.local (ej: https://bear-beat.b-cdn.net).</p>
             </div>
           ) : (
           <video
-            src={hasAccess ? `/api/download?file=${encodeURIComponent(video.path)}&stream=true` : `/api/demo/${encodeURIComponent(video.path)}`}
+            src={demoSrc}
             className="w-full h-full"
             controls
             autoPlay
@@ -228,7 +235,17 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [activeGenre, setActiveGenre] = useState<string | null>(null)
-  
+  const [showGenresModal, setShowGenresModal] = useState(false)
+  const [cdnBaseUrl, setCdnBaseUrl] = useState<string | null>(null)
+
+  // Base URL del CDN Bunny (BUNNY_CDN_URL) — el front no ve esa variable, la pedimos al API
+  useEffect(() => {
+    fetch('/api/cdn-base')
+      .then((res) => res.json())
+      .then((data) => typeof data?.baseUrl === 'string' && data.baseUrl && setCdnBaseUrl(data.baseUrl))
+      .catch(() => {})
+  }, [])
+
   // Estado del usuario
   const [userState, setUserState] = useState<UserState>({
     isLoggedIn: false,
@@ -420,7 +437,7 @@ export default function HomePage() {
       </header>
 
       {/* HERO SECTION - DIFERENTE SEGÚN ESTADO */}
-      <section className="py-12 md:py-20 px-4 relative overflow-hidden">
+      <section className="py-16 md:py-24 lg:py-28 px-4 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-bear-blue/10 rounded-full blur-[150px] pointer-events-none" />
         
         {userState.hasAccess ? (
@@ -494,7 +511,7 @@ export default function HomePage() {
           // HERO PARA NUEVOS USUARIOS
           // ==========================================
           <div className="max-w-5xl mx-auto text-center relative z-10">
-            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-3xl md:text-5xl lg:text-6xl font-black leading-tight mb-4">
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-4 bg-gradient-to-r from-white via-gray-200 to-bear-blue/90 bg-clip-text text-transparent">
               1,000 videos HD para DJs. Un pago. Descarga hoy.
             </motion.h1>
 
@@ -712,35 +729,86 @@ export default function HomePage() {
       </section>
 
       {/* ==========================================
-          GÉNEROS DISPONIBLES - DATOS REALES
+          GÉNEROS DISPONIBLES - MARQUEE + MODAL
           ========================================== */}
-      <section className="py-16 px-4 bg-white/5">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-5xl font-black mb-4">
+      <section className="py-10 px-4 bg-white/5">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl md:text-4xl font-black mb-2">
               🎵 Todos los géneros que necesitas
             </h2>
-            <p className="text-gray-400 text-lg">
+            <p className="text-gray-400 text-sm md:text-base">
               Contenido real organizado por género
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {genres.map((genre) => (
-              <motion.div
-                key={genre.id}
-                whileHover={{ scale: 1.02 }}
-                className="bg-bear-black border border-bear-blue/30 rounded-2xl p-5 text-center hover:border-bear-blue"
-              >
-                <span className="text-4xl mb-3 block">{GENRE_ICONS[genre.id] || GENRE_ICONS.default}</span>
-                <h3 className="font-black text-lg text-bear-blue">{genre.name}</h3>
-                <p className="text-3xl font-black my-2">{genre.videoCount}</p>
-                <p className="text-xs text-gray-500">videos • {genre.totalSizeFormatted}</p>
-              </motion.div>
-            ))}
+          {/* Marquee horizontal infinito */}
+          <div className="overflow-hidden select-none">
+            <div className="flex w-max animate-marquee">
+              {[...genres, ...genres].map((genre) => (
+                <div
+                  key={`${genre.id}-${genre.name}`}
+                  className="flex-shrink-0 mx-2 w-[140px] md:w-[160px] bg-bear-black border border-bear-blue/30 rounded-2xl p-4 text-center hover:border-bear-blue/60 transition-colors"
+                >
+                  <span className="text-3xl mb-2 block">{GENRE_ICONS[genre.id] || GENRE_ICONS.default}</span>
+                  <h3 className="font-black text-sm text-bear-blue">{genre.name}</h3>
+                  <p className="text-xl font-black my-1">{genre.videoCount}</p>
+                  <p className="text-[10px] text-gray-500">videos</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="text-center mt-4">
+            <button
+              type="button"
+              onClick={() => setShowGenresModal(true)}
+              className="text-bear-blue text-sm font-bold hover:underline"
+            >
+              Ver lista completa →
+            </button>
           </div>
         </div>
       </section>
+
+      {/* Modal lista completa de géneros */}
+      <AnimatePresence>
+        {showGenresModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowGenresModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-bear-black border-2 border-bear-blue/50 rounded-2xl p-6 max-w-4xl w-full max-h-[85vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-black text-bear-blue">🎵 Lista completa de géneros</h3>
+                <button onClick={() => setShowGenresModal(false)} className="text-white/80 hover:text-white text-2xl leading-none">✕</button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {genres.map((genre) => (
+                  <div
+                    key={genre.id}
+                    className="bg-white/5 border border-bear-blue/30 rounded-xl p-4 text-center"
+                  >
+                    <span className="text-2xl mb-2 block">{GENRE_ICONS[genre.id] || GENRE_ICONS.default}</span>
+                    <h4 className="font-bold text-bear-blue">{genre.name}</h4>
+                    <p className="text-lg font-black">{genre.videoCount}</p>
+                    <p className="text-xs text-gray-500">videos • {genre.totalSizeFormatted}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* PAIN POINTS */}
       <section className="py-16 px-4">
@@ -801,30 +869,30 @@ export default function HomePage() {
             💰 ¿Cuánto cuesta normalmente esto?
           </h2>
           
-          <div className="space-y-3 mb-8">
+          <div className="space-y-2 mb-6 text-left max-w-md mx-auto">
             {[
               { item: `${statsLoading ? '...' : totalVideos.toLocaleString()} videos a $10 c/u`, price: `$${((statsLoading ? 0 : totalVideos) * 10).toLocaleString()}` },
-              { item: 'Suscripción a pools de videos (anual)', price: '$2,400' },
-              { item: 'Tiempo buscando y descargando (40hrs)', price: '$4,000' },
+              { item: 'Suscripción pools (anual)', price: '$2,400' },
+              { item: '40 hrs buscando/descargando', price: '$4,000' },
             ].map((row, i) => (
-              <div key={i} className="flex justify-between items-center bg-white/5 rounded-lg p-4">
-                <span className="text-gray-400">{row.item}</span>
-                <span className="font-bold text-red-400 line-through">{row.price}</span>
+              <div key={i} className="flex justify-between items-center text-sm text-gray-400">
+                <span>{row.item}</span>
+                <span className="font-bold text-red-400/80 line-through">{row.price}</span>
               </div>
             ))}
           </div>
-
-          <p className="text-xl text-gray-400 mb-4">Valor total: <span className="text-red-400 line-through font-bold">$8,000+ MXN</span></p>
+          <p className="text-gray-500 text-sm mb-8">Valor total: <span className="line-through">$8,000+ MXN</span></p>
           
-          <div className="bg-gradient-to-r from-bear-blue/20 to-cyan-500/20 border-2 border-bear-blue rounded-3xl p-8 mb-6">
-            <p className="text-lg text-gray-400 mb-2">Tu precio hoy:</p>
-            <div className="text-6xl md:text-8xl font-black text-bear-blue mb-2">$350</div>
-            <p className="text-xl text-gray-400 mb-3">MXN • Pago único • Acceso de por vida</p>
+          {/* Tarjeta ganadora: $350 con borde brillante y glow */}
+          <div className="relative rounded-3xl p-8 md:p-10 bg-gradient-to-b from-bear-blue/15 to-bear-blue/5 border-2 border-bear-blue/80 shadow-[0_0_40px_rgba(8,225,247,0.25)] ring-2 ring-bear-blue/40 ring-offset-4 ring-offset-bear-black mb-8">
+            <p className="text-gray-400 text-sm uppercase tracking-wider mb-2">Tu precio hoy</p>
+            <div className="text-5xl md:text-7xl font-black text-bear-blue mb-2 drop-shadow-[0_0_20px_rgba(8,225,247,0.5)]">$350</div>
+            <p className="text-gray-300 mb-4">MXN • Pago único • Acceso de por vida</p>
             <p className="text-sm text-green-400 font-semibold">🛡️ Garantía 30 días: si no te gusta, te devolvemos todo.</p>
           </div>
 
           <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('price')}>
-            <button className="bg-bear-blue text-bear-black font-black text-xl md:text-2xl px-12 py-6 rounded-2xl shadow-2xl hover:scale-105 transition-all">
+            <button className="bg-bear-blue text-bear-black font-black text-xl md:text-2xl px-12 py-6 rounded-2xl shadow-2xl shadow-bear-blue/30 hover:scale-105 transition-all">
               QUIERO MI ACCESO AHORA →
             </button>
           </Link>
@@ -955,6 +1023,7 @@ export default function HomePage() {
             video={selectedVideo} 
             onClose={() => setSelectedVideo(null)} 
             hasAccess={userState.hasAccess}
+            cdnBaseUrl={cdnBaseUrl}
           />
         )}
       </AnimatePresence>
