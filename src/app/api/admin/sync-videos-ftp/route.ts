@@ -46,16 +46,18 @@ export async function POST() {
     }
 
     const admin = createAdminClient()
-    const { data: pack, error: packErr } = await admin.from('packs').select('id').eq('slug', PACK_SLUG).single()
-    if (packErr || !pack) {
+    const { data: packData, error: packErr } = await (admin as any).from('packs').select('id').eq('slug', PACK_SLUG).single()
+    if (packErr || !packData) {
       return NextResponse.json({ error: 'Pack no encontrado (slug: ' + PACK_SLUG + ')' }, { status: 400 })
     }
-    const packId = pack.id
+    const packId = (packData as { id: number }).id
 
-    const { data: genresRows } = await admin.from('genres').select('id, name')
-    const genreByName = new Map((genresRows || []).map((g: { id: number; name: string }) => [g.name.toLowerCase(), g.id]))
+    const { data: genresRows } = await (admin as any).from('genres').select('id, name')
+    const genreByName = new Map<string, number>(
+      (genresRows || []).map((g: { id: number; name: string }) => [g.name.toLowerCase(), g.id])
+    )
 
-    const { error: delErr } = await admin.from('videos').delete().eq('pack_id', packId)
+    const { error: delErr } = await (admin as any).from('videos').delete().eq('pack_id', packId)
     if (delErr) {
       return NextResponse.json({ error: 'Error borrando videos anteriores: ' + delErr.message }, { status: 500 })
     }
@@ -109,7 +111,7 @@ export async function POST() {
         try {
           const fileList = await ftpClient.list(genreName)
           const videoFiles = fileList.filter((f) => !f.isDirectory && /\.(mp4|mov|avi|mkv)$/i.test(f.name))
-          const genreId = genreByName.get(genreName.toLowerCase()) ?? null
+          const genreId: number | null = genreByName.get(genreName.toLowerCase()) ?? null
 
           for (const file of videoFiles) {
             const relativePath = `${genreName}/${file.name}`

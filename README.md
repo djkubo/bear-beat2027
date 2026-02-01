@@ -74,6 +74,8 @@ Tablas principales: `users`, `packs`, `genres`, `videos`, `purchases`, `pending_
 
 **Ver [PRODUCCION.md](PRODUCCION.md)** para: lista de todas las páginas y APIs, variables de entorno, base de datos, checklist y scripts (`db:setup`, `db:sync-videos`, `deploy:env`).
 
+**Ver [DOCUMENTACION_COMPLETA.md](DOCUMENTACION_COMPLETA.md)** para: documentación detallada de cada sección, botón, texto, APIs, flujos y base de datos (nivel referencia completa).
+
 ## 🚀 Deploy
 
 Hosting en **Render**. Conecta tu repo en [render.com](https://render.com):

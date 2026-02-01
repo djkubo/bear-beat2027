@@ -3,6 +3,8 @@
 **URL producción:** https://bear-beat2027.onrender.com  
 **Hosting:** Render | **DB:** Supabase | **Pagos:** Stripe (+ PayPal, OXXO, SPEI)
 
+**Documentación exhaustiva (secciones, botones, textos, APIs, flujos):** ver [DOCUMENTACION_COMPLETA.md](DOCUMENTACION_COMPLETA.md).
+
 ---
 
 ## 1. Páginas que existen (rutas)
