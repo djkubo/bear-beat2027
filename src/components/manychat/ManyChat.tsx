@@ -10,21 +10,11 @@ const MANYCHAT_PAGE_ID = process.env.NEXT_PUBLIC_MANYCHAT_PAGE_ID || '1049019386
  */
 export function ManyChatWidget() {
   return (
-    <>
-      {/* ManyChat Widget Script */}
-      <Script
-        id="manychat-widget"
-        src={`//widget.manychat.com/${MANYCHAT_PAGE_ID}.js`}
-        strategy="lazyOnload"
-        defer
-      />
-      <Script
-        id="manychat-assets"
-        src="https://mccdn.me/assets/js/widget.js"
-        strategy="lazyOnload"
-        defer
-      />
-    </>
+    <Script
+      id="manychat-widget"
+      src={`//widget.manychat.com/${MANYCHAT_PAGE_ID}.js`}
+      strategy="lazyOnload"
+    />
   )
 }
 
