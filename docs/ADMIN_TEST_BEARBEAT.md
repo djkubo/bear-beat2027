@@ -60,7 +60,22 @@ ON CONFLICT (id) DO UPDATE SET
 
 Luego comprueba de nuevo con el `SELECT` del apartado 1: debe salir **role = 'admin'**.
 
-## 4. Producción: URLs de Auth en Supabase
+## 4. Producción: asignar admin sin sesión (token)
+
+Si en producción la sesión no llega al servidor (te pide login al entrar a /fix-admin), puedes asignar admin **sin iniciar sesión** con un token secreto:
+
+1. En **Render** → tu servicio → **Environment** → añade una variable:
+   - **Key:** `FIX_ADMIN_SECRET`
+   - **Value:** una contraseña larga y aleatoria (ej. `abc123xyz789`). Guárdala en un lugar seguro.
+2. Guarda y espera a que se redepliegue.
+3. En el navegador abre: `https://bear-beat2027.onrender.com/fix-admin?token=abc123xyz789`  
+   (sustituye `abc123xyz789` por el valor que pusiste en `FIX_ADMIN_SECRET`).
+4. Deberías ver "Listo. Admin asignado a test@bearbeat.com".
+5. Entra a **https://bear-beat2027.onrender.com/login**, inicia sesión con test@bearbeat.com y luego a **/admin**.
+
+Después de usarlo, puedes borrar la variable `FIX_ADMIN_SECRET` en Render para que nadie más pueda usar esa URL.
+
+## 5. Producción: URLs de Auth en Supabase
 
 Si en **producción** (p. ej. bear-beat2027.onrender.com) inicias sesión y al ir a `/fix-admin` o `/admin` te vuelve a pedir login, las cookies de sesión pueden no estar asociadas a tu dominio. En el **proyecto de Supabase que usa producción**:
 
@@ -69,7 +84,7 @@ Si en **producción** (p. ej. bear-beat2027.onrender.com) inicias sesión y al i
 3. **Redirect URLs:** incluir `https://bear-beat2027.onrender.com/**` (o tu dominio + `/**`).
 4. Guardar y volver a intentar: cerrar sesión, iniciar sesión de nuevo en la URL de producción, luego ir a `/fix-admin`.
 
-## 5. Si sigue sin dejarte entrar
+## 6. Si sigue sin dejarte entrar
 
 - Cierra sesión en la app, vuelve a iniciar sesión con test@bearbeat.com y prueba otra vez `/admin`.
 - Comprueba que la app en producción usa las variables de entorno del **mismo** proyecto de Supabase donde ejecutaste el SQL.
