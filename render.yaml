@@ -1,6 +1,7 @@
 # Render Blueprint - Bear Beat
 # Conecta tu repo en Render y Render usará este archivo para crear el servicio.
-# Si prefieres configurar a mano: Web Service → Node → Build: npm install --legacy-peer-deps && npm run build | Start: npm start
+# Variables obligatorias en Dashboard: HETZNER_*, HETZNER_VIDEOS_BASE_PATH=Videos Enero 2026,
+# NEXT_PUBLIC_APP_URL=https://tu-app.onrender.com, Supabase, Stripe, PayPal, etc.
 
 services:
   - type: web
@@ -11,3 +12,5 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: NODE_ENV
+        value: production

@@ -38,12 +38,22 @@ export function getHetznerWebDAVClient(): ReturnType<typeof createClient> | null
 }
 
 /**
- * Lista contenido de una carpeta (ruta con o sin / inicial)
+ * Normaliza ruta para WebDAV (espacios y caracteres especiales)
+ */
+function normalizeWebDAVPath(remotePath: string): string {
+  const path = remotePath.startsWith('/') ? remotePath : `/${remotePath}`
+  const segments = path.split('/').filter(Boolean)
+  const encoded = segments.map((s) => encodeURIComponent(s)).join('/')
+  return encoded ? `/${encoded}` : '/'
+}
+
+/**
+ * Lista contenido de una carpeta (ruta con o sin / inicial; soporta espacios ej. /Videos Enero 2026)
  */
 export async function listHetznerDirectory(remotePath: string): Promise<HetznerFileStat[]> {
   const client = getHetznerWebDAVClient()
   if (!client) return []
-  const path = remotePath.startsWith('/') ? remotePath : `/${remotePath}`
+  const path = normalizeWebDAVPath(remotePath)
   try {
     const contents = await client.getDirectoryContents(path)
     const list = Array.isArray(contents) ? contents : (contents as { data: HetznerFileStat[] }).data
@@ -60,7 +70,7 @@ export async function listHetznerDirectory(remotePath: string): Promise<HetznerF
 export function createHetznerReadStream(remotePath: string): ReturnType<ReturnType<typeof createClient>['createReadStream']> | null {
   const client = getHetznerWebDAVClient()
   if (!client) return null
-  const path = remotePath.startsWith('/') ? remotePath : `/${remotePath}`
+  const path = normalizeWebDAVPath(remotePath)
   try {
     return client.createReadStream(path)
   } catch (e) {
@@ -75,7 +85,7 @@ export function createHetznerReadStream(remotePath: string): ReturnType<ReturnTy
 export async function getHetznerFileBuffer(remotePath: string): Promise<Buffer | null> {
   const client = getHetznerWebDAVClient()
   if (!client) return null
-  const path = remotePath.startsWith('/') ? remotePath : `/${remotePath}`
+  const path = normalizeWebDAVPath(remotePath)
   try {
     const data = await client.getFileContents(path)
     const buf = (data as { data?: Buffer | ArrayBuffer }).data ?? data

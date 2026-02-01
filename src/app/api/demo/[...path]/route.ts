@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import fs from 'fs'
 import { isHetznerWebDAVConfigured, createHetznerReadStream } from '@/lib/storage/hetzner-webdav'
+import { isLocalVideos, resolveLocalVideoPath } from '@/lib/storage/videos-source'
 
 // ==========================================
-// API DE STREAMING DE DEMOS - Solo desde Hetzner WebDAV
+// API DE STREAMING DE DEMOS - Carpeta local o Hetzner WebDAV
 // ==========================================
 
 const DEMO_HEADERS = {
@@ -17,16 +19,35 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    if (!isHetznerWebDAVConfigured()) {
-      return NextResponse.json(
-        { error: 'Configura Hetzner Storage Box (HETZNER_STORAGEBOX_* en .env) para demos.' },
-        { status: 503 }
-      )
-    }
-
     const { path: pathSegments } = await params
     const filePath = pathSegments.map((p) => decodeURIComponent(p)).join('/')
     const sanitizedPath = filePath.replace(/\.\./g, '').replace(/^\//, '')
+
+    if (isLocalVideos()) {
+      const localPath = resolveLocalVideoPath(sanitizedPath)
+      if (!fs.existsSync(localPath) || !fs.statSync(localPath).isFile()) {
+        return NextResponse.json({ error: 'Video no encontrado' }, { status: 404 })
+      }
+      const readStream = fs.createReadStream(localPath)
+      const webStream = new ReadableStream({
+        start(controller) {
+          readStream.on('data', (chunk: Buffer) => controller.enqueue(chunk))
+          readStream.on('end', () => controller.close())
+          readStream.on('error', (err) => controller.error(err))
+        },
+      })
+      return new NextResponse(webStream, {
+        status: 200,
+        headers: { ...DEMO_HEADERS, 'Accept-Ranges': 'bytes' },
+      })
+    }
+
+    if (!isHetznerWebDAVConfigured()) {
+      return NextResponse.json(
+        { error: 'Configura VIDEOS_BASE_PATH o Hetzner Storage Box (HETZNER_STORAGEBOX_* en .env) para demos.' },
+        { status: 503 }
+      )
+    }
 
     const remotePath = `/${sanitizedPath}`
     const readStream = createHetznerReadStream(remotePath)

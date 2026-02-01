@@ -5,13 +5,14 @@ import path from 'path'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import { isHetznerWebDAVConfigured, listHetznerDirectory, getHetznerFileBuffer, streamHetznerToTempFile } from '@/lib/storage/hetzner-webdav'
+import { isLocalVideos, getVideosBasePath, getHetznerVideosBasePath } from '@/lib/storage/videos-source'
 
 const execAsync = promisify(exec)
 
 const METADATA_CACHE_PATH = path.join(process.cwd(), 'metadata-cache')
 
 // ==========================================
-// API DE VIDEOS - Solo desde Hetzner WebDAV (servidor)
+// API DE VIDEOS - Carpeta local (VIDEOS_BASE_PATH) o Hetzner WebDAV
 // ==========================================
 
 const DEMOS_ENABLED = true
@@ -106,18 +107,22 @@ export async function GET(req: NextRequest) {
       console.log('Error verificando acceso:', e)
     }
 
-    // Todo el contenido viene del servidor (Hetzner). Sin Hetzner configurado no hay videos.
-    if (!isHetznerWebDAVConfigured()) {
+    // Origen: carpeta local en el servidor o Hetzner
+    let structure: GenreFolder[]
+    if (isLocalVideos()) {
+      structure = await readVideoStructureFromLocal(hasAccess)
+    } else if (isHetznerWebDAVConfigured()) {
+      structure = await readVideoStructureFromHetzner(hasAccess)
+    } else {
       return NextResponse.json(
         {
           success: false,
-          error: 'HETZNER_REQUIRED',
-          message: 'Configura Hetzner Storage Box en .env: HETZNER_STORAGEBOX_HOST, HETZNER_STORAGEBOX_USER y HETZNER_STORAGEBOX_PASSWORD.',
+          error: 'VIDEOS_SOURCE_REQUIRED',
+          message: 'Configura VIDEOS_BASE_PATH (carpeta local, ej. Videos Enero 2026) o Hetzner Storage Box en .env.',
         },
         { status: 503 }
       )
     }
-    const structure = await readVideoStructureFromHetzner(hasAccess)
 
     const filtered = genre 
       ? structure.filter(g => g.id === genre.toLowerCase())
@@ -157,16 +162,137 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * Lee estructura desde Hetzner Storage Box (WebDAV) - carpetas reales del server
+ * Lee estructura desde carpeta local del servidor (VIDEOS_BASE_PATH)
+ */
+async function readVideoStructureFromLocal(hasAccess: boolean): Promise<GenreFolder[]> {
+  const basePath = getVideosBasePath()
+  const genres: GenreFolder[] = []
+  try {
+    const entries = fs.readdirSync(basePath, { withFileTypes: true })
+    const folders = entries.filter((e) => e.isDirectory())
+    for (const folder of folders) {
+      const genreName = folder.name
+      const genrePath = path.join(basePath, genreName)
+      const fileNames = fs.readdirSync(genrePath)
+      const videoFiles = fileNames.filter((n) => /\.(mp4|mov|avi|mkv)$/i.test(n))
+      const fileNamesSet = new Set(fileNames)
+      const videos: VideoFile[] = await Promise.all(
+        videoFiles.map(async (basename) => {
+          const fullPath = path.join(genrePath, basename)
+          const stat = fs.statSync(fullPath)
+          const parsed = parseVideoName(basename)
+          const relativePath = `${genreName}/${basename}`
+          let duration: string | undefined
+          let durationSeconds: number | undefined
+          let resolution: string | undefined
+          const jsonPath = path.join(genrePath, basename + '.json')
+          if (fileNamesSet.has(basename + '.json') && fs.existsSync(jsonPath)) {
+            try {
+              const meta = JSON.parse(fs.readFileSync(jsonPath, 'utf8')) as {
+                duration?: string
+                durationSeconds?: number
+                resolution?: string
+              }
+              duration = meta.duration
+              durationSeconds = meta.durationSeconds
+              resolution = meta.resolution
+            } catch (_) {}
+          }
+          if (duration === undefined && resolution === undefined) {
+            const cacheDir = path.join(METADATA_CACHE_PATH, genreName)
+            const cachePath = path.join(cacheDir, basename + '.json')
+            if (fs.existsSync(cachePath)) {
+              try {
+                const meta = JSON.parse(fs.readFileSync(cachePath, 'utf8')) as {
+                  duration?: string
+                  durationSeconds?: number
+                  resolution?: string
+                }
+                duration = meta.duration
+                durationSeconds = meta.durationSeconds
+                resolution = meta.resolution
+              } catch (_) {}
+            } else {
+              try {
+                const meta = await getVideoMetadata(fullPath)
+                if (meta.duration !== undefined || meta.resolution !== undefined) {
+                  duration = meta.duration
+                  durationSeconds = meta.durationSeconds
+                  resolution = meta.resolution
+                  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true })
+                  fs.writeFileSync(
+                    cachePath,
+                    JSON.stringify({ duration, durationSeconds, resolution }, null, 0),
+                    'utf8'
+                  )
+                }
+              } catch (_) {}
+            }
+          }
+          return {
+            id: Buffer.from(basename).toString('base64').substring(0, 20),
+            name: basename,
+            displayName: parsed.displayName,
+            artist: parsed.artist,
+            title: parsed.title,
+            key: parsed.key,
+            bpm: parsed.bpm,
+            type: 'video',
+            size: stat.size || 0,
+            sizeFormatted: formatBytes(stat.size || 0),
+            path: relativePath,
+            genre: genreName,
+            thumbnailUrl: `/api/thumbnail/${encodeURIComponent(relativePath)}`,
+            canPreview: DEMOS_ENABLED,
+            canDownload: hasAccess,
+            duration,
+            durationSeconds,
+            resolution,
+          }
+        })
+      )
+      videos.sort((a, b) => a.artist.localeCompare(b.artist))
+      const totalSize = videos.reduce((sum, v) => sum + v.size, 0)
+      genres.push({
+      id: genreName.toLowerCase().replace(/\s+/g, '-'),
+      name: genreName,
+      type: 'folder',
+      videoCount: videos.length,
+      totalSize,
+      totalSizeFormatted: formatBytes(totalSize),
+      videos,
+    })
+  }
+  genres.sort((a, b) => a.name.localeCompare(b.name))
+  } catch (e) {
+    console.error('Error reading local videos:', e)
+  }
+  return genres
+}
+
+/**
+ * Lee estructura desde Hetzner Storage Box (WebDAV).
+ * Estructura: /Videos Enero 2026/Cumbia/video.mp4 (carpeta base = géneros = subcarpetas con videos).
  */
 async function readVideoStructureFromHetzner(hasAccess: boolean): Promise<GenreFolder[]> {
   const genres: GenreFolder[] = []
+  let basePath = getHetznerVideosBasePath()
+  let rootToList = basePath ? `/${basePath}` : '/'
   try {
-    const rootItems = await listHetznerDirectory('/')
-    const folders = rootItems.filter((f: { type: string }) => f.type === 'directory')
+    let rootItems = await listHetznerDirectory(rootToList)
+    let folders = rootItems.filter((f: { type: string }) => f.type === 'directory')
+    // Si la carpeta base está vacía o no existe, intentar raíz (géneros directamente en /)
+    if (folders.length === 0 && basePath) {
+      rootItems = await listHetznerDirectory('/')
+      folders = rootItems.filter((f: { type: string }) => f.type === 'directory')
+      if (folders.length > 0) {
+        basePath = ''
+        rootToList = '/'
+      }
+    }
     for (const folder of folders) {
       const genreName = folder.basename
-      const genrePath = `/${genreName}`
+      const genrePath = basePath ? `/${basePath}/${genreName}` : `/${genreName}`
       const files = await listHetznerDirectory(genrePath)
       const videoFiles = files.filter(
         (f: { basename: string; type: string }) => f.type === 'file' && /\.(mp4|mov|avi|mkv)$/i.test(f.basename)
@@ -175,7 +301,7 @@ async function readVideoStructureFromHetzner(hasAccess: boolean): Promise<GenreF
       const videos: VideoFile[] = await Promise.all(
         videoFiles.map(async (f: { basename: string; size: number; filename: string }) => {
           const parsed = parseVideoName(f.basename)
-          const relativePath = `${genreName}/${f.basename}`
+          const relativePath = basePath ? `${basePath}/${genreName}/${f.basename}` : `${genreName}/${f.basename}`
           let duration: string | undefined
           let durationSeconds: number | undefined
           let resolution: string | undefined
@@ -253,9 +379,9 @@ async function readVideoStructureFromHetzner(hasAccess: boolean): Promise<GenreF
             canDownload: hasAccess,
             duration,
             durationSeconds,
-            resolution,
-          }
-        })
+          resolution,
+        }
+      })
       )
       videos.sort((a, b) => a.artist.localeCompare(b.artist))
       const totalSize = videos.reduce((sum, v) => sum + v.size, 0)

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import archiver from 'archiver'
+import fs from 'fs'
+import path from 'path'
 import {
   isHetznerWebDAVConfigured,
   listHetznerDirectory,
@@ -12,6 +14,7 @@ import {
   getBunnyFileStream,
   type BunnyFile,
 } from '@/lib/storage/bunny'
+import { isLocalVideos, getVideosBasePath, getHetznerVideosBasePath } from '@/lib/storage/videos-source'
 
 /**
  * GET /api/download-zip?genre=xxx (opcional: un género) o sin params = todo el pack
@@ -53,13 +56,15 @@ export async function GET(req: NextRequest) {
 
     const fileName = genre ? 'Bear-Beat-' + genre + '.zip' : 'Bear-Beat-Pack-Enero-2026.zip'
 
-    if (isBunnyStorageConfigured()) {
+    if (isLocalVideos()) {
+      await addLocalFilesToArchive(archive, genre)
+    } else if (isBunnyStorageConfigured()) {
       await addBunnyFilesToArchive(archive, genre)
     } else if (isHetznerWebDAVConfigured()) {
       await addHetznerFilesToArchive(archive, genre)
     } else {
       return NextResponse.json(
-        { error: 'Configura Hetzner Storage Box o Bunny en .env para habilitar ZIP.' },
+        { error: 'Configura VIDEOS_BASE_PATH, Hetzner Storage Box o Bunny en .env para habilitar ZIP.' },
         { status: 503 }
       )
     }
@@ -76,6 +81,28 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error('Download ZIP error:', error)
     return NextResponse.json({ error: 'Error al generar ZIP' }, { status: 500 })
+  }
+}
+
+async function addLocalFilesToArchive(
+  archive: archiver.Archiver,
+  genreFilter: string | null
+): Promise<void> {
+  const basePath = getVideosBasePath()
+  const entries = fs.readdirSync(basePath, { withFileTypes: true })
+  const folders = entries.filter((e) => e.isDirectory())
+  for (const folder of folders) {
+    const genreName = folder.name
+    if (genreFilter && genreName.toLowerCase().replace(/\s+/g, '-') !== genreFilter.toLowerCase()) continue
+    const genrePath = path.join(basePath, genreName)
+    const fileNames = fs.readdirSync(genrePath)
+    const videoFiles = fileNames.filter((n) => /\.(mp4|mov|avi|mkv)$/i.test(n))
+    for (const basename of videoFiles) {
+      const fullPath = path.join(genrePath, basename)
+      if (fs.statSync(fullPath).isFile()) {
+        archive.file(fullPath, { name: `${genreName}/${basename}` })
+      }
+    }
   }
 }
 
@@ -106,17 +133,25 @@ async function addHetznerFilesToArchive(
   archive: archiver.Archiver,
   genreFilter: string | null
 ): Promise<void> {
-  const rootItems = await listHetznerDirectory('/')
-  const folders = rootItems.filter((f: { type: string }) => f.type === 'directory')
+  let basePath = getHetznerVideosBasePath()
+  let rootToList = basePath ? `/${basePath}` : '/'
+  let rootItems = await listHetznerDirectory(rootToList)
+  let folders = rootItems.filter((f: { type: string }) => f.type === 'directory')
+  if (folders.length === 0 && basePath) {
+    rootItems = await listHetznerDirectory('/')
+    folders = rootItems.filter((f: { type: string }) => f.type === 'directory')
+    if (folders.length > 0) basePath = ''
+  }
   for (const folder of folders) {
     const genreName = folder.basename
     if (genreFilter && genreName.toLowerCase().replace(/\s+/g, '-') !== genreFilter.toLowerCase()) continue
-    const files = await listHetznerDirectory(`/${genreName}`)
+    const genrePath = basePath ? `/${basePath}/${genreName}` : `/${genreName}`
+    const files = await listHetznerDirectory(genrePath)
     const videoFiles = files.filter(
       (f: { basename: string; type: string }) => f.type === 'file' && /\.(mp4|mov|avi|mkv)$/i.test(f.basename)
     )
     for (const f of videoFiles) {
-      const remotePath = `/${genreName}/${f.basename}`
+      const remotePath = `${genrePath}/${f.basename}`
       const readStream = createHetznerReadStream(remotePath)
       if (readStream) {
         archive.append(readStream, { name: `${genreName}/${f.basename}` })
