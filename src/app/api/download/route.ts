@@ -59,12 +59,16 @@ export async function GET(req: NextRequest) {
       const bunnyPath = `${BUNNY_PACK_PREFIX}/${sanitizedPath}`
       const signedUrl = generateSignedUrl(bunnyPath, 3600, process.env.NEXT_PUBLIC_APP_URL)
       // Registrar descarga para "Los más populares" y "Última descarga"
-      await supabase.from('downloads').insert({
-        user_id: user.id,
-        pack_id: purchases[0].pack_id,
-        file_path: sanitizedPath,
-        download_method: 'web',
-      }).then(() => {}).catch(() => {})
+      try {
+        await supabase.from('downloads').insert({
+          user_id: user.id,
+          pack_id: purchases[0].pack_id,
+          file_path: sanitizedPath,
+          download_method: 'web',
+        })
+      } catch {
+        // ignorar si falla (tabla no existe o RLS)
+      }
       return NextResponse.redirect(signedUrl)
     }
     
