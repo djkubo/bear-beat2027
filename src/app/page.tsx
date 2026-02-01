@@ -112,6 +112,7 @@ function ScarcityBar({ sold, total }: { sold: number; total: number }) {
 // Reproductor de demo inline
 function DemoPlayer({ video, onClose, hasAccess = false }: { video: Video; onClose: () => void; hasAccess?: boolean }) {
   const [downloading, setDownloading] = useState(false)
+  const [demoError, setDemoError] = useState(false)
   
   const handleDownload = async () => {
     setDownloading(true)
@@ -150,6 +151,12 @@ function DemoPlayer({ video, onClose, hasAccess = false }: { video: Video; onClo
               <p className="text-white/20 text-4xl md:text-6xl font-black rotate-[-25deg]">BEAR BEAT</p>
             </div>
           )}
+          {demoError && !hasAccess ? (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900/90 text-gray-400 p-6 text-center">
+              <p className="text-lg font-bold text-white/80 mb-2">Demo no disponible</p>
+              <p className="text-sm">El servidor de demos no está configurado o el archivo no está disponible.</p>
+            </div>
+          ) : (
           <video
             src={hasAccess ? `/api/download?file=${encodeURIComponent(video.path)}&stream=true` : `/api/demo/${encodeURIComponent(video.path)}`}
             className="w-full h-full"
@@ -157,7 +164,9 @@ function DemoPlayer({ video, onClose, hasAccess = false }: { video: Video; onClo
             autoPlay
             controlsList={hasAccess ? undefined : "nodownload"}
             disablePictureInPicture={!hasAccess}
+            onError={() => !hasAccess && setDemoError(true)}
           />
+          )}
           <div className={`absolute top-4 right-4 ${hasAccess ? 'bg-green-500' : 'bg-red-500'} px-3 py-1 rounded-full text-sm font-bold`}>
             {hasAccess ? '✓ ACCESO COMPLETO' : 'DEMO'}
           </div>

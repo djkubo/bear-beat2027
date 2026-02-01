@@ -62,11 +62,13 @@ export default function ContenidoPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [hasAccess, setHasAccess] = useState(false)
   const [posterError, setPosterError] = useState(false)
+  const [demoError, setDemoError] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const inventory = useVideoInventory()
 
   useEffect(() => {
     setPosterError(false)
+    setDemoError(false)
   }, [selectedVideo?.id])
 
   useEffect(() => {
@@ -381,7 +383,13 @@ export default function ContenidoPage() {
                       </p>
                     </div>
 
-                    {/* Video real (sin poster: la portada va en capa inferior) */}
+                    {/* Video real o mensaje si demo no disponible (503) */}
+                    {demoError ? (
+                      <div className="relative z-10 w-full h-full flex flex-col items-center justify-center bg-gray-900/90 text-gray-400 p-6 text-center">
+                        <p className="text-lg font-bold text-white/80 mb-2">Demo no disponible</p>
+                        <p className="text-sm">El servidor de demos no está configurado o el archivo no está disponible.</p>
+                      </div>
+                    ) : (
                     <video
                       ref={videoRef}
                       key={selectedVideo.path}
@@ -394,7 +402,9 @@ export default function ContenidoPage() {
                       autoPlay
                       muted
                       preload="metadata"
+                      onError={() => setDemoError(true)}
                     />
+                    )}
 
                     {/* Badge DEMO */}
                     <div className="absolute top-3 right-3 z-10">

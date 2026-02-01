@@ -502,7 +502,8 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 ### 19.3 Consola y errores en producción
 - **Meta Pixel**: Si el pixel de Meta está "unavailable" por permisos de tráfico, se puede desactivar con `NEXT_PUBLIC_META_PIXEL_DISABLED=true`. Las llamadas a `fbq` van en try/catch para no romper la app.
 - **ManyChat**: El widget solo se renderiza si existe `NEXT_PUBLIC_MANYCHAT_PAGE_ID`; si no está definida, no se carga el script y se evita el error "Page Id is required".
-- **user_events**: Inserts defensivos (longitudes acotadas); errores 400 no llenan la consola en producción; en desarrollo se hace `console.warn`. API `/api/track-event` devuelve 400 sin loguear cuando el insert falla.
+- **user_events**: API `/api/track-event` devuelve **200** aunque el insert falle (schema/RLS), para no llenar la consola con 400. El cliente hace fetch a esta API; no insert directo a Supabase.
+- **Demos 503**: Si FTP no está configurado en Render, `/api/demo/[...path]` devuelve 503. El frontend (landing y /contenido) muestra "Demo no disponible" con `onError` en el `<video>` en lugar de un reproductor roto.
 - **Thumbnail**: Al redirigir a `/favicon.png` (cuando no hay video local), se usa `NEXT_PUBLIC_APP_URL` como origen si está definida y no es localhost/0.0.0.0, para evitar redirects a direcciones incorrectas.
 
 ### 19.4 Variables de entorno relacionadas

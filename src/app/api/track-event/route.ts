@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
     if (error) {
       if (error.code === '23505') return NextResponse.json({ success: true }) // duplicate ok
       if (process.env.NODE_ENV === 'development') console.warn('user_events API:', error.message)
-      return NextResponse.json({ success: false, error: error.message }, { status: 400 })
+      // Devolver 200 para no llenar consola con 400; el tracking es no crítico
+      return NextResponse.json({ success: false }, { status: 200 })
     }
     
     // Establecer cookie de session si no existe
