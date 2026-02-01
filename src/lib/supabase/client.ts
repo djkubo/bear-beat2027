@@ -12,6 +12,7 @@ export function createClient() {
     )
   }
   return createBrowserClient(url, key, {
+    cookies: {},
     cookieOptions: {
       path: '/',
       sameSite: 'lax',

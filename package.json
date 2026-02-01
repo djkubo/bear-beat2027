@@ -15,6 +15,7 @@
     "db:sync-videos-ftp": "node scripts/sync-videos-from-ftp.js",
     "db:update-videos-metadata": "node scripts/update-videos-metadata.js",
     "deploy:env": "node scripts/render-set-env.js",
+    "supabase:set-auth-urls": "node scripts/supabase-set-auth-urls.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

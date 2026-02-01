@@ -1,64 +1,72 @@
-# Checklist obligatorio: Supabase en producción
+# Configurar Supabase para que el login funcione en producción
 
-**Si la sesión no persiste en producción** (login y te vuelve a mandar a login), es casi siempre porque **Supabase Auth no tiene configurada la URL de tu sitio**. Haz esto **una sola vez** en el proyecto de Supabase que usa Render.
-
----
-
-## 1. Entra al proyecto correcto
-
-- Ve a **[Supabase Dashboard](https://supabase.com/dashboard)**.
-- Abre el **mismo proyecto** cuyas variables usa tu app en Render (`NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`).
+**Problema:** Entras con tu usuario en bear-beat2027.onrender.com y te vuelve a mandar al login.  
+**Causa:** Supabase no tiene puesta la URL de tu sitio.  
+**Solución:** Hacer estos pasos **una sola vez** (5 minutos). No hace falta saber programar.
 
 ---
 
-## 2. Site URL (obligatorio)
+## Paso 1 — Abre Supabase
 
-1. En el menú izquierdo: **Authentication** → **URL Configuration**.
-2. En **Site URL** pon **exactamente**:
-   ```text
+1. Abre el navegador.
+2. Entra aquí: **https://supabase.com/dashboard**
+3. Inicia sesión si te lo pide.
+4. Haz clic en el **proyecto** que usa tu web (el mismo que tiene la base de datos de Bear Beat).
+
+---
+
+## Paso 2 — Ir a la configuración de URLs
+
+1. En el menú de la **izquierda**, haz clic en **Authentication**.
+2. Luego haz clic en **URL Configuration**.
+
+Ahora deberías ver una página con **Site URL** y **Redirect URLs**.
+
+---
+
+## Paso 3 — Cambiar Site URL
+
+1. En el cuadro **Site URL** borra lo que haya (por ejemplo `http://localhost:3000`).
+2. Escribe o pega **exactamente** esto:
+   ```
    https://bear-beat2027.onrender.com
    ```
-3. **Save**.
-
-Si ahí pone `http://localhost:3000` o otra URL, las cookies de sesión no se asocian bien a tu dominio de producción.
+3. Haz clic en **Save** (abajo de esa sección).
 
 ---
 
-## 3. Redirect URLs (obligatorio)
+## Paso 4 — Añadir Redirect URLs
 
-1. En la misma página **URL Configuration**.
-2. En **Redirect URLs** asegúrate de tener **al menos**:
-   ```text
+1. En **Redirect URLs** mira si ya está esta línea:
+   ```
    https://bear-beat2027.onrender.com/**
    ```
-   y si quieres seguir usando local:
-   ```text
+2. Si **no** está:
+   - En el cuadro de texto escribe: `https://bear-beat2027.onrender.com/**`
+   - Haz clic en **Add** (o el botón para añadir).
+3. Si quieres poder probar en tu ordenador, añade también:
+   ```
    http://localhost:3000/**
    ```
-3. **Add** cada una si no está.
-4. **Save**.
-
-Sin la URL de producción en la lista, los redirects tras login/OAuth pueden fallar y la sesión no se guarda.
+4. Haz clic en **Save**.
 
 ---
 
-## 4. Comprobar
+## Paso 5 — Probar
 
-1. Cierra sesión en **https://bear-beat2027.onrender.com** si estabas logueado.
-2. Entra a **https://bear-beat2027.onrender.com/login**.
-3. Inicia sesión con tu usuario (ej. test@bearbeat.com).
-4. Deberías ir a dashboard o a la ruta que tengas tras login **sin** volver a la pantalla de login.
+1. Abre: **https://bear-beat2027.onrender.com/login**
+2. Inicia sesión con tu usuario (por ejemplo test@bearbeat.com).
+3. Deberías ir al dashboard o a la página de después del login **sin** que te vuelva a sacar al login.
 
-Si tras esto sigue fallando, revisa en Render que **NEXT_PUBLIC_APP_URL** sea `https://bear-beat2027.onrender.com` y que no haya errores en la pestaña Logs del servicio.
+Si pasa eso, ya está todo bien.
 
 ---
 
-## Resumen
+## Resumen (por si lo necesitas)
 
-| Dónde | Qué |
-|-------|-----|
-| **Supabase** → Authentication → URL Configuration | **Site URL:** `https://bear-beat2027.onrender.com` |
-| **Supabase** → Authentication → URL Configuration | **Redirect URLs:** incluir `https://bear-beat2027.onrender.com/**` |
-| **Render** → Environment | **NEXT_PUBLIC_APP_URL:** `https://bear-beat2027.onrender.com` |
+| Dónde en Supabase | Qué poner |
+|-------------------|-----------|
+| Authentication → URL Configuration → **Site URL** | `https://bear-beat2027.onrender.com` |
+| Authentication → URL Configuration → **Redirect URLs** | `https://bear-beat2027.onrender.com/**` (y opcional `http://localhost:3000/**`) |
 
-Con esto, la sesión de Supabase debería persistir en producción y el login/admin funcionar sin depender del bypass de cookie.
+Solo tienes que hacerlo una vez. Después el login en producción debería funcionar bien.
