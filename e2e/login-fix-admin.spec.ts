@@ -33,7 +33,7 @@ test.describe('Login + fix-admin', () => {
     test.setTimeout(20000)
     await page.goto(`${BASE_URL}/fix-admin?token=${FIX_ADMIN_TOKEN}`, { waitUntil: 'networkidle' })
     await expect(
-      page.getByText(/listo|admin asignado|token no válido|fix_admin_secret|opción b/i)
+      page.getByText(/listo|admin asignado|token no válido|fix_admin_secret|opción b/i).first()
     ).toBeVisible({ timeout: 10000 })
   })
 
