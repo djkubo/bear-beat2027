@@ -73,7 +73,7 @@ function getBaseUrlFromRequest(req: NextRequest): string {
   return ''
 }
 
-/** Construye URL de portada; baseUrl = dominio real de la petición (evita 0.0.0.0). */
+/** Construye URL de portada; baseUrl = dominio real de la petición (evita 0.0.0.0). En producción sin thumbnail en DB usamos placeholder directo para que cargue al instante (thumbnail-from-video puede fallar por timeout/ffmpeg). */
 function buildThumbnailUrl(
   thumbnailUrlFromDb: string | null,
   relativePath: string,
@@ -88,10 +88,10 @@ function buildThumbnailUrl(
     }
     urlPath = `/api/thumbnail-cdn?path=${encodeURIComponent(thumbnailUrlFromDb)}`
   } else if (process.env.NODE_ENV === 'production') {
-    const q = new URLSearchParams({ path: relativePath })
+    const q = new URLSearchParams()
     if (artist) q.set('artist', artist)
     if (title) q.set('title', title)
-    urlPath = `/api/thumbnail-from-video?${q.toString()}`
+    urlPath = `/api/placeholder/thumb?${q.toString()}`
   } else {
     urlPath = `/api/thumbnail/${encodeURIComponent(relativePath)}`
   }
