@@ -20,6 +20,8 @@
 | `/verify-email` | Confirmación email | Público |
 | `/dashboard` | Panel cliente (packs, FTP, historial) | Logueado |
 | `/mi-cuenta` | Editar perfil (nombre, teléfono) | Logueado |
+| `/portal` | Hub cliente (enlaces a contenido, FTP, comunidad, mi cuenta) | Logueado |
+| `/comunidad` | Bonos VIP (WhatsApp, packs, guías) | Logueado |
 | `/complete-purchase` | Post-pago (activar acceso) | Público / Logueado |
 | `/pago-pendiente` | Pago pendiente OXXO/SPEI | Público |
 | `/terminos` | Términos y condiciones | Público |
@@ -54,6 +56,7 @@
 | GET | `/api/demo/[...path]` | Demo de video |
 | POST | `/api/create-checkout` | Crear sesión Stripe |
 | GET | `/api/verify-payment?session_id=...` | Verificar pago Stripe |
+| POST | `/api/complete-purchase/activate` | Activar compra (Stripe + crear FTP Hetzner si aplica) |
 | POST | `/api/webhooks/stripe` | Webhook Stripe |
 | POST | `/api/track-event` | Tracking de eventos |
 | GET | `/api/facebook` | Facebook CAPI |
@@ -113,7 +116,7 @@ npm run db:sync-videos
 | `STRIPE_WEBHOOK_SECRET` | Webhook Stripe |
 
 **Recomendadas:**  
-`RESEND_API_KEY`, `DATABASE_URL` (para `db:setup` y scripts), `NEXT_PUBLIC_META_PIXEL_ID`, `FACEBOOK_CAPI_ACCESS_TOKEN`, `NEXT_PUBLIC_MANYCHAT_PAGE_ID`, `MANYCHAT_API_KEY`, `TWILIO_*` (SMS/WhatsApp), `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL`, `BUNNY_*` (storage), etc.
+`DATABASE_URL` (para `db:setup` y scripts), `NEXT_PUBLIC_META_PIXEL_ID`, `FACEBOOK_CAPI_ACCESS_TOKEN`, `NEXT_PUBLIC_MANYCHAT_PAGE_ID`, `MANYCHAT_API_KEY`, `TWILIO_*` (SMS/WhatsApp), `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL`, `BUNNY_*` (storage), **Hetzner Robot** (`HETZNER_ROBOT_USER`, `HETZNER_ROBOT_PASSWORD`, `HETZNER_STORAGEBOX_ID`) para FTP real por compra, `RESEND_API_KEY`, etc.
 
 **Subir env a Render desde `.env.local`:**
 ```bash
@@ -136,7 +139,8 @@ npm run deploy:env
 | **Push (web-push)** | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL` | Suscripción push, `/api/push/send` (admin). Sin clave pública no se registran push. |
 | **Twilio** | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, `TWILIO_WHATSAPP_NUMBER` | SMS (`/api/send-sms`), WhatsApp (`/api/send-whatsapp`), verificación teléfono. |
 | **Resend** | `RESEND_API_KEY` | Emails (referenciado; integración en desarrollo). |
-| **Bunny** | `BUNNY_*` (API key, storage zone, CDN, stream) | Storage/CDN y Bunny Stream si se usan. |
+| **Bunny** | `BUNNY_*` (API key, storage zone, CDN, stream) | Storage/CDN; si están configurados, `/api/download` redirige a URL firmada. |
+| **Hetzner Robot** | `HETZNER_ROBOT_USER`, `HETZNER_ROBOT_PASSWORD`, `HETZNER_STORAGEBOX_ID` | Crear subcuenta FTP real por compra (solo lectura). Ver `docs/HETZNER_FTP_REAL.md`. |
 | **Render** | `RENDER_API_KEY` (solo local) | Script `deploy:env` para subir env al servicio. |
 
 Ninguna clave debe estar hardcodeada en el código; todas vienen de variables de entorno (o de `.env.example` como plantilla).
@@ -178,12 +182,32 @@ Ninguna clave debe estar hardcodeada en el código; todas vienen de variables de
 | `npm run start` | Servidor producción (usa `scripts/start.js`) |
 | `npm run db:setup` | Ejecuta `SETUP_COMPLETO.sql` contra Supabase |
 | `npm run db:sync-videos` | Sincroniza carpeta local → tabla `videos` |
+| `npm run db:sync-videos-ftp` | Sincroniza listado desde FTP Hetzner → tabla `videos` |
 | `npm run deploy:env` | Sube variables de `.env.local` a Render |
 
 ---
 
-## 7. Documentación relacionada
+## 7. Todo lo implementado (referencia única)
+
+- **Landing:** contador de videos dinámico (Supabase `videos`), precio $350 MXN, sticky CTA móvil, lenguaje humano.
+- **Checkout:** Stripe (tarjeta, OXXO, SPEI), detección país, garantías, resumen con conteo real de videos.
+- **Complete-purchase:** verificación Stripe, creación de subcuenta FTP en Hetzner (Robot API) si están configuradas las vars, guardado en `purchases`, mensajes de error amables.
+- **Dashboard:** datos reales (usuario, compras con pack, credenciales FTP reales), host FTP = subcuenta o `NEXT_PUBLIC_FTP_HOST`, historial de descargas (placeholder).
+- **Contenido:** listado desde Supabase en producción; paywall "OBTENER ACCESO POR $350"; descarga por web (Bunny si configurado, si no stream desde servidor).
+- **Admin:** KPIs (`get_admin_stats`), usuarios, compras, packs, pendientes, tracking, attribution, chatbot, manychat, push, ftp-pool, settings.
+- **Mi cuenta, Portal, Comunidad:** páginas creadas; navegación con sesión (Mi Panel, Mi cuenta, Portal, Comunidad VIP).
+- **Pixel:** evento Purchase con valor dinámico (monto y moneda real).
+- **Base de datos:** SETUP_COMPLETO.sql idempotente; tablas users, packs, genres, videos, purchases, pending_purchases, user_events, push_*, ftp_pool, conversations, messages; RLS y políticas; is_admin(), get_admin_stats().
+- **Scripts:** db:setup, db:sync-videos, db:sync-videos-ftp (catálogo desde FTP Hetzner), deploy:env (subir env a Render).
+
+Nada de conteos ni precios hardcodeados; todo desde Supabase o APIs. Ver REGLAS_PROYECTO.md.
+
+---
+
+## 8. Documentación relacionada
 
 - **README.md** – Resumen, stack, instalación, admin/dashboard.
 - **INSTALACION.md** – Pasos detallados de instalación y crear admin.
 - **RENDER_DEPLOY.md** – Build, env, listado videos, admin en producción, checklist.
+- **docs/HETZNER_FTP_REAL.md** – FTP real con subcuentas (Robot API); ya implementado.
+- **REGLAS_PROYECTO.md** – Prohibido hardcode para conteos/precios; prioridad flujo producción.
