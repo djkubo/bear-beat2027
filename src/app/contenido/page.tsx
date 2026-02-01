@@ -1,0 +1,572 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
+import Link from 'next/link'
+import { trackCTAClick, trackPageView } from '@/lib/tracking'
+import { MobileMenu } from '@/components/ui/MobileMenu'
+import { createClient } from '@/lib/supabase/client'
+
+// ==========================================
+// PÁGINA DE CONTENIDO - Diseño Persuasivo
+// Videos reproducibles + Paywall inteligente
+// ==========================================
+
+interface Video {
+  id: string
+  name: string
+  displayName: string
+  artist: string
+  title: string
+  key?: string
+  bpm?: string
+  size: number
+  sizeFormatted: string
+  path: string
+  genre: string
+  canPreview: boolean
+  canDownload: boolean
+  thumbnailUrl?: string
+  duration?: string
+  resolution?: string
+}
+
+interface Genre {
+  id: string
+  name: string
+  videoCount: number
+  totalSizeFormatted: string
+  videos: Video[]
+}
+
+interface PackInfo {
+  totalVideos: number
+  totalSizeFormatted: string
+  genreCount: number
+}
+
+const GENRE_ICONS: Record<string, string> = {
+  bachata: '💃', cubaton: '🇨🇺', cumbia: '🎺', dembow: '🔥',
+  merengue: '🎹', reggaeton: '🎤', salsa: '💫', default: '🎬'
+}
+
+export default function ContenidoPage() {
+  const [genres, setGenres] = useState<Genre[]>([])
+  const [packInfo, setPackInfo] = useState<PackInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [expandedGenre, setExpandedGenre] = useState<string | null>(null)
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
+  const [showPaywall, setShowPaywall] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [hasAccess, setHasAccess] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    trackPageView('contenido')
+    verificarAcceso()
+    loadVideos()
+  }, [])
+
+  // Autoplay cuando seleccionan otro video (el click ya es gesto de usuario)
+  useEffect(() => {
+    if (!selectedVideo || !videoRef.current) return
+    const el = videoRef.current
+    const play = () => el.play().catch(() => {})
+    if (el.readyState >= 2) play()
+    else el.addEventListener('loadeddata', play, { once: true })
+    return () => el.removeEventListener('loadeddata', play)
+  }, [selectedVideo])
+
+  const verificarAcceso = async () => {
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (user) {
+        const { data: purchases } = await supabase
+          .from('purchases')
+          .select('*')
+          .eq('user_id', user.id)
+
+        const hasUserAccess = purchases && purchases.length > 0
+        setHasAccess(hasUserAccess)
+        
+        console.log('🔍 CONTENIDO - Acceso:', hasUserAccess, 'Compras:', purchases?.length || 0)
+      }
+    } catch (error) {
+      console.error('Error verificando acceso:', error)
+    }
+  }
+
+  const loadVideos = async () => {
+    try {
+      const response = await fetch('/api/videos')
+      const data = await response.json()
+      if (data.success) {
+        setGenres(data.genres)
+        setPackInfo(data.pack)
+        // NO sobrescribir hasAccess - ya lo verificamos directamente
+      }
+    } catch (err) {
+      console.error('Error cargando videos:', err)
+      // Usar datos de fallback
+      setPackInfo({ totalVideos: 178, totalSizeFormatted: '20 GB', genreCount: 7 })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Búsqueda en artista, título, género, key y BPM
+  const query = searchQuery.toLowerCase().trim()
+  const filteredGenres = genres.map(g => ({
+    ...g,
+    videos: g.videos.filter(v =>
+      !query || 
+      v.artist.toLowerCase().includes(query) ||
+      v.title.toLowerCase().includes(query) ||
+      v.displayName.toLowerCase().includes(query) ||
+      v.genre.toLowerCase().includes(query) ||
+      (v.key && v.key.toLowerCase().includes(query)) ||
+      (v.bpm && v.bpm.includes(query))
+    )
+  })).filter(g => g.videos.length > 0 || !query)
+  
+  // Total de resultados
+  const totalResults = filteredGenres.reduce((sum, g) => sum + g.videos.length, 0)
+
+  const handleDownloadAttempt = (video: Video) => {
+    if (hasAccess) {
+      window.open(`/api/download?file=${encodeURIComponent(video.path)}`, '_blank')
+    } else {
+      setSelectedVideo(video)
+      setShowPaywall(true)
+      trackCTAClick('download_blocked', 'contenido', { video: video.name })
+    }
+  }
+
+  const handlePreview = (video: Video) => {
+    setSelectedVideo(video)
+    trackCTAClick('preview', 'contenido', { video: video.name })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-bear-black flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-bear-blue/30 border-t-bear-blue rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-bear-black text-white">
+      {/* HEADER PERSUASIVO */}
+      <header className="py-4 px-4 border-b border-bear-blue/20 sticky top-0 bg-bear-black/95 backdrop-blur z-40">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <Image 
+              src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png"
+              alt="Bear Beat" width={40} height={40}
+            />
+            <span className="font-bold text-bear-blue hidden md:block">BEAR BEAT</span>
+          </Link>
+
+          <div className="flex items-center gap-3">
+            {hasAccess ? (
+              <div className="flex items-center gap-3">
+                <a
+                  href="/api/download-zip"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-bear-blue font-bold text-sm hover:underline"
+                >
+                  ⬇️ Descargar ZIP
+                </a>
+                <Link href="/dashboard">
+                  <span className="text-green-400 font-bold text-sm">✅ Acceso Activo</span>
+                </Link>
+              </div>
+            ) : (
+              <>
+                <span className="text-bear-blue font-bold text-sm hidden md:block">
+                  🔥 OFERTA: $350 MXN
+                </span>
+                <Link href="/checkout?pack=enero-2026">
+                  <button className="bg-bear-blue text-bear-black font-black px-4 py-2 rounded-lg hover:bg-bear-blue/90 animate-pulse">
+                    OBTENER ACCESO
+                  </button>
+                </Link>
+              </>
+            )}
+            
+            {/* Menú móvil */}
+            <MobileMenu currentPath="/contenido" userHasAccess={hasAccess} isLoggedIn={hasAccess} />
+          </div>
+        </div>
+      </header>
+
+      {/* BANNER DE URGENCIA */}
+      {!hasAccess && (
+        <div className="bg-gradient-to-r from-red-600 to-orange-500 py-3 px-4 text-center">
+          <p className="text-sm md:text-base font-bold">
+            ⚠️ SOLO HOY: Acceso a {packInfo?.totalVideos || 157} videos por $350 MXN (precio normal $1,499)
+            <Link href="/checkout?pack=enero-2026" className="underline ml-2">
+              Obtener ahora →
+            </Link>
+          </p>
+        </div>
+      )}
+
+      {/* HERO DEL CONTENIDO */}
+      <section className="py-8 px-4 bg-gradient-to-b from-bear-blue/10 to-transparent">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl md:text-5xl font-black mb-4">
+              📦 Pack Enero 2026
+            </h1>
+            <p className="text-xl text-gray-400 mb-6">
+              <span className="text-bear-blue font-bold">{packInfo?.totalVideos || 157}</span> Video Remixes • 
+              <span className="text-bear-blue font-bold"> {packInfo?.genreCount || 7}</span> Géneros • 
+              <span className="text-bear-blue font-bold"> {packInfo?.totalSizeFormatted || '15 GB'}</span>
+            </p>
+
+            {/* Búsqueda */}
+            <div className="max-w-md mx-auto relative">
+              <input
+                type="text"
+                placeholder="🔍 Buscar artista, canción, género, key o BPM..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/10 border-2 border-bear-blue/50 rounded-xl px-5 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-bear-blue"
+              />
+              {searchQuery && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <span className="text-bear-blue font-bold text-sm">{totalResults} resultados</span>
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="text-gray-400 hover:text-white text-xl"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Stats rápidos */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+            {[
+              { icon: '🎬', label: 'Videos', value: packInfo?.totalVideos || 157 },
+              { icon: '🎵', label: 'Géneros', value: packInfo?.genreCount || 7 },
+              { icon: '📐', label: 'Calidad', value: '1080p' },
+              { icon: '⬇️', label: 'Descarga', value: 'Ilimitada' },
+            ].map((stat, i) => (
+              <div key={i} className="bg-white/5 border border-bear-blue/20 rounded-xl p-4 text-center">
+                <span className="text-2xl">{stat.icon}</span>
+                <p className="text-2xl font-black text-bear-blue">{stat.value}</p>
+                <p className="text-xs text-gray-500">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CONTENIDO PRINCIPAL */}
+      <main className="py-8 px-4">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8">
+          
+          {/* LISTA DE GÉNEROS Y VIDEOS */}
+          <div className="lg:col-span-2 space-y-4">
+            {filteredGenres.map((genre) => (
+              <motion.div
+                key={genre.id}
+                className="bg-white/5 border border-bear-blue/20 rounded-2xl overflow-hidden"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {/* Header género */}
+                <button
+                  onClick={() => setExpandedGenre(expandedGenre === genre.id ? null : genre.id)}
+                  className="w-full p-5 flex items-center justify-between hover:bg-white/5"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-4xl">{GENRE_ICONS[genre.id] || GENRE_ICONS.default}</span>
+                    <div className="text-left">
+                      <h3 className="font-black text-xl text-bear-blue">{genre.name}</h3>
+                      <p className="text-sm text-gray-500">{genre.videoCount} videos • {genre.totalSizeFormatted}</p>
+                    </div>
+                  </div>
+                  <motion.span
+                    animate={{ rotate: expandedGenre === genre.id ? 90 : 0 }}
+                    className="text-2xl text-bear-blue"
+                  >▶</motion.span>
+                </button>
+
+                {/* Lista de videos */}
+                <AnimatePresence>
+                  {expandedGenre === genre.id && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: 'auto' }}
+                      exit={{ height: 0 }}
+                      className="border-t border-bear-blue/20 overflow-hidden"
+                    >
+                      <div className="max-h-[500px] overflow-y-auto">
+                        {genre.videos.map((video, i) => (
+                          <div
+                            key={video.id}
+                            className={`p-4 flex items-center gap-4 hover:bg-bear-blue/10 cursor-pointer transition-colors ${
+                              selectedVideo?.id === video.id ? 'bg-bear-blue/20' : ''
+                            }`}
+                            onClick={() => handlePreview(video)}
+                          >
+                            <span className="text-gray-600 font-mono w-8">{String(i + 1).padStart(2, '0')}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold truncate">{video.artist}</p>
+                              <p className="text-sm text-gray-400 truncate">{video.title}</p>
+                            </div>
+                            <div className="hidden md:flex gap-2">
+                              {video.key && (
+                                <span className="bg-purple-500/30 text-purple-300 px-2 py-1 rounded text-xs font-mono">{video.key}</span>
+                              )}
+                              {video.bpm && (
+                                <span className="bg-green-500/30 text-green-300 px-2 py-1 rounded text-xs font-mono">{video.bpm}</span>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <button className="p-2 bg-bear-blue/20 rounded-lg hover:bg-bear-blue/40">👁️</button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDownloadAttempt(video) }}
+                                className={`p-2 rounded-lg ${hasAccess ? 'bg-green-500/20 hover:bg-green-500/40' : 'bg-gray-500/20'}`}
+                              >⬇️</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* PANEL LATERAL - PREVIEW + CTA */}
+          <div className="space-y-6">
+            {/* REPRODUCTOR DE DEMO */}
+            <div className="bg-white/5 border border-bear-blue/20 rounded-2xl p-4 sticky top-24">
+              {selectedVideo ? (
+                <>
+                  <h3 className="font-bold mb-3 flex items-center gap-2">
+                    <span>🎬</span> Preview Demo
+                  </h3>
+                  
+                  {/* VIDEO PLAYER CON WATERMARK */}
+                  <div 
+                    className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4"
+                    onContextMenu={(e) => { e.preventDefault(); if (!hasAccess) setShowPaywall(true) }}
+                  >
+                    {/* Watermark */}
+                    <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
+                      <p className="text-white/30 text-3xl md:text-5xl font-black rotate-[-25deg] select-none whitespace-nowrap">
+                        BEAR BEAT
+                      </p>
+                    </div>
+
+                    {/* Video real con poster/thumbnail */}
+                    <video
+                      ref={videoRef}
+                      key={selectedVideo.path}
+                      src={`/api/demo/${encodeURIComponent(selectedVideo.path)}`}
+                      poster={selectedVideo.thumbnailUrl}
+                      className="w-full h-full object-contain"
+                      controls
+                      controlsList="nodownload noplaybackrate"
+                      disablePictureInPicture
+                      playsInline
+                      preload="auto"
+                      autoPlay
+                    />
+
+                    {/* Badge DEMO */}
+                    <div className="absolute top-3 right-3 z-10">
+                      <span className="bg-red-500 px-3 py-1 rounded-full text-xs font-black animate-pulse">
+                        DEMO
+                      </span>
+                    </div>
+                    
+                    {/* Resolución */}
+                    {selectedVideo.resolution && (
+                      <div className="absolute top-3 left-3 z-10">
+                        <span className="bg-bear-blue/80 px-2 py-1 rounded text-xs font-bold">
+                          {selectedVideo.resolution}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info del video */}
+                  <div className="space-y-3">
+                    <div>
+                      <p className="font-black text-lg">{selectedVideo.artist}</p>
+                      <p className="text-gray-400">{selectedVideo.title}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-sm">
+                      <span className="bg-bear-blue/20 text-bear-blue px-3 py-1 rounded-full">{selectedVideo.genre}</span>
+                      {selectedVideo.key && <span className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full">{selectedVideo.key}</span>}
+                      {selectedVideo.bpm && <span className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full">{selectedVideo.bpm} BPM</span>}
+                    </div>
+
+                    {/* CTA */}
+                    {hasAccess ? (
+                      <button
+                        onClick={() => handleDownloadAttempt(selectedVideo)}
+                        className="w-full bg-bear-blue text-bear-black font-black py-4 rounded-xl hover:bg-bear-blue/90"
+                      >
+                        ⬇️ DESCARGAR ESTE VIDEO
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowPaywall(true)}
+                        className="w-full bg-bear-blue text-bear-black font-black py-4 rounded-xl hover:bg-bear-blue/90"
+                      >
+                        🔓 DESBLOQUEAR DESCARGA
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <span className="text-6xl mb-4 block">👈</span>
+                  <p className="font-bold">Selecciona un video</p>
+                  <p className="text-sm text-gray-500">para ver la preview</p>
+                </div>
+              )}
+            </div>
+
+            {/* CTA PRINCIPAL */}
+            {!hasAccess && (
+              <div className="bg-gradient-to-br from-bear-blue/30 to-purple-500/30 border-2 border-bear-blue rounded-2xl p-6 text-center">
+                <p className="text-sm text-gray-400 mb-2">Acceso completo a todo:</p>
+                <p className="text-5xl font-black text-bear-blue mb-2">$350</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  <span className="line-through text-gray-600">$1,499 MXN</span> • Pago único
+                </p>
+                
+                <Link href="/checkout?pack=enero-2026">
+                  <button 
+                    className="w-full bg-bear-blue text-bear-black font-black py-4 rounded-xl hover:bg-bear-blue/90 mb-4"
+                    onClick={() => trackCTAClick('sidebar_main_cta', 'contenido')}
+                  >
+                    OBTENER ACCESO AHORA →
+                  </button>
+                </Link>
+
+                <ul className="text-left text-sm space-y-2">
+                  <li className="flex items-center gap-2">✅ {packInfo?.totalVideos} videos HD</li>
+                  <li className="flex items-center gap-2">✅ Descarga ilimitada</li>
+                  <li className="flex items-center gap-2">✅ Acceso FTP incluido</li>
+                  <li className="flex items-center gap-2">✅ Soporte 24/7</li>
+                  <li className="flex items-center gap-2">✅ Garantía 30 días</li>
+                </ul>
+              </div>
+            )}
+
+            {/* TESTIMONIAL */}
+            <div className="bg-white/5 border border-bear-blue/20 rounded-2xl p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-bear-blue/30 rounded-full flex items-center justify-center font-bold">DJ</div>
+                <div>
+                  <p className="font-bold text-sm">DJ Carlos - CDMX</p>
+                  <p className="text-yellow-400 text-xs">⭐⭐⭐⭐⭐</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-400 italic">
+                "Pensé que era muy bueno para ser real. Pero pagué y en 5 minutos ya estaba descargando todo por FTP. ¡Increíble calidad!"
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* MODAL PAYWALL PERSUASIVO */}
+      <AnimatePresence>
+        {showPaywall && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur z-50 flex items-center justify-center p-4"
+            onClick={() => setShowPaywall(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, y: 50 }}
+              className="bg-bear-black border-2 border-bear-blue rounded-3xl p-8 max-w-lg w-full text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-7xl mb-4">🔒</div>
+              <h3 className="text-3xl font-black mb-2">¡Este contenido es premium!</h3>
+              
+              {selectedVideo && (
+                <p className="text-gray-400 mb-6">
+                  Para descargar <span className="text-bear-blue font-bold">"{selectedVideo.artist}"</span> y los otros <span className="text-bear-blue font-bold">{packInfo?.totalVideos} videos</span>, obtén tu acceso ahora.
+                </p>
+              )}
+              
+              <div className="bg-gradient-to-r from-bear-blue/20 to-purple-500/20 rounded-2xl p-6 mb-6">
+                <p className="text-sm text-gray-400 mb-1">Oferta especial de hoy:</p>
+                <div className="flex items-center justify-center gap-4">
+                  <span className="text-2xl text-gray-500 line-through">$1,499</span>
+                  <span className="text-5xl font-black text-bear-blue">$350</span>
+                </div>
+                <p className="text-sm text-green-400 mt-2">¡Ahorras $1,149 MXN!</p>
+              </div>
+
+              <Link href="/checkout?pack=enero-2026">
+                <button 
+                  className="w-full bg-bear-blue text-bear-black font-black text-xl py-5 rounded-xl hover:bg-bear-blue/90 mb-4"
+                  onClick={() => trackCTAClick('paywall_cta', 'contenido')}
+                >
+                  SÍ, QUIERO ACCESO AHORA →
+                </button>
+              </Link>
+              
+              <button 
+                onClick={() => setShowPaywall(false)}
+                className="text-gray-600 hover:text-gray-400 text-sm"
+              >
+                No gracias, prefiero seguir sin descargar
+              </button>
+
+              <div className="mt-6 pt-4 border-t border-gray-800">
+                <p className="text-xs text-gray-500">
+                  🔒 Pago seguro • 💳 Múltiples métodos • ✅ Garantía 30 días
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* FOOTER CON CTA */}
+      {!hasAccess && (
+        <footer className="py-8 px-4 bg-gradient-to-t from-bear-blue/20 to-transparent">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-2xl font-black mb-4">
+              ¿Listo para tener {packInfo?.totalVideos} videos?
+            </p>
+            <Link href="/checkout?pack=enero-2026">
+              <button className="bg-bear-blue text-bear-black font-black text-xl px-12 py-5 rounded-xl hover:bg-bear-blue/90">
+                OBTENER ACCESO POR $350 MXN →
+              </button>
+            </Link>
+            <p className="text-sm text-gray-500 mt-4">
+              Pago único • Sin suscripciones • Descarga inmediata
+            </p>
+          </div>
+        </footer>
+      )}
+    </div>
+  )
+}

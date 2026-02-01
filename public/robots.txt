@@ -1,0 +1,12 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://bearbeat.mx/sitemap.xml
+
+# Bloquear rutas privadas
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /complete-purchase/

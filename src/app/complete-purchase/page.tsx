@@ -1,0 +1,856 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import Image from 'next/image'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { createClient } from '@/lib/supabase/client'
+import { normalizePhoneNumber } from '@/lib/phone'
+import { toast } from 'sonner'
+import { CountryCode } from 'libphonenumber-js'
+import { PhoneInput } from '@/components/ui/phone-input'
+import { 
+  syncUserWithManyChat, 
+  trackPurchaseWithManyChat,
+  trackRegistration,
+  trackLogin,
+  setUserTrackingInfo,
+} from '@/lib/tracking'
+
+// ==========================================
+// EMBUDO - COMPLETAR COMPRA (POST-PAGO)
+// ==========================================
+
+type PageState = 'loading' | 'success' | 'form' | 'login' | 'activating' | 'done' | 'error'
+
+export default function CompletePurchasePage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const supabase = createClient()
+  
+  const sessionId = searchParams.get('session_id')
+  const provider = searchParams.get('provider')
+  const orderId = searchParams.get('order_id')
+  const hasPaymentId = sessionId || (provider === 'paypal' && orderId)
+
+  const [state, setState] = useState<PageState>('loading')
+  const [purchaseData, setPurchaseData] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  // Form
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [country, setCountry] = useState<CountryCode>('MX')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [hasExistingAccount, setHasExistingAccount] = useState(false)
+  const [generatedCredentials, setGeneratedCredentials] = useState<{email: string, password: string} | null>(null)
+
+  // Cargar datos de la compra (Stripe por session_id o PayPal por provider + order_id)
+  useEffect(() => {
+    if (!hasPaymentId) {
+      setError('No se encontró la sesión de pago')
+      setState('error')
+      return
+    }
+    loadPurchaseData()
+  }, [sessionId, provider, orderId])
+
+  const loadPurchaseData = async () => {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+
+      const verifyUrl = provider === 'paypal' && orderId
+        ? `/api/verify-payment?provider=paypal&order_id=${encodeURIComponent(orderId)}`
+        : `/api/verify-payment?session_id=${sessionId}`
+      const stripeRes = await fetch(verifyUrl)
+      const stripeData = await stripeRes.json()
+
+      if (stripeRes.ok && stripeData.success) {
+        const purchaseInfo = {
+          stripe_session_id: sessionId || orderId,
+          pack_id: stripeData.packId || 1,
+          pack: stripeData.pack || { name: 'Pack Enero 2026' },
+          amount_paid: stripeData.amount,
+          currency: stripeData.currency?.toUpperCase() || 'MXN',
+          payment_provider: provider === 'paypal' ? 'paypal' : 'stripe',
+          stripe_payment_intent: stripeData.paymentIntent,
+          customer_email: stripeData.customerEmail,
+          customer_name: stripeData.customerName,
+          original_user_id: stripeData.userId,
+        }
+        
+        setPurchaseData(purchaseInfo)
+        
+        // Determinar el usuario: actual logueado O el que estaba logueado al pagar
+        const effectiveUserId = currentUser?.id || stripeData.userId
+        
+        // SI HAY UN USUARIO (logueado ahora O guardado en el pago), ACTIVAR AUTOMÁTICAMENTE
+        if (effectiveUserId) {
+          console.log('Usuario encontrado, activando compra automáticamente...', effectiveUserId)
+          setEmail(currentUser?.email || stripeData.customerEmail || '')
+          setName(currentUser?.user_metadata?.name || stripeData.customerName || '')
+          
+          setState('success')
+          
+          // Activar directamente después de mostrar éxito
+          setTimeout(async () => {
+            setState('activating')
+            await activatePurchaseForLoggedUser(effectiveUserId, purchaseInfo)
+          }, 2000)
+          return
+        }
+        
+        // Si no está logueado, mostrar formulario
+        if (stripeData.customerEmail) {
+          setEmail(stripeData.customerEmail)
+          await checkExistingAccount(stripeData.customerEmail)
+        }
+        if (stripeData.customerName) setName(stripeData.customerName)
+        if (stripeData.customerPhone) setPhone(stripeData.customerPhone)
+        
+        setState('success')
+        
+        // Después de mostrar éxito, ir al formulario
+        setTimeout(() => setState('form'), 2500)
+        return
+      }
+      
+      // Fallback: intentar desde la base de datos
+      try {
+        const { data, error } = await supabase
+          .from('pending_purchases')
+          .select('*, pack:packs(*)')
+          .eq('stripe_session_id', sessionId)
+          .single()
+
+        if (!error && data) {
+          if (data.status === 'completed') {
+            toast.success('¡Tu compra ya está activa!')
+            router.push('/dashboard')
+            return
+          }
+
+          setPurchaseData(data)
+          
+          if (data.customer_email) {
+            setEmail(data.customer_email)
+            await checkExistingAccount(data.customer_email)
+          }
+          if (data.customer_name) setName(data.customer_name)
+          
+          setState('success')
+          setTimeout(() => setState('form'), 2500)
+          return
+        }
+      } catch (dbErr) {
+        console.log('DB not available, continuing with Stripe data')
+      }
+
+      // Si Stripe también falló, mostrar error
+      if (!stripeRes.ok) {
+        setError(stripeData.error || 'No se pudo verificar el pago')
+        setState('error')
+      }
+      
+    } catch (err) {
+      console.error('Error loading purchase:', err)
+      setError('Error al cargar tu compra. Contacta soporte.')
+      setState('error')
+    }
+  }
+
+  const checkExistingAccount = async (checkEmail: string) => {
+    try {
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', checkEmail)
+        .single()
+      
+      setHasExistingAccount(!!data)
+    } catch {
+      setHasExistingAccount(false)
+    }
+  }
+
+  const handleEmailChange = async (newEmail: string) => {
+    setEmail(newEmail)
+    if (newEmail.includes('@')) {
+      await checkExistingAccount(newEmail)
+    }
+  }
+
+  // Completar con cuenta existente (login)
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setState('activating')
+
+    try {
+      const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (loginError) {
+        toast.error('Contraseña incorrecta')
+        setState('login')
+        return
+      }
+
+      await activatePurchase(authData.user.id)
+      
+    } catch (err: any) {
+      console.error('Login error:', err)
+      toast.error('Error al iniciar sesión')
+      setState('login')
+    }
+  }
+
+  // Completar con cuenta nueva (registro)
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Validaciones
+    if (!email || !name) {
+      toast.error('Completa todos los campos')
+      return
+    }
+    
+    if (!phone || phone.length < 8) {
+      toast.error('Ingresa un teléfono válido')
+      return
+    }
+
+    // Validar contraseña si se proporcionó
+    if (password && password.length < 6) {
+      toast.error('La contraseña debe tener mínimo 6 caracteres')
+      return
+    }
+
+    if (password && password !== confirmPassword) {
+      toast.error('Las contraseñas no coinciden')
+      return
+    }
+
+    setState('activating')
+
+    try {
+      // Verificar si email ya existe (puede fallar si la tabla no existe)
+      try {
+        const { data: existing } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', email)
+          .single()
+
+        if (existing) {
+          toast.error('Este email ya tiene cuenta. Inicia sesión.')
+          setHasExistingAccount(true)
+          setState('login')
+          return
+        }
+      } catch (checkErr) {
+        console.log('User check failed (non-critical)')
+      }
+
+      // Crear cuenta en Supabase Auth
+      const finalPassword = password || `Bear${Math.random().toString(36).slice(2, 10)}!`
+      
+      const { data: authData, error: signupError } = await supabase.auth.signUp({
+        email,
+        password: finalPassword,
+        options: {
+          data: { name, phone },
+        },
+      })
+
+      if (signupError) throw signupError
+
+      const userId = authData.user!.id
+      const normalizedPhone = normalizePhoneNumber(phone, country) || phone
+
+      // Guardar credenciales para mostrar al usuario
+      setGeneratedCredentials({ email, password: finalPassword })
+
+      // Crear usuario en tabla (puede fallar si la tabla no existe)
+      try {
+        await supabase.from('users').insert({
+          id: userId,
+          email,
+          name,
+          phone: normalizedPhone,
+          country_code: country,
+        })
+      } catch (insertErr) {
+        console.log('User insert failed (non-critical):', insertErr)
+      }
+
+      // Iniciar sesión automáticamente
+      await supabase.auth.signInWithPassword({
+        email,
+        password: finalPassword,
+      })
+
+      await activatePurchase(userId)
+      
+    } catch (err: any) {
+      console.error('Register error:', err)
+      toast.error(err.message || 'Error al crear cuenta')
+      setState('form')
+    }
+  }
+
+  // Activar compra para usuario YA LOGUEADO
+  const activatePurchaseForLoggedUser = async (userId: string, purchaseInfo: any) => {
+    try {
+      // Guardar la compra en la base de datos (FTP se asigna por pool: una cuenta por cliente)
+      try {
+        const { data: insertData, error: insertErr } = await supabase
+          .from('purchases')
+          .insert({
+            user_id: userId,
+            pack_id: purchaseInfo.pack_id || 1,
+            amount_paid: purchaseInfo.amount_paid || 350,
+            currency: purchaseInfo.currency || 'MXN',
+            payment_provider: purchaseInfo.payment_provider || 'stripe',
+            payment_id: purchaseInfo.stripe_payment_intent || sessionId,
+          })
+          .select('id')
+          .single()
+        if (!insertErr && insertData?.id) {
+          await fetch('/api/assign-ftp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ purchaseId: insertData.id }),
+          })
+        }
+      } catch (dbErr) {
+        console.log('DB insert failed (may already exist):', dbErr)
+      }
+
+      // Tracking
+      try {
+        await trackPurchaseWithManyChat({
+          email: email || purchaseInfo.customer_email || '',
+          phone: phone || '',
+          packName: purchaseInfo?.pack?.name || 'Pack',
+          amount: purchaseInfo?.amount_paid || 350,
+          currency: purchaseInfo?.currency || 'MXN',
+          paymentMethod: 'card',
+        })
+      } catch (trackErr) {
+        console.log('Tracking error (non-critical):', trackErr)
+      }
+
+      // Guardar credenciales para mostrar (aunque ya tiene cuenta)
+      setGeneratedCredentials({ 
+        email: email || purchaseInfo.customer_email || '', 
+        password: '(tu contraseña actual)' 
+      })
+
+      setState('done')
+      
+      // Redirigir después de mostrar éxito
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 3000)
+      
+    } catch (err: any) {
+      console.error('Activation error:', err)
+      toast.error('Error al activar. Contacta soporte.')
+      // Aún así, mandar al dashboard porque el pago sí se hizo
+      setTimeout(() => router.push('/dashboard'), 2000)
+    }
+  }
+
+  // Activar la compra
+  const activatePurchase = async (userId: string) => {
+    try {
+      const normalizedPhone = normalizePhoneNumber(phone, country) || phone
+
+      // Intentar guardar en base de datos (puede fallar si no está configurada)
+      try {
+        // Actualizar pending purchase
+        await supabase
+          .from('pending_purchases')
+          .update({
+            user_id: userId,
+            status: 'completed',
+            customer_email: email,
+            customer_name: name,
+            customer_phone: normalizedPhone,
+            completed_at: new Date().toISOString(),
+          })
+          .eq('stripe_session_id', sessionId)
+
+        // Crear purchase definitiva (FTP se asigna por pool: una cuenta por cliente)
+        const { data: insertData, error: insertErr } = await supabase
+          .from('purchases')
+          .insert({
+            user_id: userId,
+            pack_id: purchaseData.pack_id || 1,
+            amount_paid: purchaseData.amount_paid || 350,
+            currency: purchaseData.currency || 'MXN',
+            payment_provider: purchaseData.payment_provider || 'stripe',
+            payment_id: purchaseData.stripe_payment_intent || sessionId,
+          })
+          .select('id')
+          .single()
+        if (!insertErr && insertData?.id) {
+          await fetch('/api/assign-ftp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ purchaseId: insertData.id }),
+          })
+        }
+      } catch (dbErr) {
+        console.log('DB not available for activation, continuing...')
+      }
+
+      // Sincronizar ManyChat (puede fallar si no está configurado)
+      try {
+        const nameParts = name.split(' ')
+        await syncUserWithManyChat({
+          email,
+          phone: normalizedPhone,
+          firstName: nameParts[0] || name,
+          lastName: nameParts.slice(1).join(' ') || '',
+          country,
+          userId,
+        })
+
+        await trackPurchaseWithManyChat({
+          email,
+          phone: normalizedPhone,
+          packName: purchaseData?.pack?.name || 'Pack',
+          amount: purchaseData?.amount_paid || 350,
+          currency: purchaseData?.currency || 'MXN',
+          paymentMethod: (purchaseData?.payment_provider || 'card') as any,
+        })
+      } catch (trackErr) {
+        console.log('Tracking error (non-critical):', trackErr)
+      }
+
+      setUserTrackingInfo(email, normalizedPhone)
+      
+      if (hasExistingAccount) {
+        trackLogin(userId, email, normalizedPhone)
+      } else {
+        trackRegistration(userId, 'email', email, normalizedPhone)
+      }
+
+      setState('done')
+      
+      // Redirigir después de mostrar éxito
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 3000)
+      
+    } catch (err: any) {
+      console.error('Activation error:', err)
+      toast.error('Error al activar. Contacta soporte.')
+      setState('form')
+    }
+  }
+
+  // ==========================================
+  // RENDER
+  // ==========================================
+
+  return (
+    <div className="min-h-screen bg-bear-black text-white">
+      {/* Header */}
+      <header className="py-4 px-4 border-b border-bear-blue/20">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <Image 
+              src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png"
+              alt="Bear Beat"
+              width={40}
+              height={40}
+            />
+            <span className="font-bold text-bear-blue">BEAR BEAT</span>
+          </Link>
+          
+          {/* Progress */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center font-bold text-xs">✓</span>
+            <span className="text-green-400 font-bold">Pago</span>
+            <span className="text-gray-600">→</span>
+            <span className="w-6 h-6 bg-bear-blue text-bear-black rounded-full flex items-center justify-center font-bold text-xs">2</span>
+            <span className="text-bear-blue font-bold">Acceso</span>
+          </div>
+        </div>
+      </header>
+
+      <main className="py-8 px-4">
+        <div className="max-w-xl mx-auto">
+          
+          {/* ==================== LOADING ==================== */}
+          {state === 'loading' && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-20"
+            >
+              <div className="w-16 h-16 border-4 border-bear-blue border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+              <h2 className="text-xl font-bold mb-2">Verificando tu pago...</h2>
+              <p className="text-gray-400">Esto solo toma unos segundos</p>
+            </motion.div>
+          )}
+
+          {/* ==================== SUCCESS ==================== */}
+          {state === 'success' && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-12"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', delay: 0.2 }}
+                className="text-8xl mb-6"
+              >
+                🎉
+              </motion.div>
+              <h1 className="text-3xl md:text-4xl font-black text-green-400 mb-4">
+                ¡Pago Recibido!
+              </h1>
+              <p className="text-xl text-gray-300 mb-2">
+                ${purchaseData?.amount_paid} {purchaseData?.currency}
+              </p>
+              <p className="text-gray-400">
+                {purchaseData?.pack?.name}
+              </p>
+              <div className="mt-8 flex justify-center gap-2">
+                <div className="w-2 h-2 bg-bear-blue rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-bear-blue rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-bear-blue rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </motion.div>
+          )}
+
+          {/* ==================== FORM (Nuevo Usuario) ==================== */}
+          {state === 'form' && !hasExistingAccount && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              {/* Success badge */}
+              <div className="bg-green-500/20 border border-green-500 rounded-xl p-4 mb-6 text-center">
+                <p className="text-green-400 font-bold">✅ Pago confirmado: ${purchaseData?.amount_paid} {purchaseData?.currency}</p>
+              </div>
+
+              <h2 className="text-2xl font-black text-center mb-2">
+                Último paso: Crea tu acceso
+              </h2>
+              <p className="text-gray-400 text-center mb-8">
+                Completa estos datos para poder descargar
+              </p>
+
+              <form onSubmit={handleRegister} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-bold mb-2">📧 Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border-2 border-bear-blue/30 rounded-xl focus:border-bear-blue focus:outline-none text-lg"
+                    placeholder="tu@email.com"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Te enviaremos tu acceso aquí</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold mb-2">👤 Nombre</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border-2 border-bear-blue/30 rounded-xl focus:border-bear-blue focus:outline-none text-lg"
+                    placeholder="Tu nombre"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold mb-2">📱 WhatsApp</label>
+                  <PhoneInput
+                    value={phone}
+                    onChange={setPhone}
+                    onCountryChange={setCountry}
+                    defaultCountry={country}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Para enviarte información de tu compra</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold mb-2">🔐 Crea tu contraseña</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/5 border-2 border-bear-blue/30 rounded-xl focus:border-bear-blue focus:outline-none text-lg pr-12"
+                      placeholder="Mínimo 6 caracteres"
+                      minLength={6}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      {showPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold mb-2">🔐 Confirma tu contraseña</label>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={`w-full px-4 py-3 bg-white/5 border-2 rounded-xl focus:outline-none text-lg ${
+                      confirmPassword && password !== confirmPassword 
+                        ? 'border-red-500' 
+                        : confirmPassword && password === confirmPassword
+                        ? 'border-green-500'
+                        : 'border-bear-blue/30 focus:border-bear-blue'
+                    }`}
+                    placeholder="Repite tu contraseña"
+                    required
+                  />
+                  {confirmPassword && password !== confirmPassword && (
+                    <p className="text-xs text-red-400 mt-1">Las contraseñas no coinciden</p>
+                  )}
+                  {confirmPassword && password === confirmPassword && (
+                    <p className="text-xs text-green-400 mt-1">✓ Contraseñas coinciden</p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!password || password.length < 6 || password !== confirmPassword}
+                  className="w-full bg-bear-blue text-bear-black font-black text-xl py-4 rounded-xl hover:bg-bear-blue/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ACTIVAR MI ACCESO →
+                </button>
+              </form>
+
+              {hasExistingAccount && (
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => setState('login')}
+                    className="text-bear-blue hover:underline text-sm"
+                  >
+                    ¿Ya tienes cuenta? Inicia sesión
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ==================== FORM (Usuario Existente) ==================== */}
+          {(state === 'form' && hasExistingAccount) || state === 'login' ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              {/* Success badge */}
+              <div className="bg-green-500/20 border border-green-500 rounded-xl p-4 mb-6 text-center">
+                <p className="text-green-400 font-bold">✅ Pago confirmado: ${purchaseData?.amount_paid} {purchaseData?.currency}</p>
+              </div>
+
+              <div className="bg-blue-500/20 border border-blue-500 rounded-xl p-4 mb-6 text-center">
+                <p className="text-blue-400 font-bold">Este email ya tiene cuenta</p>
+                <p className="text-blue-300 text-sm">Inicia sesión para activar tu compra</p>
+              </div>
+
+              <h2 className="text-2xl font-black text-center mb-8">
+                Inicia sesión
+              </h2>
+
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-bold mb-2">📧 Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    className="w-full px-4 py-3 bg-white/10 border-2 border-gray-600 rounded-xl text-lg"
+                    disabled
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold mb-2">🔑 Contraseña</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border-2 border-bear-blue/30 rounded-xl focus:border-bear-blue focus:outline-none text-lg"
+                    placeholder="Tu contraseña"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-bear-blue text-bear-black font-black text-xl py-4 rounded-xl hover:bg-bear-blue/90 transition-colors"
+                >
+                  INICIAR SESIÓN Y ACTIVAR →
+                </button>
+              </form>
+
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => {
+                    setHasExistingAccount(false)
+                    setState('form')
+                  }}
+                  className="text-gray-400 hover:text-white text-sm"
+                >
+                  Usar otro email
+                </button>
+              </div>
+            </motion.div>
+          ) : null}
+
+          {/* ==================== ACTIVATING ==================== */}
+          {state === 'activating' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-20"
+            >
+              <div className="w-16 h-16 border-4 border-bear-blue border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+              <h2 className="text-2xl font-bold mb-2">Activando tu acceso...</h2>
+              <p className="text-gray-400">Esto solo toma unos segundos</p>
+            </motion.div>
+          )}
+
+          {/* ==================== DONE ==================== */}
+          {state === 'done' && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-8"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring' }}
+                className="text-7xl mb-4"
+              >
+                🚀
+              </motion.div>
+              <h1 className="text-3xl md:text-4xl font-black text-bear-blue mb-4">
+                ¡Acceso Activado!
+              </h1>
+              <p className="text-xl text-gray-300 mb-6">
+                Ya puedes descargar tus videos
+              </p>
+              
+              {/* Credenciales */}
+              <div className="bg-green-500/20 border-2 border-green-500 rounded-xl p-6 mb-6 text-left">
+                <h3 className="text-green-400 font-black text-lg mb-4 text-center">
+                  🔐 TUS DATOS DE ACCESO
+                </h3>
+                <p className="text-sm text-gray-400 mb-4 text-center">
+                  Guarda estos datos para iniciar sesión después
+                </p>
+                
+                <div className="space-y-3">
+                  <div className="bg-black/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-400 mb-1">📧 Email:</p>
+                    <p className="font-mono text-white text-lg break-all">{generatedCredentials?.email || email}</p>
+                  </div>
+                  
+                  <div className="bg-black/30 rounded-lg p-3">
+                    <p className="text-xs text-gray-400 mb-1">🔑 Contraseña:</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-mono text-white text-lg">{generatedCredentials?.password || '••••••••'}</p>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(generatedCredentials?.password || '')
+                          toast.success('Contraseña copiada')
+                        }}
+                        className="bg-bear-blue/20 hover:bg-bear-blue/40 text-bear-blue px-3 py-1 rounded text-sm font-bold transition-colors"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-xs text-yellow-400 mt-4 text-center">
+                  ⚠️ Toma captura de pantalla o anota estos datos
+                </p>
+              </div>
+
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="w-full bg-bear-blue text-bear-black font-black text-xl py-4 rounded-xl hover:bg-bear-blue/90 transition-colors mb-4"
+              >
+                IR A MI DASHBOARD →
+              </button>
+              
+              <p className="text-sm text-gray-500">
+                Ya iniciamos sesión por ti automáticamente
+              </p>
+            </motion.div>
+          )}
+
+          {/* ==================== ERROR ==================== */}
+          {state === 'error' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12"
+            >
+              <div className="text-6xl mb-6">😕</div>
+              <h2 className="text-2xl font-bold mb-4">Algo salió mal</h2>
+              <p className="text-gray-400 mb-6">{error}</p>
+              <div className="space-y-3">
+                <Link 
+                  href="/"
+                  className="block w-full bg-bear-blue text-bear-black font-bold py-3 rounded-xl"
+                >
+                  Volver al inicio
+                </Link>
+                <a 
+                  href="mailto:soporte@bearbeat.com"
+                  className="block w-full bg-white/10 text-white font-bold py-3 rounded-xl"
+                >
+                  Contactar soporte
+                </a>
+              </div>
+            </motion.div>
+          )}
+
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="py-6 px-4 border-t border-white/10 text-center text-sm text-gray-500">
+        <p>¿Problemas? <a href="mailto:soporte@bearbeat.com" className="text-bear-blue hover:underline">soporte@bearbeat.com</a></p>
+      </footer>
+    </div>
+  )
+}
+
+function generatePassword(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let password = ''
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return password
+}

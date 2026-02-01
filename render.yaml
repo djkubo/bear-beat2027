@@ -1,0 +1,13 @@
+# Render Blueprint - Bear Beat
+# Conecta tu repo en Render y Render usará este archivo para crear el servicio.
+# Si prefieres configurar a mano: Web Service → Node → Build: npm install --legacy-peer-deps && npm run build | Start: npm start
+
+services:
+  - type: web
+    name: bear-beat
+    runtime: node
+    buildCommand: npm install --legacy-peer-deps && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
