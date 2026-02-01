@@ -309,22 +309,22 @@ export default function HomePage() {
       {/* BANNER SUPERIOR - DIFERENTE SEGÚN ESTADO */}
       {userState.hasAccess ? (
         // ==========================================
-        // BANNER PARA USUARIOS CON ACCESO
+        // BANNER PARA USUARIOS CON ACCESO – compacto
         // ==========================================
-        <div className="bg-gradient-to-r from-bear-blue via-cyan-500 to-bear-blue py-3 md:py-4 px-4">
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
-            <p className="text-bear-black font-bold text-sm md:text-base">
-              🎉 ¡Hola{userState.userName ? `, ${userState.userName}` : ''}! Ya tienes acceso completo
+        <div className="bg-gradient-to-r from-bear-blue/90 via-cyan-500/90 to-bear-blue/90 py-2.5 md:py-3 px-4 border-b border-bear-blue/30">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="text-bear-black font-semibold text-sm">
+              ¡Hola{userState.userName ? `, ${userState.userName}` : ''}! Ya tienes acceso
             </p>
             <div className="flex gap-2">
-              <Link href="/dashboard">
-                <button className="bg-bear-black text-bear-blue px-4 py-2 rounded-lg text-sm font-bold hover:bg-bear-black/80 transition">
-                  📊 Mi Panel
+              <Link href="/contenido">
+                <button className="bg-bear-black text-bear-blue px-3 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition">
+                  ⬇️ Descargar
                 </button>
               </Link>
-              <Link href="/contenido">
-                <button className="bg-white text-bear-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-white/90 transition">
-                  ⬇️ Descargar Videos
+              <Link href="/dashboard">
+                <button className="bg-white/90 text-bear-black px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-white transition">
+                  Mi Panel
                 </button>
               </Link>
             </div>
@@ -408,66 +408,69 @@ export default function HomePage() {
         
         {userState.hasAccess ? (
           // ==========================================
-          // HERO PARA USUARIOS CON ACCESO
+          // HERO PARA USUARIOS CON ACCESO – limpio y directo
           // ==========================================
-          <div className="max-w-5xl mx-auto text-center relative z-10">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }} 
-              animate={{ opacity: 1, scale: 1 }}
-              className="inline-flex items-center gap-2 bg-green-500/20 border border-green-500/50 text-green-400 px-6 py-3 rounded-full text-lg font-bold mb-6"
-            >
-              ✅ ¡Tu acceso está activo!
-            </motion.div>
-
+          <div className="max-w-4xl mx-auto text-center relative z-10">
             <motion.h1 
-              initial={{ opacity: 0, y: 20 }} 
+              initial={{ opacity: 0, y: 16 }} 
               animate={{ opacity: 1, y: 0 }} 
-              transition={{ delay: 0.1 }} 
-              className="text-3xl md:text-5xl lg:text-6xl font-black leading-tight mb-6"
+              transition={{ delay: 0.05 }} 
+              className="text-3xl md:text-5xl font-black leading-tight mb-4"
             >
               Tienes acceso a{' '}
-              <span className="text-bear-blue">{statsLoading ? '...' : totalVideos.toLocaleString()} Video Remixes</span>
+              <span className="text-bear-blue">{statsLoading ? '...' : totalVideos.toLocaleString()}</span>
+              {' '}Video Remixes
             </motion.h1>
 
             <motion.p 
-              initial={{ opacity: 0, y: 20 }} 
+              initial={{ opacity: 0, y: 12 }} 
               animate={{ opacity: 1, y: 0 }} 
-              transition={{ delay: 0.2 }} 
-              className="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto"
+              transition={{ delay: 0.1 }} 
+              className="text-base md:text-lg text-gray-400 mb-6"
             >
-              Tus videos están listos para descargar. Elige cómo quieres acceder:
+              Tus videos están listos. Descarga por navegador o por FTP.
             </motion.p>
 
+            {/* Mini stats: mismo dato que verán en /contenido */}
+            {!statsLoading && (
+              <motion.p 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                transition={{ delay: 0.15 }}
+                className="text-sm text-white/60 mb-8"
+              >
+                {totalVideos.toLocaleString()} videos · {genreCount} géneros · {totalSizeFormatted}
+              </motion.p>
+            )}
+
             <motion.div 
-              initial={{ opacity: 0, y: 20 }} 
+              initial={{ opacity: 0, y: 12 }} 
               animate={{ opacity: 1, y: 0 }} 
-              transition={{ delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              transition={{ delay: 0.2 }}
+              className="flex flex-col sm:flex-row gap-3 justify-center items-center"
             >
               <Link href="/contenido">
-                <button className="bg-bear-blue text-bear-black font-black text-xl px-10 py-5 rounded-2xl shadow-2xl shadow-bear-blue/30 hover:scale-105 transition-all flex items-center gap-3">
-                  <span className="text-2xl">⬇️</span>
-                  DESCARGAR VIDEOS
+                <button className="w-full sm:w-auto bg-bear-blue text-bear-black font-black text-lg px-8 py-4 rounded-xl shadow-lg shadow-bear-blue/25 hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
+                  <span>⬇️</span>
+                  Ir a descargar
                 </button>
               </Link>
               <Link href="/dashboard">
-                <button className="bg-white/10 border-2 border-bear-blue text-bear-blue font-bold text-xl px-10 py-5 rounded-2xl hover:bg-bear-blue/20 transition-all flex items-center gap-3">
-                  <span className="text-2xl">📊</span>
-                  MI PANEL
+                <button className="w-full sm:w-auto bg-white/5 border border-white/20 text-white font-semibold text-lg px-8 py-4 rounded-xl hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+                  <span>📊</span>
+                  Mi Panel
                 </button>
               </Link>
             </motion.div>
 
-            <motion.div 
+            <motion.p 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
-              transition={{ delay: 0.5 }}
-              className="mt-8 flex justify-center gap-6 text-sm text-gray-400"
+              transition={{ delay: 0.35 }}
+              className="mt-6 text-xs text-white/40"
             >
-              <span>✓ Descarga por navegador</span>
-              <span>✓ Descarga por FTP</span>
-              <span>✓ Soporte 24/7</span>
-            </motion.div>
+              Descarga por navegador · FTP · Soporte 24/7
+            </motion.p>
           </div>
         ) : (
           // ==========================================

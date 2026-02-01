@@ -41,11 +41,12 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 ### 1.2 Navbar (header)
 - **Logo:** Imagen `BBIMAGOTIPOFONDOTRANSPARENTE...`, alt "Bear Beat".
 - **Marca:** `BEAR BEAT` (texto bear-blue, font-black).
+- **Banner superior (con acceso):** “¡Hola, [nombre]! Ya tienes acceso” + botones `Descargar` y `Mi Panel`.
 - **Enlaces desktop (con acceso):**
-  - `📊 Mi Panel` → `/dashboard`
+  - `Mi Panel` → `/dashboard`
   - `Mi cuenta` → `/mi-cuenta`
-  - `👁️ Ver Contenido` → `/contenido`
-  - Badge: `✓ Acceso Activo`
+  - `Ver Contenido` → `/contenido`
+  - Badge: `Acceso activo`
 - **Enlaces desktop (sin acceso, no logueado):**
   - Texto: `+2,847 DJs ya tienen acceso`
   - `Iniciar Sesión` → `/login`
@@ -57,14 +58,13 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
   - `👁️ Ver Contenido` → `/contenido`
 - **Móvil:** Menú hamburger (`MobileMenu`).
 
-### 1.3 Hero – Usuario CON acceso
-- **Badge:** `✅ ¡Tu acceso está activo!`
-- **Título:** `Tienes acceso a [N] Video Remixes` (N = inventario real).
-- **Subtítulo:** `Tus videos están listos para descargar. Elige cómo quieres acceder:`
-- **Botones:**
-  - `⬇️ DESCARGAR VIDEOS` → `/contenido`
-  - `📊 MI PANEL` → `/dashboard`
-- **Texto inferior:** `✓ Descarga por navegador` `✓ Descarga por FTP` `✓ Soporte 24/7`
+### 1.3 Hero – Usuario CON acceso (rediseño limpio)
+- **Título:** `Tienes acceso a [N] Video Remixes` (N = inventario real desde API).
+- **Subtítulo:** `Tus videos están listos. Descarga por navegador o por FTP.`
+- **Mini stats:** `[N] videos · [X] géneros · [tamaño]` (mismo dato que en /contenido).
+- **Botones:** `Ir a descargar` → `/contenido`, `Mi Panel` → `/dashboard`.
+- **Pie:** `Descarga por navegador · FTP · Soporte 24/7`.
+- Sin badge repetido; banner superior ya indica “Ya tienes acceso”.
 
 ### 1.4 Hero – Usuario SIN acceso
 - **Línea superior:** `ATENCIÓN DJs: Esto es lo que necesitas para dominar 2026`
