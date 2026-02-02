@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
+import { getMessengerUrl } from '@/config/contact'
 
 // ==========================================
 // PÁGINA DE PAGO PENDIENTE (OXXO/SPEI)

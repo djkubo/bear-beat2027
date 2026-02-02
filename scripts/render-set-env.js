@@ -57,6 +57,13 @@ async function getServiceId() {
   throw new Error('No se encontró servicio bear-beat2027. Añade RENDER_SERVICE_ID en .env.local (ID del servicio en Render).')
 }
 
+async function getEnvVars(serviceId) {
+  const res = await fetch(`${BASE}/services/${serviceId}/env-vars`, { headers: HEADERS })
+  if (!res.ok) throw new Error(`List env vars: ${res.status} ${await res.text()}`)
+  const data = await res.json()
+  return Array.isArray(data) ? data : data.envVars || []
+}
+
 async function setEnvVar(serviceId, key, value) {
   const res = await fetch(`${BASE}/services/${serviceId}/env-vars/${encodeURIComponent(key)}`, {
     method: 'PUT',
@@ -74,10 +81,43 @@ async function setEnvVar(serviceId, key, value) {
   return res.json()
 }
 
+const REQUIRED_KEYS = [
+  'NEXT_PUBLIC_APP_URL',
+  'NODE_ENV',
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'DATABASE_URL',
+  'NEXT_PUBLIC_STRIPE_PUBLIC_KEY',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'FIX_ADMIN_SECRET',
+  'NEXT_PUBLIC_PAYPAL_CLIENT_ID',
+  'PAYPAL_CLIENT_SECRET',
+  'PAYPAL_USE_SANDBOX',
+  'NEXT_PUBLIC_PAYPAL_USE_SANDBOX',
+]
+
 async function main() {
   console.log('🔑 Obteniendo service ID...')
   const serviceId = await getServiceId()
   console.log('   Service ID:', serviceId)
+
+  console.log('📋 Comprobando variables en Render...')
+  let renderVars = []
+  try {
+    renderVars = await getEnvVars(serviceId)
+    const renderKeys = renderVars.map((v) => v.key ?? v.envVar?.key ?? v.name).filter(Boolean)
+    console.log('   En Render:', renderKeys.length, 'variables')
+    const missing = REQUIRED_KEYS.filter((k) => !renderKeys.includes(k))
+    if (missing.length) {
+      console.log('   ⚠️  Faltan en Render:', missing.join(', '))
+    } else {
+      console.log('   ✅ Todas las variables requeridas existen en Render')
+    }
+  } catch (e) {
+    console.warn('   (No se pudo listar vars en Render:', e.message, ')')
+  }
 
   const appUrl = 'https://bear-beat2027.onrender.com'
   const skipKeys = ['RENDER_API_KEY', 'RENDER_SERVICE_ID']

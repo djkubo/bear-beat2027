@@ -65,6 +65,16 @@ En producción (por ejemplo Render) puedes dejar `PAYPAL_USE_SANDBOX=true` y las
 
 En [developer.paypal.com](https://developer.paypal.com) → **Sandbox** → **Accounts** hay cuentas de prueba (comprador y negocio). Puedes iniciar sesión en el flujo de PayPal con el correo/contraseña de una cuenta **Personal** (comprador) para simular el pago; no se mueve dinero real.
 
+**Cómo probar en Bear Beat:**
+
+1. Entra a **https://bear-beat2027.onrender.com/checkout** (o tu URL de producción).
+2. Elige **PayPal** como método de pago.
+3. Al hacer clic en el botón de PayPal, te redirigirá a **https://sandbox.paypal.com** (modo Sandbox).
+4. Inicia sesión con tu cuenta **Personal** de Sandbox (ej. `sb-hho6h49170016@personal.example.com`) y la contraseña que configuraste en developer.paypal.com → Sandbox → Accounts.
+5. Aprueba el pago en Sandbox. Te redirigirá de vuelta a `/complete-purchase` para completar datos y activar el acceso.
+
+La cuenta Personal tiene saldo Sandbox (ej. USD 5,000); no se cobra dinero real.
+
 ---
 
 ## 3. Checklist rápido
@@ -89,9 +99,12 @@ Para que las pruebas funcionen en producción (Render) o local:
    - **Publishable key** (`pk_test_...`) → `NEXT_PUBLIC_STRIPE_PUBLIC_KEY`
    - **Secret key** (`sk_test_...`) → `STRIPE_SECRET_KEY`
 3. **Webhook (OXXO/SPEI y eventos):** En **Developers → Webhooks** (en modo Test):
-   - Añade endpoint: `https://bear-beat2027.onrender.com/api/webhooks/stripe`
-   - Eventos: `checkout.session.completed` (y los que use tu app).
-   - Copia el **Signing secret** (`whsec_...`) → `STRIPE_WEBHOOK_SECRET`.
+   - **Solo necesitas UN destino** con URL: `https://bear-beat2027.onrender.com/api/webhooks/stripe`
+   - **Evento obligatorio:** `checkout.session.completed` (la app Bear Beat solo usa este).
+   - Si creaste dos webhooks con la misma URL, **quédate con uno** (ej. "bear2027") y borra el otro en Stripe para no liarte.
+   - En la página del destino, copia el **Secreto de firma** (`whsec_...`).
+   - En **Render → Environment** añade o edita: `STRIPE_WEBHOOK_SECRET` = ese `whsec_...` (pegado tal cual).
+   - Opcional: en tu `.env.local` pon el mismo valor y ejecuta `npm run deploy:env` para subirlo a Render.
 
 No hace falta “activar” sandbox aparte: con claves `pk_test_` / `sk_test_` Stripe ya opera en modo test.
 
