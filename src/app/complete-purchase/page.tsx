@@ -31,6 +31,8 @@ export default function CompletePurchasePage() {
   const supabase = createClient()
   
   const sessionId = searchParams.get('session_id')
+  const paymentIntentId = searchParams.get('payment_intent')
+  const provider = searchParams.get('provider')
   
   const [state, setState] = useState<PageState>('loading')
   const [purchaseData, setPurchaseData] = useState<any>(null)
@@ -49,35 +51,39 @@ export default function CompletePurchasePage() {
   const [ftpCredentials, setFtpCredentials] = useState<{ ftp_username?: string; ftp_password?: string; ftp_host?: string } | null>(null)
   const [showFtpAccordion, setShowFtpAccordion] = useState(false)
 
-  // Cargar datos de la compra
+  // Cargar datos de la compra (session_id para Stripe Checkout/PayPal, payment_intent para Stripe Elements)
   useEffect(() => {
-    if (!sessionId) {
+    if (!sessionId && !paymentIntentId) {
       setError('No se encontró la sesión de pago')
       setState('error')
       return
     }
     
     loadPurchaseData()
-  }, [sessionId])
+  }, [sessionId, paymentIntentId, provider])
 
   const loadPurchaseData = async () => {
     try {
       // PRIMERO: Verificar si el usuario ya está logueado
       const { data: { user: currentUser } } = await supabase.auth.getUser()
       
-      // Obtener datos de Stripe
-      const stripeRes = await fetch(`/api/verify-payment?session_id=${sessionId}`)
+      // Verificar pago (Stripe Checkout, Stripe PaymentIntent o PayPal)
+      const verifyUrl = paymentIntentId
+        ? `/api/verify-payment?payment_intent=${encodeURIComponent(paymentIntentId)}`
+        : provider === 'paypal' && sessionId
+          ? `/api/verify-payment?session_id=${encodeURIComponent(sessionId)}&provider=paypal`
+          : `/api/verify-payment?session_id=${encodeURIComponent(sessionId!)}`
+      const stripeRes = await fetch(verifyUrl)
       const stripeData = await stripeRes.json()
       
       if (stripeRes.ok && stripeData.success) {
-        // Pago verificado con Stripe
         const purchaseInfo = {
-          stripe_session_id: sessionId,
+          stripe_session_id: sessionId || paymentIntentId,
           pack_id: stripeData.packId || 1,
           pack: stripeData.pack || { name: 'Pack Enero 2026' },
           amount_paid: stripeData.amount,
           currency: stripeData.currency?.toUpperCase() || 'MXN',
-          payment_provider: 'stripe',
+          payment_provider: provider === 'paypal' ? 'paypal' : 'stripe',
           stripe_payment_intent: stripeData.paymentIntent,
           customer_email: stripeData.customerEmail,
           customer_name: stripeData.customerName,
@@ -321,11 +327,17 @@ export default function CompletePurchasePage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            sessionId,
+            sessionId: purchaseInfo.stripe_session_id,
             userId,
             email: email || purchaseInfo.customer_email,
             name: purchaseInfo.customer_name,
             phone: phone || purchaseInfo.customer_phone,
+            ...(purchaseInfo.payment_provider === 'paypal' && {
+              packId: purchaseInfo.pack_id,
+              amountPaid: purchaseInfo.amount_paid,
+              currency: purchaseInfo.currency,
+              paymentProvider: 'paypal',
+            }),
           }),
         })
         const activateData = await activateRes.json().catch(() => ({}))
@@ -392,11 +404,17 @@ export default function CompletePurchasePage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            sessionId,
+            sessionId: purchaseData?.stripe_session_id || sessionId,
             userId,
             email,
             name,
             phone: normalizedPhone,
+            ...(purchaseData?.payment_provider === 'paypal' && purchaseData && {
+              packId: purchaseData.pack_id,
+              amountPaid: purchaseData.amount_paid,
+              currency: purchaseData.currency,
+              paymentProvider: 'paypal',
+            }),
           }),
         })
         const activateData = await activateRes.json().catch(() => ({}))

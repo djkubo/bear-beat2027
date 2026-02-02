@@ -14,18 +14,33 @@ function generatePassword(): string {
 }
 
 /**
- * POST: Activar compra (verificar Stripe, crear FTP en Hetzner si aplica, insertar purchase).
- * Body: { sessionId, userId, email?, name?, phone? }
+ * POST: Activar compra (Stripe o PayPal: crear FTP si aplica, insertar purchase).
+ * Body: { sessionId, userId, email?, name?, phone?, packId?, amountPaid?, currency?, paymentProvider? }
+ * Para PayPal: sessionId = PAYPAL_<orderID>, y se deben enviar packId, amountPaid, currency, paymentProvider: 'paypal'.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { sessionId, userId, email, name, phone } = body as {
+    const {
+      sessionId,
+      userId,
+      email,
+      name,
+      phone,
+      packId: bodyPackId,
+      amountPaid: bodyAmountPaid,
+      currency: bodyCurrency,
+      paymentProvider = 'stripe',
+    } = body as {
       sessionId?: string
       userId?: string
       email?: string
       name?: string
       phone?: string
+      packId?: number
+      amountPaid?: number
+      currency?: string
+      paymentProvider?: string
     }
 
     if (!sessionId || !userId) {
@@ -35,26 +50,57 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ['payment_intent', 'line_items'],
-    })
+    const isPayPal = sessionId.startsWith('PAYPAL_')
+    const isStripePaymentIntent = sessionId.startsWith('pi_')
+    let packId: number
+    let amountPaid: number
+    let currency: string
+    let paymentIntent: string
+    let customerEmail: string
 
-    if (!session || session.payment_status !== 'paid') {
-      return NextResponse.json(
-        { error: 'Pago no completado o sesión inválida' },
-        { status: 400 }
-      )
+    if (isPayPal) {
+      if (bodyPackId == null || bodyAmountPaid == null) {
+        return NextResponse.json(
+          { error: 'Para PayPal se requieren packId y amountPaid en el body' },
+          { status: 400 }
+        )
+      }
+      packId = Number(bodyPackId)
+      amountPaid = Number(bodyAmountPaid)
+      currency = (bodyCurrency || 'MXN').toUpperCase()
+      paymentIntent = sessionId
+      customerEmail = email || ''
+    } else if (isStripePaymentIntent) {
+      const pi = await stripe.paymentIntents.retrieve(sessionId)
+      if (pi.status !== 'succeeded') {
+        return NextResponse.json(
+          { error: 'Pago no completado o sesión inválida' },
+          { status: 400 }
+        )
+      packId = parseInt(pi.metadata?.pack_id || '1', 10)
+      amountPaid = (pi.amount || 0) / 100
+      currency = (pi.currency || 'mxn').toUpperCase()
+      paymentIntent = sessionId
+      customerEmail = email || (pi.receipt_email as string) || ''
+    } else {
+      const session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ['payment_intent', 'line_items'],
+      })
+      if (!session || session.payment_status !== 'paid') {
+        return NextResponse.json(
+          { error: 'Pago no completado o sesión inválida' },
+          { status: 400 }
+        )
+      packId = parseInt(session.metadata?.pack_id || '1', 10)
+      amountPaid = (session.amount_total || 0) / 100
+      currency = (session.currency || 'MXN').toUpperCase()
+      paymentIntent =
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent?.id || sessionId
+      customerEmail =
+        session.customer_details?.email || session.customer_email || email || ''
     }
-
-    const packId = parseInt(session.metadata?.pack_id || '1', 10)
-    const amountPaid = (session.amount_total || 0) / 100
-    const currency = (session.currency || 'MXN').toUpperCase()
-    const paymentIntent =
-      typeof session.payment_intent === 'string'
-        ? session.payment_intent
-        : session.payment_intent?.id || sessionId
-    const customerEmail =
-      session.customer_details?.email || session.customer_email || email || ''
 
     const admin = createAdminClient()
 
@@ -104,25 +150,27 @@ export async function POST(req: NextRequest) {
       ftp_password = generatePassword()
     }
 
-    // Marcar pending_purchases como completada (solo si no lo está ya)
-    await (admin as any)
-      .from('pending_purchases')
-      .update({
-        user_id: userId,
-        status: 'completed',
-        customer_email: customerEmail,
-        customer_name: name ?? null,
-        customer_phone: phone ?? null,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('stripe_session_id', sessionId)
+    // Marcar pending_purchases como completada solo para Stripe Checkout (PayPal y PaymentIntent no usan esta tabla)
+    if (!isPayPal && !isStripePaymentIntent) {
+      await (admin as any)
+        .from('pending_purchases')
+        .update({
+          user_id: userId,
+          status: 'completed',
+          customer_email: customerEmail,
+          customer_name: name ?? null,
+          customer_phone: phone ?? null,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('stripe_session_id', sessionId)
+    }
 
     const { error: insertError } = await (admin as any).from('purchases').insert({
       user_id: userId,
       pack_id: packId,
       amount_paid: amountPaid,
       currency,
-      payment_provider: 'stripe',
+      payment_provider: isPayPal ? 'paypal' : 'stripe',
       payment_id: paymentIntent,
       ftp_username,
       ftp_password,

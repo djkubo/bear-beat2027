@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -9,16 +9,144 @@ import { toast } from 'sonner'
 import { trackCTAClick } from '@/lib/tracking'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 import { Check, Shield, Lock, CreditCard, Building2, Banknote, Wallet, ChevronRight } from 'lucide-react'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
 
 // ==========================================
-// CHECKOUT – Dark Mode Premium, alta conversión
-// Split layout: Valor (izq) / Pago (der). Sin abandono.
+// CHECKOUT – Tarjeta (Stripe Elements) | PayPal (nativo) | OXXO/SPEI (Stripe redirect)
 // ==========================================
 
 type PaymentMethod = 'card' | 'paypal' | 'oxxo' | 'spei'
 type Step = 'select' | 'processing' | 'redirect'
 
 const RESERVATION_MINUTES = 15
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!)
+
+// —— Formulario de pago con tarjeta (Stripe Elements) ——
+function CardPaymentForm({
+  clientSecret,
+  price,
+  currencyLabel,
+  packSlug,
+  onError,
+}: {
+  clientSecret: string
+  price: number
+  currencyLabel: string
+  packSlug: string
+  onError: (msg: string) => void
+}) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!stripe || !elements) return
+      setLoading(true)
+      onError('')
+      try {
+        const returnUrl = typeof window !== 'undefined'
+          ? `${window.location.origin}/complete-purchase`
+          : `${process.env.NEXT_PUBLIC_APP_URL || ''}/complete-purchase`
+        const { error } = await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            return_url: returnUrl,
+            receipt_email: undefined,
+          },
+        })
+        if (error) {
+          onError(error.message || 'Error al procesar el pago')
+          toast.error(error.message || 'Revisa los datos de tu tarjeta')
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Error al procesar el pago'
+        onError(msg)
+        toast.error(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [stripe, elements, onError]
+  )
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <PaymentElement
+        options={{
+          layout: 'tabs',
+          defaultCollapsed: false,
+          radios: true,
+          spacedAccordionItems: true,
+        }}
+      />
+      <button
+        type="submit"
+        disabled={!stripe || !elements || loading}
+        className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+      >
+        {loading ? 'Procesando...' : `PAGAR $${price} ${currencyLabel} Y ACCEDER →`}
+      </button>
+    </form>
+  )
+}
+
+// —— Wrapper Elements para tarjeta (necesita clientSecret) ——
+function StripeCardSection({
+  clientSecret,
+  price,
+  currencyLabel,
+  packSlug,
+  error,
+  setError,
+}: {
+  clientSecret: string
+  price: number
+  currencyLabel: string
+  packSlug: string
+  error: string | null
+  setError: (s: string | null) => void
+}) {
+  const options = {
+    clientSecret,
+    appearance: {
+      theme: 'night' as const,
+      variables: { colorPrimary: '#08E1F7', colorBackground: '#121212', colorText: '#fff', colorDanger: '#ef4444' },
+    },
+  }
+  return (
+    <>
+      {error && (
+        <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 mb-6">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+      <Elements stripe={stripePromise} options={options}>
+        <CardPaymentForm
+          clientSecret={clientSecret}
+          price={price}
+          currencyLabel={currencyLabel}
+          packSlug={packSlug}
+          onError={setError}
+        />
+      </Elements>
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500">
+        <span className="flex items-center gap-1.5">
+          <Lock className="h-3.5 w-3.5 text-gray-500" />
+          Pagos procesados de forma segura por Stripe
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="font-mono text-[10px] font-bold text-gray-500">Visa</span>
+          <span className="font-mono text-[10px] font-bold text-gray-500">MC</span>
+          <span className="font-mono text-[10px] font-bold text-gray-500">Amex</span>
+        </span>
+      </div>
+    </>
+  )
+}
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams()
@@ -31,6 +159,8 @@ export default function CheckoutPage() {
   const [currency, setCurrency] = useState<'mxn' | 'usd'>('mxn')
   const [error, setError] = useState<string | null>(null)
   const [reservationSeconds, setReservationSeconds] = useState(RESERVATION_MINUTES * 60)
+  const [cardClientSecret, setCardClientSecret] = useState<string | null>(null)
+  const [cardClientSecretLoading, setCardClientSecretLoading] = useState(false)
 
   useEffect(() => {
     fetch('https://ipapi.co/json/')
@@ -51,21 +181,39 @@ export default function CheckoutPage() {
     return () => clearInterval(t)
   }, [step, reservationSeconds])
 
+  // Al elegir Tarjeta, obtener clientSecret para Stripe Elements
+  useEffect(() => {
+    if (selectedMethod !== 'card') {
+      setCardClientSecret(null)
+      return
+    }
+    setError(null)
+    setCardClientSecretLoading(true)
+    fetch('/api/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ packSlug, currency }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.clientSecret) setCardClientSecret(data.clientSecret)
+        else setError(data.error || 'Error al preparar el pago')
+      })
+      .catch(() => setError('Error de conexión. Intenta de nuevo.'))
+      .finally(() => setCardClientSecretLoading(false))
+  }, [selectedMethod, packSlug, currency])
+
   const price = currency === 'mxn' ? 350 : 19
   const currencyLabel = currency === 'mxn' ? 'MXN' : 'USD'
   const totalVideos = inventory.loading ? '...' : (inventory.count ?? 0).toLocaleString()
   const reservationM = Math.floor(reservationSeconds / 60)
   const reservationS = reservationSeconds % 60
 
-  const handlePayment = async () => {
-    if (!selectedMethod) {
-      toast.error('Elige un método de pago')
-      return
-    }
+  const handleOxxoSpeiPayment = async () => {
+    if (selectedMethod !== 'oxxo' && selectedMethod !== 'spei') return
     setStep('processing')
     setError(null)
     trackCTAClick('checkout_method', 'checkout', `${selectedMethod}-${packSlug}`)
-
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
@@ -84,9 +232,11 @@ export default function CheckoutPage() {
     }
   }
 
+  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || ''
+  const isPayPalAvailable = !!paypalClientId
+
   return (
     <div className="min-h-screen bg-[#050505] text-white antialiased">
-      {/* Timer de urgencia (sutil) */}
       {step === 'select' && reservationSeconds > 0 && reservationSeconds <= RESERVATION_MINUTES * 60 && (
         <div className="border-b border-white/5 bg-white/[0.02] py-2 px-4 text-center">
           <p className="text-xs text-gray-500">
@@ -130,7 +280,7 @@ export default function CheckoutPage() {
               exit={{ opacity: 0, y: -16 }}
               className="grid lg:grid-cols-2 gap-8 lg:gap-12"
             >
-              {/* COLUMNA IZQUIERDA – El Valor / Dopamina (Resumen primero en móvil) */}
+              {/* Columna izquierda – Resumen (igual que antes) */}
               <div className="space-y-8">
                 <div>
                   <h2 className="text-lg font-bold text-white mb-6">Resumen de tu Orden</h2>
@@ -145,9 +295,7 @@ export default function CheckoutPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-bold text-white text-lg">Pack Enero 2026 - Video Remixes</h3>
-                      <p className="text-sm text-gray-500 mt-0.5">
-                        {totalVideos} videos HD · Descarga Ilimitada
-                      </p>
+                      <p className="text-sm text-gray-500 mt-0.5">{totalVideos} videos HD · Descarga Ilimitada</p>
                       <div className="flex items-baseline gap-2 mt-2">
                         <span className="text-sm text-gray-500 line-through">$1,499</span>
                         <span className="text-2xl font-black text-white">${price} {currencyLabel}</span>
@@ -155,13 +303,8 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 </div>
-
                 <ul className="space-y-3 text-sm text-gray-300">
-                  {[
-                    'Acceso Inmediato (Web + FTP)',
-                    'Actualizaciones incluidas',
-                    'Licencia de uso comercial',
-                  ].map((item, i) => (
+                  {['Acceso Inmediato (Web + FTP)', 'Actualizaciones incluidas', 'Licencia de uso comercial'].map((item, i) => (
                     <li key={i} className="flex items-center gap-3">
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-500/20 text-green-400">
                         <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -170,7 +313,6 @@ export default function CheckoutPage() {
                     </li>
                   ))}
                 </ul>
-
                 <div className="rounded-2xl border-2 border-amber-500/40 bg-amber-500/5 p-5">
                   <div className="flex items-start gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
@@ -178,22 +320,15 @@ export default function CheckoutPage() {
                     </span>
                     <div>
                       <h4 className="font-bold text-white">Garantía de 30 Días</h4>
-                      <p className="text-sm text-gray-400 mt-1">
-                        Si no te encanta, te devolvemos tu dinero. Sin preguntas.
-                      </p>
+                      <p className="text-sm text-gray-400 mt-1">Si no te encanta, te devolvemos tu dinero. Sin preguntas.</p>
                     </div>
                   </div>
                 </div>
-
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-sm text-gray-400 italic">
-                    &quot;La mejor inversión que he hecho para mis eventos.&quot;
-                  </p>
+                  <p className="text-sm text-gray-400 italic">&quot;La mejor inversión que he hecho para mis eventos.&quot;</p>
                   <p className="font-bold text-white text-sm mt-2">DJ Roberto</p>
                   <p className="text-yellow-500 text-xs">★★★★★</p>
                 </div>
-
-                {/* Qué pasa después – reductor de ansiedad */}
                 <div className="rounded-2xl border border-bear-blue/20 bg-bear-blue/5 p-5">
                   <h4 className="font-bold text-white mb-4">Qué pasa después</h4>
                   <ol className="space-y-4">
@@ -201,7 +336,7 @@ export default function CheckoutPage() {
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-bold text-sm">1</span>
                       <div>
                         <p className="font-medium text-white text-sm">Pagas de forma segura</p>
-                        <p className="text-xs text-gray-500">Stripe protege tu pago</p>
+                        <p className="text-xs text-gray-500">Stripe o PayPal protegen tu pago</p>
                       </div>
                     </li>
                     <li className="flex gap-3">
@@ -222,22 +357,19 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* COLUMNA DERECHA – La Acción / Pago (segunda en móvil) */}
+              {/* Columna derecha – Pago (condicional: Tarjeta | PayPal | OXXO/SPEI) */}
               <div>
                 <div className="rounded-2xl border border-zinc-800 bg-[#0a0a0a] p-6 md:p-8 sticky lg:top-24">
                   <h2 className="text-lg font-bold text-white mb-6">Completa tu pago</h2>
-
                   <p className="text-sm text-gray-500 mb-4">Selecciona cómo quieres pagar</p>
                   <div className="grid grid-cols-2 gap-3 mb-6">
                     {country === 'MX' && (
                       <>
                         <button
                           type="button"
-                          onClick={() => setSelectedMethod('oxxo')}
+                          onClick={() => { setSelectedMethod('oxxo'); setError(null) }}
                           className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
-                            selectedMethod === 'oxxo'
-                              ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]'
-                              : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
+                            selectedMethod === 'oxxo' ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]' : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
                           }`}
                         >
                           <Banknote className="h-6 w-6 text-orange-400" />
@@ -246,11 +378,9 @@ export default function CheckoutPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setSelectedMethod('spei')}
+                          onClick={() => { setSelectedMethod('spei'); setError(null) }}
                           className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
-                            selectedMethod === 'spei'
-                              ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]'
-                              : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
+                            selectedMethod === 'spei' ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]' : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
                           }`}
                         >
                           <Building2 className="h-6 w-6 text-green-400" />
@@ -261,11 +391,9 @@ export default function CheckoutPage() {
                     )}
                     <button
                       type="button"
-                      onClick={() => setSelectedMethod('card')}
+                      onClick={() => { setSelectedMethod('card'); setError(null) }}
                       className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
-                        selectedMethod === 'card'
-                          ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]'
-                          : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
+                        selectedMethod === 'card' ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]' : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
                       }`}
                     >
                       <CreditCard className="h-6 w-6 text-bear-blue" />
@@ -274,11 +402,9 @@ export default function CheckoutPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSelectedMethod('paypal')}
+                      onClick={() => { setSelectedMethod('paypal'); setError(null) }}
                       className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
-                        selectedMethod === 'paypal'
-                          ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]'
-                          : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
+                        selectedMethod === 'paypal' ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]' : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
                       }`}
                     >
                       <Wallet className="h-6 w-6 text-[#0070ba]" />
@@ -287,32 +413,104 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                  {error && (
-                    <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 mb-6">
-                      <p className="text-sm text-red-400">{error}</p>
+                  {/* ESCENARIO A: Tarjeta – Stripe Elements + PaymentElement + botón custom */}
+                  {selectedMethod === 'card' && (
+                    <div className="mt-4">
+                      {cardClientSecretLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="w-10 h-10 border-2 border-bear-blue/30 border-t-bear-blue rounded-full animate-spin" />
+                        </div>
+                      ) : cardClientSecret ? (
+                        <StripeCardSection
+                          clientSecret={cardClientSecret}
+                          price={price}
+                          currencyLabel={currencyLabel}
+                          packSlug={packSlug}
+                          error={error}
+                          setError={setError}
+                        />
+                      ) : error ? (
+                        <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3">
+                          <p className="text-sm text-red-400">{error}</p>
+                        </div>
+                      ) : null}
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={handlePayment}
-                    disabled={!selectedMethod}
-                    className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    PAGAR ${price} {currencyLabel} Y ACCEDER →
-                  </button>
+                  {/* ESCENARIO B: PayPal – Solo botones nativos (@paypal/react-paypal-js) */}
+                  {selectedMethod === 'paypal' && (
+                    <div className="mt-4 rounded-xl border border-zinc-700 bg-[#0a0a0a] p-4 min-h-[200px] flex flex-col items-center justify-center">
+                      {!isPayPalAvailable ? (
+                        <p className="text-sm text-amber-400">PayPal no está configurado. Usa Tarjeta u OXXO/SPEI.</p>
+                      ) : (
+                        <PayPalScriptProvider
+                          options={{
+                            clientId: paypalClientId,
+                            currency: currency === 'mxn' ? 'MXN' : 'USD',
+                            intent: 'capture',
+                          }}
+                        >
+                          <PayPalButtons
+                            style={{ layout: 'vertical', color: 'gold', shape: 'rect' }}
+                            createOrder={async () => {
+                              trackCTAClick('checkout_method', 'checkout', `paypal-${packSlug}`)
+                              const res = await fetch('/api/create-paypal-order', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ packSlug, currency }),
+                              })
+                              const data = await res.json()
+                              if (!res.ok) throw new Error(data.error || 'Error al crear orden PayPal')
+                              return data.orderID
+                            }}
+                            onApprove={async (data) => {
+                              if (!data.orderID) return
+                              const origin = typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || ''
+                              window.location.href = `${origin}/complete-purchase?session_id=PAYPAL_${data.orderID}&provider=paypal`
+                            }}
+                            onError={(err) => {
+                              const msg = err?.message || 'Error al procesar con PayPal. Intenta con tarjeta u otro método.'
+                              toast.error(msg)
+                              setError(msg)
+                            }}
+                          />
+                        </PayPalScriptProvider>
+                      )}
+                      <div className="mt-4 flex items-center justify-center gap-1.5 text-xs text-gray-500">
+                        <Lock className="h-3.5 w-3.5" />
+                        Pagos procesados por PayPal
+                      </div>
+                    </div>
+                  )}
 
-                  <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500">
-                    <span className="flex items-center gap-1.5">
-                      <Lock className="h-3.5 w-3.5 text-gray-500" />
-                      Pagos procesados de forma segura por Stripe
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="font-mono text-[10px] font-bold text-gray-500">Visa</span>
-                      <span className="font-mono text-[10px] font-bold text-gray-500">MC</span>
-                      <span className="font-mono text-[10px] font-bold text-gray-500">Amex</span>
-                    </span>
-                  </div>
+                  {/* ESCENARIO C: OXXO / SPEI – Botón que llama create-checkout y redirige */}
+                  {(selectedMethod === 'oxxo' || selectedMethod === 'spei') && (
+                    <>
+                      {error && (
+                        <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 mb-6">
+                          <p className="text-sm text-red-400">{error}</p>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleOxxoSpeiPayment}
+                        className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        PAGAR ${price} {currencyLabel} Y ACCEDER →
+                      </button>
+                      <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500">
+                        <span className="flex items-center gap-1.5">
+                          <Lock className="h-3.5 w-3.5 text-gray-500" />
+                          Pagos procesados de forma segura por Stripe
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Sin método seleccionado: mensaje sutil */}
+                  {!selectedMethod && (
+                    <p className="text-sm text-gray-500 mt-4">Elige un método de pago arriba.</p>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -331,8 +529,6 @@ export default function CheckoutPage() {
               <p className="text-gray-500 text-sm">
                 {selectedMethod === 'oxxo' && 'Generando tu ficha OXXO...'}
                 {selectedMethod === 'spei' && 'Generando tu referencia SPEI...'}
-                {selectedMethod === 'card' && 'Conectando con el procesador...'}
-                {selectedMethod === 'paypal' && 'Conectando con PayPal...'}
               </p>
               <p className="text-xs text-gray-600 mt-4">No cierres esta ventana</p>
             </motion.div>
@@ -362,7 +558,7 @@ export default function CheckoutPage() {
       <footer className="border-t border-white/5 py-6 px-4 text-center text-sm text-gray-500">
         <p className="flex items-center justify-center gap-2">
           <Lock className="h-4 w-4" />
-          Pagos procesados de forma segura por Stripe
+          Pagos procesados de forma segura (Stripe / PayPal)
         </p>
         <p className="mt-1">
           ¿Problemas?{' '}

@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   X,
+  Lock,
 } from 'lucide-react'
 
 const DASHBOARD_BG = '#0a0a0a'
@@ -37,6 +38,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
   const [user, setUser] = useState<UserProfile | null>(null)
   const [packName, setPackName] = useState<string>('Pack Enero 2026')
+  const [hasPurchase, setHasPurchase] = useState(false)
   const [loading, setLoading] = useState(true)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -68,7 +70,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         .eq('user_id', authUser.id)
         .order('purchased_at', { ascending: false })
         .limit(1)
-      const first = (purchases as Purchase[] | null)?.[0]
+      const list = (purchases as Purchase[] | null) ?? []
+      setHasPurchase(list.length > 0)
+      const first = list[0]
       if (first?.pack?.name) setPackName(first.pack.name)
       setLoading(false)
     }
@@ -77,10 +81,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const tabFtp = searchParams.get('tab') === 'ftp'
   const nav = [
-    { href: '/dashboard', icon: Home, label: 'Inicio' },
-    { href: '/contenido', icon: FolderOpen, label: 'Biblioteca Web' },
-    { href: '/dashboard?tab=ftp', icon: Radio, label: 'Conexión FTP' },
-    { href: '/mi-cuenta', icon: User, label: 'Mi Cuenta' },
+    { href: '/dashboard', icon: Home, label: 'Inicio', locked: false },
+    { href: '/contenido', icon: FolderOpen, label: 'Biblioteca Web', locked: !hasPurchase },
+    { href: '/dashboard?tab=ftp', icon: Radio, label: 'Conexión FTP', locked: !hasPurchase },
+    { href: '/mi-cuenta', icon: User, label: 'Mi Cuenta', locked: false },
   ]
 
   if (loading) {
@@ -134,6 +138,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               >
                 <Icon className="h-5 w-5 shrink-0" />
                 {item.label}
+                {item.locked && <Lock className="h-3.5 w-3.5 shrink-0 text-amber-500/80" />}
               </Link>
             )
           })}
@@ -189,6 +194,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               >
                 <Icon className="h-5 w-5 shrink-0" />
                 {item.label}
+                {item.locked && <Lock className="h-3.5 w-3.5 shrink-0 text-amber-500/80" />}
               </Link>
             )
           })}
@@ -227,11 +233,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span
-              className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-            >
-              Acceso Activo
-            </span>
+            {hasPurchase ? (
+              <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                Acceso Activo
+              </span>
+            ) : (
+              <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-600/30 text-zinc-400 border border-amber-500/40">
+                Cuenta Gratuita
+              </span>
+            )}
             <div className="relative">
               <button
                 onClick={() => setAvatarOpen(!avatarOpen)}
