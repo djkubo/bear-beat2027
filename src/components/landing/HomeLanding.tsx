@@ -453,9 +453,9 @@ export default function HomeLanding() {
 
       {/* NAVBAR - UX clara: marca | acciones (CTA principal + secundaria) */}
       <header className="sticky top-0 z-50 py-3 md:py-4 px-4 md:px-6 border-b border-white/10 bg-zinc-950/95 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
+        <div className="max-w-6xl mx-auto flex justify-between items-center gap-4 min-h-[48px]">
           {/* Marca */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 min-w-0">
             <Image
               src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png"
               alt="Bear Beat"
@@ -508,7 +508,9 @@ export default function HomeLanding() {
             )}
           </nav>
 
-          <MobileMenu currentPath="/" userHasAccess={userState.hasAccess} isLoggedIn={userState.isLoggedIn} />
+          <div className="shrink-0 md:hidden">
+            <MobileMenu currentPath="/" userHasAccess={userState.hasAccess} isLoggedIn={userState.isLoggedIn} />
+          </div>
         </div>
       </header>
 

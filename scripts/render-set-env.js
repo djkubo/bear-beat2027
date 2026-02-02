@@ -81,6 +81,7 @@ async function setEnvVar(serviceId, key, value) {
   return res.json()
 }
 
+// Solo para comprobar que existan en Render; la subida usa TODAS las vars de .env.local
 const REQUIRED_KEYS = [
   'NEXT_PUBLIC_APP_URL',
   'NODE_ENV',

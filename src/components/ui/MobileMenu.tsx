@@ -32,6 +32,17 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
     }
   }, [isOpen])
 
+  // Cerrar con tecla Escape
+  useEffect(() => {
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false)
+    }
+    if (isOpen) {
+      window.addEventListener('keydown', onEscape)
+      return () => window.removeEventListener('keydown', onEscape)
+    }
+  }, [isOpen])
+
   const menuItems = userHasAccess
     ? [
         { href: '/dashboard', label: 'Mi Panel', icon: '📊', highlight: true },
@@ -66,24 +77,23 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
 
   return (
     <>
-      {/* Botón hamburger – área de toque mínima 44px (accesibilidad) */}
+      {/* Botón hamburger – área de toque mínima 44px, siempre visible en móvil */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden relative z-[60] min-w-[44px] min-h-[44px] flex flex-col justify-center items-center gap-1.5 p-3 rounded-xl bg-zinc-900/80 border border-cyan-500/30 hover:bg-zinc-800/90 hover:border-cyan-400/50 transition-colors touch-manipulation"
+        className="md:hidden relative z-[60] shrink-0 min-w-[48px] min-h-[48px] flex flex-col justify-center items-center gap-1.5 p-3 rounded-xl bg-zinc-900 border border-cyan-500/40 hover:bg-zinc-800 hover:border-cyan-400/60 active:scale-95 transition-all touch-manipulation"
         aria-label={isOpen ? 'Cerrar menú' : 'Abrir menú'}
         aria-expanded={isOpen}
+        aria-controls="mobile-drawer"
       >
-        <motion.span
-          animate={isOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
-          className="w-6 h-0.5 bg-cyan-400 block rounded-full shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+        <span
+          className={`w-6 h-1 bg-cyan-400 block rounded-full transition-all duration-200 ${isOpen ? 'rotate-45 translate-y-2' : ''}`}
         />
-        <motion.span
-          animate={isOpen ? { opacity: 0 } : { opacity: 1 }}
-          className="w-6 h-0.5 bg-cyan-400 block rounded-full shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+        <span
+          className={`w-6 h-1 bg-cyan-400 block rounded-full transition-all duration-200 ${isOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}
         />
-        <motion.span
-          animate={isOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
-          className="w-6 h-0.5 bg-cyan-400 block rounded-full shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+        <span
+          className={`w-6 h-1 bg-cyan-400 block rounded-full transition-all duration-200 ${isOpen ? '-rotate-45 -translate-y-2' : ''}`}
         />
       </button>
 
@@ -101,13 +111,17 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
               aria-hidden="true"
             />
 
-            {/* Side Drawer – glassmorphism */}
+            {/* Side Drawer – glassmorphism, safe-area para muescas */}
             <motion.div
+              id="mobile-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menú de navegación"
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              className="fixed top-0 right-0 h-full w-full max-w-sm bg-zinc-950/95 backdrop-blur-xl border-l border-cyan-500/20 shadow-[-20px_0_60px_rgba(0,0,0,0.5)] z-[58] md:hidden flex flex-col"
+              className="fixed top-0 right-0 h-full w-[min(100%,20rem)] max-w-sm bg-zinc-950 backdrop-blur-xl border-l border-cyan-500/20 shadow-[-20px_0_60px_rgba(0,0,0,0.5)] z-[58] md:hidden flex flex-col"
             >
               {/* Header con logo */}
               <div className="shrink-0 p-6 pb-4 border-b border-white/10">
@@ -132,8 +146,8 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
                 </div>
               </div>
 
-              {/* Links – texto grande, mucho aire */}
-              <nav className="flex-1 overflow-y-auto py-6 px-6">
+              {/* Links – texto grande, scroll si hay muchos */}
+              <nav className="flex-1 min-h-0 overflow-y-auto py-6 px-6">
                 <ul className="space-y-1">
                   {menuItems.map((item) => (
                     <li key={item.href}>

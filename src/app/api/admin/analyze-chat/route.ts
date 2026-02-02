@@ -8,6 +8,7 @@ import OpenAI from 'openai'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
+import { getOpenAIChatModel } from '@/lib/openai-config'
 
 const SYSTEM_PROMPT = `Eres un Analista de Negocios Digitales experto.
 Analiza los siguientes mensajes de usuarios en un e-commerce de música para DJs (packs de videos, descargas, pagos).
@@ -80,10 +81,9 @@ export async function POST(req: NextRequest) {
     const textBlock = lines.join('\n')
 
     const openai = new OpenAI({ apiKey: openaiKey })
-    const model = process.env.OPENAI_CHAT_MODEL || 'gpt-4o'
 
     const completion = await openai.chat.completions.create({
-      model: model as string,
+      model: getOpenAIChatModel(),
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: `Mensajes recientes de usuarios (del más reciente al más antiguo):\n\n${textBlock.slice(0, 28000)}` },

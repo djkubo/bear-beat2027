@@ -70,12 +70,12 @@ export default function ContenidoPage() {
     setDemoError(false)
   }, [selectedVideo?.id])
 
-  // Al expandir una carpeta, hacer scroll suave hasta la lista de videos para que se vea que se abrió
+  // Al expandir una carpeta, hacer scroll suave hasta la lista de videos (en móvil block: start evita cortes)
   useEffect(() => {
     if (expandedGenre && expandedSectionRef.current) {
       const t = setTimeout(() => {
-        expandedSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      }, 150)
+        expandedSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
       return () => clearTimeout(t)
     }
   }, [expandedGenre])
@@ -212,7 +212,7 @@ export default function ContenidoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white antialiased pb-24 md:pb-0">
+    <div className="min-h-screen bg-[#050505] text-white antialiased pb-24 md:pb-0 overflow-x-hidden">
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/95 backdrop-blur-md py-3 md:py-4 px-4 md:px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -225,19 +225,21 @@ export default function ContenidoPage() {
             />
             <span className="font-bold text-bear-blue hidden md:inline">BEAR BEAT</span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             {hasAccess ? (
-              <Link href="/dashboard" className="text-sm font-medium text-bear-blue hover:underline">
+              <Link href="/dashboard" className="hidden md:inline text-sm font-medium text-bear-blue hover:underline">
                 Mi Panel
               </Link>
             ) : (
-              <Link href="/checkout?pack=enero-2026">
-                <button className="bg-bear-blue text-bear-black font-black text-sm px-4 py-2 rounded-lg hover:brightness-110 transition">
+              <Link href="/checkout?pack=enero-2026" className="hidden md:inline">
+                <button type="button" className="bg-bear-blue text-bear-black font-black text-sm px-4 py-2 rounded-lg hover:brightness-110 transition">
                   OBTENER ACCESO
                 </button>
               </Link>
             )}
-            <MobileMenu currentPath="/contenido" userHasAccess={hasAccess} isLoggedIn={hasAccess} />
+            <div className="md:hidden shrink-0">
+              <MobileMenu currentPath="/contenido" userHasAccess={hasAccess} isLoggedIn={hasAccess} />
+            </div>
           </div>
         </div>
       </header>
@@ -288,17 +290,17 @@ export default function ContenidoPage() {
       </section>
 
       {/* CONTENIDO PRINCIPAL – Grid de géneros + sidebar sticky */}
-      <main className="px-4 py-8">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8">
-          {/* GRID DE GÉNEROS (carpetas) */}
-          <div className="lg:col-span-2 space-y-6">
+      <main className="px-4 md:px-6 py-8 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+          {/* GRID DE GÉNEROS (carpetas) – en móvil una columna para no romper al expandir */}
+          <div className="lg:col-span-2 space-y-6 min-w-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredGenres.map((genre) => (
                 <motion.div
                   key={genre.id}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 transition-all hover:border-bear-blue hover:shadow-[0_0_24px_rgba(8,225,247,0.12)] hover:-translate-y-0.5 cursor-pointer"
+                  className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 transition-all hover:border-bear-blue hover:shadow-[0_0_24px_rgba(8,225,247,0.12)] hover:-translate-y-0.5 cursor-pointer min-w-0"
                   onClick={() => setExpandedGenre(expandedGenre === genre.id ? null : genre.id)}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -326,22 +328,23 @@ export default function ContenidoPage() {
               ))}
             </div>
 
-            {/* Lista de videos del género expandido */}
-            <AnimatePresence>
+            {/* Lista de videos del género expandido – sin animación height:auto en móvil para no romper layout */}
+            <AnimatePresence initial={false}>
               {expandedGenre && (
                 <motion.div
                   ref={expandedSectionRef}
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden min-w-0"
                 >
                   {filteredGenres
                     .filter((g) => g.id === expandedGenre)
                     .map((genre) => (
-                      <div key={genre.id}>
+                      <div key={genre.id} className="min-w-0">
                         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-white/10 bg-zinc-800/50">
-                          <h3 className="font-bold text-white">{genre.name}</h3>
+                          <h3 className="font-bold text-white truncate">{genre.name}</h3>
                           {hasAccess && (
                             <button
                               type="button"
@@ -349,14 +352,15 @@ export default function ContenidoPage() {
                                 e.stopPropagation()
                                 handleDownloadFolderZip(genre)
                               }}
-                              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/20 text-cyan-400 font-bold text-sm hover:bg-cyan-500/30 transition border border-cyan-500/40"
+                              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/20 text-cyan-400 font-bold text-sm hover:bg-cyan-500/30 transition border border-cyan-500/40 shrink-0"
                             >
-                              <Archive className="h-4 w-4" />
-                              DESCARGAR CARPETA ZIP
+                              <Archive className="h-4 w-4 shrink-0" />
+                              <span className="hidden sm:inline">DESCARGAR CARPETA ZIP</span>
+                              <span className="sm:hidden">ZIP</span>
                             </button>
                           )}
                         </div>
-                        <div className="max-h-[420px] overflow-y-auto">
+                        <div className="max-h-[50vh] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0 overscroll-contain">
                         {genre.videos.map((video) => (
                           <div
                             key={video.id}
@@ -418,7 +422,7 @@ export default function ContenidoPage() {
           </div>
 
           {/* SIDEBAR: Pro = Panel de Detalles (utilidad); Free = Preview + Oferta + Testimonio (venta) */}
-          <aside className="space-y-6">
+          <aside className="space-y-6 min-w-0">
             <div className="lg:sticky lg:top-24 space-y-6">
               {hasAccess ? (
                 /* ---------- USUARIO PRO: Panel de Utilidad / Reproducción ---------- */

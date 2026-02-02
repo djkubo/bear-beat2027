@@ -83,9 +83,10 @@ export function NavBar() {
             </Link>
           </div>
 
-          {/* Botón hamburger – min 44px touch */}
+          {/* Botón hamburger – min 48px touch, siempre visible en móvil */}
           <button
-            className="md:hidden min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-zinc-900/80 border border-cyan-500/30 hover:bg-zinc-800/90 hover:border-cyan-400/50 transition-colors touch-manipulation"
+            type="button"
+            className="md:hidden shrink-0 min-w-[48px] min-h-[48px] flex items-center justify-center rounded-xl bg-zinc-900 border border-cyan-500/40 hover:bg-zinc-800 hover:border-cyan-400/60 active:scale-95 transition-all touch-manipulation"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={mobileMenuOpen}

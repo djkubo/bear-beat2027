@@ -11,9 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createAdminClient } from '@/lib/supabase/admin'
-
-const EMBEDDING_MODEL = 'text-embedding-3-large'
-const EMBEDDING_DIMENSIONS = 3072
+import { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, getOpenAIChatModel } from '@/lib/openai-config'
 const MATCH_THRESHOLD = 0.5
 const MATCH_COUNT = 5
 const RAG_SYSTEM_PREFIX = `Eres el Asistente AI de Bear Beat (Experto en DJ y Video Remixes).
@@ -81,10 +79,9 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = `${RAG_SYSTEM_PREFIX}\n\n${contextBlock}\n\nFecha actual: Febrero 2026.`
 
-    // 3. Respuesta con OpenAI (gpt-5.2 cuando exista; hoy: gpt-4o)
-    const model = process.env.OPENAI_CHAT_MODEL || 'gpt-4o'
+    // 3. Respuesta con OpenAI (GPT-5.2)
     const completion = await openai.chat.completions.create({
-      model: model as any,
+      model: getOpenAIChatModel(),
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: message },

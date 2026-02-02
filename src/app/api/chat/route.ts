@@ -4,7 +4,7 @@
  * POST { message, history?, sessionId? }
  * 1. Embedding del mensaje → match_documents (Supabase).
  * 2. System prompt BearBot + fragmentos RAG.
- * 3. OpenAI (gpt-4o / OPENAI_CHAT_MODEL).
+ * 3. OpenAI (GPT-5.2 vía OPENAI_CHAT_MODEL).
  * 4. Guarda user message y assistant response en chat_messages.
  *
  * Output: { role: 'assistant', content: '...' }
@@ -15,9 +15,7 @@ import { cookies } from 'next/headers'
 import OpenAI from 'openai'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createServerClient } from '@/lib/supabase/server'
-
-const EMBEDDING_MODEL = 'text-embedding-3-large'
-const EMBEDDING_DIMENSIONS = 3072
+import { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, getOpenAIChatModel } from '@/lib/openai-config'
 const MATCH_THRESHOLD = 0.5
 const MATCH_COUNT = 5
 const SYSTEM_PROMPT = `Eres BearBot, el asistente de ventas de Bear Beat. Experto en DJ, packs de video y soporte técnico.
@@ -102,10 +100,9 @@ export async function POST(req: NextRequest) {
       { role: 'user', content: text },
     ]
 
-    // ----- 3. Generación GPT -----
-    const model = process.env.OPENAI_CHAT_MODEL || 'gpt-4o'
+    // ----- 3. Generación GPT (GPT-5.2) -----
     const completion = await openai.chat.completions.create({
-      model: model as string,
+      model: getOpenAIChatModel(),
       messages,
       temperature: 0.3,
     })
