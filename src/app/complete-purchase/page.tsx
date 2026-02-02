@@ -6,7 +6,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import confetti from 'canvas-confetti'
-import { Check, Copy, ExternalLink, Lock } from 'lucide-react'
+import { Check, Copy, ExternalLink, Lock, Globe, FolderOpen, Zap, ChevronDown, ChevronRight } from 'lucide-react'
+
+const GOOGLE_DRIVE_FOLDER_URL = 'https://drive.google.com/drive/folders/1jGj20PjgnsbWN1Zbs7sV37zxOUaQxlrd?usp=share_link'
 import { createClient } from '@/lib/supabase/client'
 import { normalizePhoneNumber } from '@/lib/phone'
 import { toast } from 'sonner'
@@ -54,11 +56,12 @@ export default function CompletePurchasePage() {
   const [emailFromPayment, setEmailFromPayment] = useState(false) // true = email vino del pago o URL, input readOnly
   const [generatedCredentials, setGeneratedCredentials] = useState<{email: string, password: string} | null>(null)
   const [ftpCredentials, setFtpCredentials] = useState<{ ftp_username?: string; ftp_password?: string; ftp_host?: string } | null>(null)
-  const [showFtpAccordion, setShowFtpAccordion] = useState(false)
   const [showEmailNotConfirmed, setShowEmailNotConfirmed] = useState(false)
   const [claimMode, setClaimMode] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
   const [claimLoading, setClaimLoading] = useState(false)
+  const [guideOpenDone, setGuideOpenDone] = useState<'ftp' | 'drive' | 'web' | null>(null)
+  const [ftpClientTabDone, setFtpClientTabDone] = useState<'filezilla' | 'airexplorer'>('filezilla')
   const confettiFired = useRef(false)
   const checkEmailTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -985,67 +988,149 @@ export default function CompletePurchasePage() {
                 </div>
               </motion.div>
 
-              {/* Opción A: CTA Biblioteca (Web) – tarjeta destacada */}
+              {/* Grid 3 vías: Biblioteca Online, Google Drive, FTP */}
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="mb-6"
+                className="grid md:grid-cols-3 gap-4 mb-8"
               >
-                <p className="text-zinc-400 text-sm mb-3">Quiero descargar video por video</p>
-                <Link href="/contenido" className="block">
-                  <button className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-black text-lg py-5 rounded-2xl transition-all shadow-lg shadow-cyan-500/25 hover:shadow-cyan-400/30 flex items-center justify-center gap-2">
-                    IR A LA BIBLIOTECA (WEB) <ExternalLink className="w-5 h-5" />
+                <div className="bg-zinc-900/80 border border-zinc-700/50 rounded-2xl p-5 flex flex-col">
+                  <div className="flex justify-center mb-3">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-cyan-500/10 border border-cyan-500/30">
+                      <Globe className="h-6 w-6 text-cyan-400" />
+                    </div>
+                  </div>
+                  <h3 className="text-base font-bold text-white mb-1 text-center">Biblioteca Online</h3>
+                  <p className="text-zinc-400 text-xs mb-4 text-center flex-1">Visualiza y descarga video por video.</p>
+                  <Link href="/contenido" className="block">
+                    <button className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2">
+                      IR A LA BIBLIOTECA <ExternalLink className="w-4 h-4" />
+                    </button>
+                  </Link>
+                </div>
+                <div className="bg-zinc-900/80 border border-zinc-700/50 rounded-2xl p-5 flex flex-col">
+                  <div className="flex justify-center mb-3">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-500/10 border border-blue-500/30">
+                      <FolderOpen className="h-6 w-6 text-blue-400" />
+                    </div>
+                  </div>
+                  <h3 className="text-base font-bold text-white mb-1 text-center">Google Drive</h3>
+                  <p className="text-zinc-400 text-xs mb-4 text-center flex-1">Acceso rápido y compatible con todo.</p>
+                  <a href={GOOGLE_DRIVE_FOLDER_URL} target="_blank" rel="noopener noreferrer" className="block">
+                    <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-black text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2">
+                      ABRIR CARPETA DRIVE <ExternalLink className="w-4 h-4" />
+                    </button>
+                  </a>
+                </div>
+                <div className="bg-zinc-900/80 border border-zinc-700/50 rounded-2xl p-5 flex flex-col">
+                  <div className="flex justify-center mb-3">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-amber-500/10 border border-amber-500/30">
+                      <Zap className="h-6 w-6 text-amber-400" />
+                    </div>
+                  </div>
+                  <h3 className="text-base font-bold text-white mb-1 text-center">Acceso FTP Directo</h3>
+                  <p className="text-zinc-400 text-xs mb-4 text-center flex-1">Para descargar todo el pack de golpe.</p>
+                  <button
+                    type="button"
+                    onClick={() => setGuideOpenDone(guideOpenDone === 'ftp' ? null : 'ftp')}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-black font-black text-sm py-3 rounded-xl transition-all"
+                  >
+                    VER DATOS Y GUÍAS
                   </button>
-                </Link>
+                </div>
               </motion.div>
 
-              {/* Opción B: Credenciales FTP – estilo developer */}
+              {/* Guía de Descarga Paso a Paso (acordeón) */}
               <motion.div
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="mb-6"
+                transition={{ delay: 0.35 }}
+                className="rounded-2xl border border-zinc-700/60 overflow-hidden mb-6 bg-zinc-950/80"
               >
-                <button
-                  type="button"
-                  onClick={() => setShowFtpAccordion(!showFtpAccordion)}
-                  className="w-full bg-zinc-950 border border-zinc-700/60 text-zinc-300 font-bold py-4 px-4 rounded-xl hover:bg-zinc-900/80 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Lock className="w-4 h-4 text-cyan-500" />
-                  Credenciales FTP Privadas
-                  <span className="text-lg text-cyan-500">{showFtpAccordion ? '▲' : '▼'}</span>
-                </button>
-                {showFtpAccordion && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-3 bg-zinc-950 border border-cyan-500/30 rounded-xl p-5 text-left overflow-hidden"
-                  >
-                    <p className="text-zinc-500 text-xs mb-4">Guarda estos datos en un lugar seguro.</p>
-                    {ftpCredentials?.ftp_username ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-zinc-500 text-xs font-mono w-16 shrink-0">Host</span>
-                          <span className="font-mono text-cyan-300 text-sm break-all flex-1 min-w-0">{ftpCredentials.ftp_host || `${ftpCredentials.ftp_username}.your-storagebox.de`}</span>
-                          <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_host || ''); toast.success('Copiado') }} className="p-1.5 rounded text-zinc-500 hover:text-cyan-400 hover:bg-zinc-800 shrink-0"><Copy className="w-4 h-4" /></button>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-zinc-500 text-xs font-mono w-16 shrink-0">User</span>
-                          <span className="font-mono text-cyan-300 text-sm flex-1 min-w-0">{ftpCredentials.ftp_username}</span>
-                          <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_username ?? ''); toast.success('Copiado') }} className="p-1.5 rounded text-zinc-500 hover:text-cyan-400 hover:bg-zinc-800 shrink-0"><Copy className="w-4 h-4" /></button>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-zinc-500 text-xs font-mono w-16 shrink-0">Pass</span>
-                          <span className="font-mono text-cyan-300 text-sm truncate flex-1 min-w-0">{ftpCredentials.ftp_password}</span>
-                          <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_password || ''); toast.success('Copiado') }} className="p-1.5 rounded text-zinc-500 hover:text-cyan-400 hover:bg-zinc-800 shrink-0"><Copy className="w-4 h-4" /></button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-zinc-500 text-sm">Tus credenciales FTP llegarán por email. También las verás en tu panel.</p>
-                    )}
-                  </motion.div>
-                )}
+                <h3 className="text-base font-bold text-white px-4 py-3 border-b border-zinc-700/60">
+                  Guía de Descarga Paso a Paso
+                </h3>
+                {/* FTP */}
+                <div className="border-b border-zinc-700/60">
+                  <button type="button" onClick={() => setGuideOpenDone(guideOpenDone === 'ftp' ? null : 'ftp')} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-800/50 transition-colors">
+                    <span className="flex items-center gap-2 font-medium text-white text-sm"><Zap className="h-4 w-4 text-amber-400" /> Detalles FTP</span>
+                    {guideOpenDone === 'ftp' ? <ChevronDown className="h-4 w-4 text-zinc-400" /> : <ChevronRight className="h-4 w-4 text-zinc-400" />}
+                  </button>
+                  {guideOpenDone === 'ftp' && (
+                    <div className="px-4 pb-4 pt-0 space-y-4 bg-zinc-900/50">
+                      {ftpCredentials?.ftp_username ? (
+                        <>
+                          <p className="text-zinc-500 text-xs">Credenciales (cópialas abajo)</p>
+                          <div className="space-y-2">
+                            {[
+                              { label: 'Host', value: ftpCredentials.ftp_host || `${ftpCredentials.ftp_username}.your-storagebox.de` },
+                              { label: 'Usuario', value: ftpCredentials.ftp_username },
+                              { label: 'Contraseña', value: ftpCredentials.ftp_password || '' },
+                            ].map(({ label, value }) => (
+                              <div key={label} className="flex items-center gap-2 flex-wrap">
+                                <span className="text-zinc-500 text-xs font-mono w-14 shrink-0">{label}</span>
+                                <span className="font-mono text-cyan-300 text-xs flex-1 min-w-0 truncate">{value}</span>
+                                <button type="button" onClick={() => { navigator.clipboard.writeText(value); toast.success('Copiado') }} className="p-1.5 rounded text-zinc-500 hover:text-cyan-400"><Copy className="w-4 h-4" /></button>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex gap-1 p-1 rounded-lg bg-zinc-950 border border-zinc-700/50">
+                            <button type="button" onClick={() => setFtpClientTabDone('filezilla')} className={`flex-1 px-3 py-2 rounded text-xs font-medium transition-all ${ftpClientTabDone === 'filezilla' ? 'bg-cyan-500 text-black' : 'text-zinc-400 hover:text-white'}`}>FileZilla (Estándar)</button>
+                            <button type="button" onClick={() => setFtpClientTabDone('airexplorer')} className={`flex-1 px-3 py-2 rounded text-xs font-medium transition-all ${ftpClientTabDone === 'airexplorer' ? 'bg-cyan-500 text-black' : 'text-zinc-400 hover:text-white'}`}>Air Explorer (Pro)</button>
+                          </div>
+                          {ftpClientTabDone === 'filezilla' && (
+                            <ol className="space-y-2 text-xs text-zinc-300 list-decimal list-inside">
+                              <li>Descarga e instala FileZilla Client (Gratis).</li>
+                              <li>Copia el <strong className="text-white">Host</strong>, <strong className="text-white">Usuario</strong> y <strong className="text-white">Contraseña</strong> de arriba.</li>
+                              <li>Pégalos en la barra de &quot;Conexión Rápida&quot; de FileZilla.</li>
+                              <li>Si pide puerto, usa el <strong className="text-white">21</strong> (o déjalo vacío).</li>
+                              <li>Arrastra las carpetas del lado derecho (Servidor) al izquierdo (Tu PC).</li>
+                            </ol>
+                          )}
+                          {ftpClientTabDone === 'airexplorer' && (
+                            <ol className="space-y-2 text-xs text-zinc-300 list-decimal list-inside">
+                              <li>Abre Air Explorer y ve a &quot;Cuentas&quot;.</li>
+                              <li>Añade una nueva cuenta y selecciona el logo de <strong className="text-white">FTP</strong>.</li>
+                              <li>En servidor pon el <strong className="text-white">Host</strong>, y rellena <strong className="text-white">Usuario</strong> y <strong className="text-white">Contraseña</strong>.</li>
+                              <li>Dale a conectar. Ahora puedes sincronizar carpetas completas de forma estable y reanudar si se corta internet.</li>
+                            </ol>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-zinc-500 text-xs">Tus credenciales FTP llegarán por email. También las verás en tu panel.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* Google Drive */}
+                <div className="border-b border-zinc-700/60">
+                  <button type="button" onClick={() => setGuideOpenDone(guideOpenDone === 'drive' ? null : 'drive')} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-800/50 transition-colors">
+                    <span className="flex items-center gap-2 font-medium text-white text-sm"><FolderOpen className="h-4 w-4 text-blue-400" /> Detalles Google Drive</span>
+                    {guideOpenDone === 'drive' ? <ChevronDown className="h-4 w-4 text-zinc-400" /> : <ChevronRight className="h-4 w-4 text-zinc-400" />}
+                  </button>
+                  {guideOpenDone === 'drive' && (
+                    <div className="px-4 pb-4 pt-0 space-y-2 bg-zinc-900/50 text-xs text-zinc-300">
+                      <p>Haz clic en el botón para abrir la carpeta compartida.</p>
+                      <p><strong className="text-white">Tip:</strong> Si seleccionas muchos archivos, Google los comprimirá en varios Zips. Ten paciencia mientras se preparan.</p>
+                      <p>Puedes usar &quot;Añadir a mi unidad&quot; si tienes espacio en tu propia nube.</p>
+                    </div>
+                  )}
+                </div>
+                {/* Web */}
+                <div>
+                  <button type="button" onClick={() => setGuideOpenDone(guideOpenDone === 'web' ? null : 'web')} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-800/50 transition-colors">
+                    <span className="flex items-center gap-2 font-medium text-white text-sm"><Globe className="h-4 w-4 text-cyan-400" /> Detalles Web</span>
+                    {guideOpenDone === 'web' ? <ChevronDown className="h-4 w-4 text-zinc-400" /> : <ChevronRight className="h-4 w-4 text-zinc-400" />}
+                  </button>
+                  {guideOpenDone === 'web' && (
+                    <div className="px-4 pb-4 pt-0 space-y-2 bg-zinc-900/50 text-xs text-zinc-300">
+                      <p>Navega por géneros en el menú de la izquierda.</p>
+                      <p>Usa el buscador para encontrar artistas o canciones por BPM.</p>
+                      <p>Haz clic en el botón de descarga al lado de cada video.</p>
+                    </div>
+                  )}
+                </div>
               </motion.div>
 
               {/* Contraseña autogenerada (solo si es usuario nuevo) */}
