@@ -131,9 +131,19 @@ export async function GET(req: NextRequest) {
       const amount = (pi.amount || 0) / 100
       const currency = (pi.currency || 'mxn').toUpperCase()
 
+      // Email: metadata (invitado) > receipt_email > Stripe Customer
+      let customerEmail = (pi.metadata?.customer_email as string) || (pi.receipt_email as string) || ''
+      if (!customerEmail && typeof pi.customer === 'string') {
+        try {
+          const customer = await stripe.customers.retrieve(pi.customer)
+          if (customer && !customer.deleted) {
+            customerEmail = (customer as { email?: string }).email || ''
+          }
+        } catch (_) {}
+      }
+
       const supabase = await createServerClient()
       const pack = await getPackBySlug(supabase, packSlug)
-      const customerEmail = (pi.receipt_email as string) || ''
       const customerName = ''
 
       return NextResponse.json({

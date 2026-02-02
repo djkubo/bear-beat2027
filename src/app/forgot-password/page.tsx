@@ -5,9 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import Image from 'next/image'
+import { Lock, Mail, MailCheck, AlertCircle } from 'lucide-react'
 
 // ==========================================
-// FORGOT PASSWORD PAGE - Diseño Persuasivo
+// FORGOT PASSWORD – Dark Mode Premium (identidad, seguridad, anti-spam)
 // ==========================================
 
 export default function ForgotPasswordPage() {
@@ -21,34 +23,42 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password`,
       })
 
       if (error) throw error
 
       setEmailSent(true)
       toast.success('¡Email enviado!')
-    } catch (error: any) {
-      console.error('Error:', error)
-      toast.error(error.message || 'Error al enviar email')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error al enviar email'
+      toast.error(message)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-bear-black text-white flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
+    <div
+      className="min-h-screen flex items-center justify-center p-6 text-white antialiased relative overflow-hidden"
+      style={{
+        background: '#0a0a0a',
+        backgroundImage: 'radial-gradient(ellipse 80% 50% at 50% 40%, rgba(8,225,247,0.06) 0%, transparent 60%)',
+      }}
+    >
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-3">
-            <img 
-              src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png" 
-              alt="Bear Beat" 
-              className="h-14 w-auto"
+          <Link href="/" className="inline-flex items-center gap-3 text-white hover:opacity-90 transition-opacity">
+            <Image
+              src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png"
+              alt="Bear Beat"
+              width={48}
+              height={48}
+              className="h-12 w-auto"
             />
-            <span className="text-2xl font-black">BEAR BEAT</span>
+            <span className="text-xl font-black text-white tracking-tight">BEAR BEAT</span>
           </Link>
         </div>
 
@@ -59,69 +69,95 @@ export default function ForgotPasswordPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-8 shadow-xl"
             >
-              {/* Header */}
-              <div className="text-center mb-8">
-                <div className="text-6xl mb-4">🔐</div>
-                <h1 className="text-3xl font-black mb-2">¿Olvidaste tu contraseña?</h1>
-                <p className="text-gray-400">
-                  No te preocupes, te enviamos un link para cambiarla
-                </p>
+              {/* Icono Hero – Lock con glow cyan */}
+              <div className="flex justify-center mb-6">
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                  className="flex items-center justify-center w-16 h-16 rounded-full bg-cyan-500/10"
+                  style={{
+                    boxShadow: '0 0 32px rgba(6, 182, 212, 0.25)',
+                    border: '1px solid rgba(6, 182, 212, 0.2)',
+                  }}
+                >
+                  <Lock className="w-8 h-8 text-cyan-500" strokeWidth={2} />
+                </motion.div>
               </div>
 
-              {/* Form Card */}
-              <div className="bg-white/5 backdrop-blur border border-bear-blue/30 rounded-3xl p-8">
-                <form onSubmit={handleResetPassword} className="space-y-5">
-                  {/* Email */}
-                  <div>
-                    <label className="block text-sm font-bold mb-2 text-gray-300">
-                      📧 Tu email de registro
-                    </label>
+              {/* Textos persuasivos */}
+              <h1 className="text-2xl sm:text-3xl font-bold text-white text-center mb-2">
+                ¿Olvidaste tu contraseña?
+              </h1>
+              <p className="text-gray-400 text-center text-sm sm:text-base mb-6">
+                Ingresa tu email y te enviaremos las instrucciones para restablecerla.
+              </p>
+
+              <form onSubmit={handleResetPassword} className="space-y-5">
+                {/* Input con icono Mail (estilo Login) */}
+                <div>
+                  <label htmlFor="forgot-email" className="sr-only">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">
+                      <Mail className="w-5 h-5" strokeWidth={2} />
+                    </span>
                     <input
+                      id="forgot-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-white/10 border-2 border-bear-blue/30 rounded-xl px-4 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-bear-blue transition-colors"
                       placeholder="tu@email.com"
                       required
                       autoFocus
+                      autoComplete="email"
+                      className="w-full rounded-xl border border-zinc-800 bg-zinc-950 pl-11 pr-4 py-3.5 text-white placeholder-zinc-500 outline-none transition-colors focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30"
                     />
-                    <p className="text-xs text-gray-500 mt-2">
-                      El email que usaste para crear tu cuenta
-                    </p>
                   </div>
-
-                  {/* Submit */}
-                  <motion.button
-                    type="submit"
-                    disabled={loading}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full bg-bear-blue text-bear-black font-black py-4 rounded-xl text-lg hover:bg-bear-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    {loading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Enviando...
-                      </span>
-                    ) : (
-                      '📧 Enviar link de recuperación'
-                    )}
-                  </motion.button>
-                </form>
-
-                {/* Back to login */}
-                <div className="mt-6 text-center">
-                  <Link 
-                    href="/login" 
-                    className="text-sm text-gray-400 hover:text-white flex items-center justify-center gap-2"
-                  >
-                    ← Volver al login
-                  </Link>
                 </div>
+
+                {/* Botón de acción */}
+                <motion.button
+                  type="submit"
+                  disabled={loading}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full rounded-xl bg-cyan-500 text-black font-bold py-4 text-sm uppercase tracking-wide hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" aria-hidden>
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Enviando...
+                    </>
+                  ) : (
+                    <>ENVIAR INSTRUCCIONES →</>
+                  )}
+                </motion.button>
+              </form>
+
+              {/* Tip anti-spam */}
+              <div className="mt-5 rounded-xl border border-amber-600/30 bg-amber-950/30 px-4 py-3 flex gap-2">
+                <AlertCircle className="w-5 h-5 shrink-0 text-amber-500/90 mt-0.5" strokeWidth={2} />
+                <p className="text-sm text-amber-200/90">
+                  Tip: Si no recibes el correo en 1 minuto, revisa tu carpeta de Spam o Promociones.
+                </p>
+              </div>
+
+              {/* Footer de tarjeta */}
+              <div className="mt-6 text-center">
+                <Link
+                  href="/login"
+                  className="text-sm text-zinc-500 hover:text-white transition-colors inline-flex items-center gap-1.5"
+                >
+                  ← Volver a Iniciar Sesión
+                </Link>
               </div>
             </motion.div>
           ) : (
@@ -129,67 +165,70 @@ export default function ForgotPasswordPage() {
               key="success"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-8 shadow-xl"
             >
-              {/* Success State */}
-              <div className="bg-green-500/10 border border-green-500/50 rounded-3xl p-8 text-center">
+              {/* Icono MailCheck (éxito) */}
+              <div className="flex justify-center mb-6">
                 <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', delay: 0.2 }}
-                  className="text-7xl mb-6"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                  className="flex items-center justify-center w-16 h-16 rounded-2xl bg-cyan-500/10"
+                  style={{
+                    boxShadow: '0 0 24px rgba(6, 182, 212, 0.2)',
+                    border: '1px solid rgba(6, 182, 212, 0.25)',
+                  }}
                 >
-                  ✅
+                  <MailCheck className="w-8 h-8 text-cyan-500" strokeWidth={2} />
                 </motion.div>
-                
-                <h2 className="text-3xl font-black mb-4">¡Email enviado!</h2>
-                
-                <p className="text-gray-300 mb-6">
-                  Revisa tu bandeja de entrada de<br/>
-                  <span className="text-green-400 font-bold">{email}</span>
-                </p>
-
-                {/* Instructions */}
-                <div className="bg-white/5 rounded-xl p-5 mb-6 text-left">
-                  <p className="font-bold mb-3 text-sm">¿Qué hacer ahora?</p>
-                  <ol className="space-y-2 text-sm text-gray-400">
-                    <li className="flex items-start gap-2">
-                      <span className="text-green-400">1.</span>
-                      Abre tu email
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-green-400">2.</span>
-                      Busca el email de Bear Beat
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-green-400">3.</span>
-                      Haz clic en el link de recuperación
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-green-400">4.</span>
-                      Crea tu nueva contraseña
-                    </li>
-                  </ol>
-                </div>
-
-                <p className="text-xs text-gray-500 mb-6">
-                  💡 Si no lo ves, revisa en spam o correo no deseado
-                </p>
-
-                <Link href="/login">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    className="w-full bg-white/10 text-white font-bold py-4 rounded-xl hover:bg-white/20 transition-colors"
-                  >
-                    ← Volver al login
-                  </motion.button>
-                </Link>
               </div>
 
-              {/* Resend option */}
-              <div className="mt-6 text-center">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-3">
+                ¡Correo Enviado!
+              </h2>
+              <p className="text-center text-zinc-400 text-sm sm:text-base mb-6">
+                Hemos enviado un enlace a{' '}
+                <span className="text-cyan-400 font-medium break-all">{email}</span>.
+              </p>
+
+              {/* Abrir Gmail / Abrir Outlook (misma lógica que verify-email) */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <a
+                  href="https://mail.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-sm font-medium text-zinc-200 hover:bg-zinc-800 hover:border-zinc-600 hover:text-white transition-colors"
+                >
+                  <Mail className="w-4 h-4 shrink-0 text-cyan-500" strokeWidth={2} />
+                  Abrir Gmail
+                </a>
+                <a
+                  href="https://outlook.live.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-sm font-medium text-zinc-200 hover:bg-zinc-800 hover:border-zinc-600 hover:text-white transition-colors"
+                >
+                  <Mail className="w-4 h-4 shrink-0 text-cyan-500" strokeWidth={2} />
+                  Abrir Outlook
+                </a>
+              </div>
+
+              {/* Botón secundario: Volver a Iniciar Sesión */}
+              <Link href="/login" className="block">
                 <button
+                  type="button"
+                  className="w-full rounded-xl border-2 border-cyan-500/50 bg-transparent py-3.5 text-sm font-bold text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                >
+                  ← Volver a Iniciar Sesión
+                </button>
+              </Link>
+
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
                   onClick={() => setEmailSent(false)}
-                  className="text-sm text-bear-blue hover:underline"
+                  className="text-sm text-zinc-500 hover:text-cyan-400 hover:underline transition-colors"
                 >
                   ¿No te llegó? Intentar con otro email
                 </button>
@@ -198,14 +237,15 @@ export default function ForgotPasswordPage() {
           )}
         </AnimatePresence>
 
-        {/* Help */}
+        {/* Ayuda */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-zinc-500">
             ¿Problemas para acceder?{' '}
-            <a 
-              href="https://wa.me/5215512345678?text=Hola%2C%20necesito%20ayuda%20para%20recuperar%20mi%20contrase%C3%B1a" 
+            <a
+              href="https://wa.me/5215512345678?text=Hola%2C%20necesito%20ayuda%20para%20recuperar%20mi%20contrase%C3%B1a"
               target="_blank"
-              className="text-bear-blue hover:underline"
+              rel="noopener noreferrer"
+              className="text-cyan-500 hover:text-cyan-400 hover:underline transition-colors"
             >
               Contacta soporte
             </a>

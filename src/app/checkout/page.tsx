@@ -32,12 +32,14 @@ function CardPaymentForm({
   price,
   currencyLabel,
   packSlug,
+  customerEmail,
   onError,
 }: {
   clientSecret: string
   price: number
   currencyLabel: string
   packSlug: string
+  customerEmail?: string | null
   onError: (msg: string) => void
 }) {
   const stripe = useStripe()
@@ -59,7 +61,7 @@ function CardPaymentForm({
           elements,
           confirmParams: {
             return_url: returnUrl,
-            receipt_email: undefined,
+            receipt_email: (customerEmail && customerEmail.trim()) || undefined,
           },
         })
         if (error) {
@@ -74,7 +76,7 @@ function CardPaymentForm({
         setLoading(false)
       }
     },
-    [stripe, elements, onError]
+    [stripe, elements, customerEmail, onError]
   )
 
   const canSubmit = stripe && elements && elementReady && !loading
@@ -102,6 +104,7 @@ function StripeCardSection({
   price,
   currencyLabel,
   packSlug,
+  customerEmail,
   error,
   setError,
 }: {
@@ -109,6 +112,7 @@ function StripeCardSection({
   price: number
   currencyLabel: string
   packSlug: string
+  customerEmail?: string | null
   error: string | null
   setError: (s: string | null) => void
 }) {
@@ -139,6 +143,7 @@ function StripeCardSection({
           price={price}
           currencyLabel={currencyLabel}
           packSlug={packSlug}
+          customerEmail={customerEmail}
           onError={setError}
         />
       </Elements>
@@ -454,10 +459,13 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                  {/* Email para OXXO/SPEI (invitado o para comprobante): necesario para customer en Stripe */}
+                  {/* Email: necesario para OXXO/SPEI; recomendado para tarjeta/PayPal para poder iniciar sesión después */}
                   <div className="mb-4">
                     <label htmlFor="checkout-email" className="block text-sm font-medium text-gray-400 mb-1.5">
-                      Tu email {!checkoutEmail && <span className="text-amber-400">(necesario para OXXO/SPEI)</span>}
+                      Tu email
+                      {(selectedMethod === 'oxxo' || selectedMethod === 'spei') && !checkoutEmail && (
+                        <span className="text-amber-400"> (necesario para OXXO/SPEI)</span>
+                      )}
                     </label>
                     <input
                       id="checkout-email"
@@ -467,6 +475,9 @@ export default function CheckoutPage() {
                       placeholder="tu@email.com"
                       className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Con este correo podrás iniciar sesión después de pagar (invitado o ya registrado).
+                    </p>
                   </div>
 
                   {/* ESCENARIO A: Tarjeta – Stripe Elements + PaymentElement + botón custom */}
@@ -482,6 +493,7 @@ export default function CheckoutPage() {
                           price={price}
                           currencyLabel={currencyLabel}
                           packSlug={packSlug}
+                          customerEmail={checkoutEmail}
                           error={error}
                           setError={setError}
                         />

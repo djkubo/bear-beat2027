@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
         pack_id: String(pack.id),
         pack_slug: pack.slug,
         ...(userId && { user_id: userId }),
+        ...(email && { customer_email: email }),
       },
     }
     if (customerId) {
