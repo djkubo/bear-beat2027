@@ -23,11 +23,17 @@ function redirectToPlaceholder(req: NextRequest) {
   )
 }
 
+/** Bunny y token deben estar configurados para descargar/generar thumbnails */
+function isBunnyConfigured(): boolean {
+  return !!(process.env.BUNNY_CDN_URL && process.env.BUNNY_TOKEN_KEY)
+}
+
 /**
  * GET /api/thumbnail-from-video?path=Genre/Video.mp4
- * Descarga un trozo del video desde Bunny, extrae un frame con ffmpeg,
- * sube la imagen a Bunny Storage y actualiza thumbnail_url en la DB.
- * Luego redirige a la imagen. Si falla (sin ffmpeg, error de red), redirige al placeholder.
+ * 1) Si hay thumbnail en DB → redirige al CDN.
+ * 2) Si existe .jpg en Bunny (mismo path que el video) → redirige y guarda en DB.
+ * 3) Si no: descarga video, extrae frame con ffmpeg, sube a Bunny, actualiza DB, redirige.
+ * Si falla (Bunny no config, sin ffmpeg, error de red) → redirige al placeholder.
  */
 export async function GET(req: NextRequest) {
   const pathParam = req.nextUrl.searchParams.get('path')
@@ -37,12 +43,6 @@ export async function GET(req: NextRequest) {
   const sanitized = pathParam.replace(/^\//, '')
   const pathJpg = sanitized.replace(/\.(mp4|mov|avi|mkv)$/i, '.jpg')
 
-  // Límite de concurrencia: no lanzar más de N generaciones a la vez
-  if (pathsInProgress.has(sanitized)) return redirectToPlaceholder(req)
-  if (activeGenerations.count >= MAX_CONCURRENT_GENERATIONS) return redirectToPlaceholder(req)
-  pathsInProgress.add(sanitized)
-  activeGenerations.count += 1
-
   const tmpDir = os.tmpdir()
   const id = Math.random().toString(36).slice(2, 10)
   const tmpVideo = path.join(tmpDir, `bb-video-${id}.mp4`)
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
   try {
     const admin = createAdminClient()
 
-    // Ya tiene thumbnail en DB? Redirigir directo al CDN
+    // 1) Ya tiene thumbnail en DB? Redirigir directo al CDN
     const { data: existing } = await (admin as any)
       .from('videos')
       .select('id, thumbnail_url')
@@ -66,55 +66,84 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(existing.thumbnail_url)
     }
 
-    const signedUrl = generateSignedUrl(`${BUNNY_PACK_PREFIX}/${sanitized}`, 300)
-    const res = await fetch(signedUrl, {
-      headers: { Range: `bytes=0-${MAX_VIDEO_CHUNK - 1}` },
-      signal: AbortSignal.timeout(18000),
-    })
-    if (!res.ok) throw new Error(`Video fetch: ${res.status}`)
-    const buf = Buffer.from(await res.arrayBuffer())
-    await fs.promises.writeFile(tmpVideo, buf)
-
-    // Extraer frame a 1s (o primer frame si falla)
-    try {
-      await execAsync(
-        `ffmpeg -ss 1 -i "${tmpVideo}" -vframes 1 -q:v 2 -y "${tmpThumb}"`,
-        { timeout: 15000 }
-      )
-    } catch {
-      await execAsync(
-        `ffmpeg -i "${tmpVideo}" -vframes 1 -q:v 2 -y "${tmpThumb}"`,
-        { timeout: 15000 }
-      )
+    // 2) ¿Existe ya el .jpg en Bunny? (mismo path que el video, extensión .jpg) → usar sin ffmpeg
+    if (isBunnyConfigured()) {
+      const jpgSignedUrl = generateSignedUrl(`${BUNNY_PACK_PREFIX}/${pathJpg}`, 300)
+      const headRes = await fetch(jpgSignedUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) })
+      if (headRes.ok) {
+        await (admin as any)
+          .from('videos')
+          .update({ thumbnail_url: pathJpg, updated_at: new Date().toISOString() })
+          .eq('file_path', sanitized)
+        return NextResponse.redirect(new URL(`/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`, req.url))
+      }
     }
 
-    if (!fs.existsSync(tmpThumb)) throw new Error('No se generó thumbnail')
-    const thumbBuffer = await fs.promises.readFile(tmpThumb)
-    const bunnyThumbPath = `${BUNNY_PACK_PREFIX}/${pathJpg}`
-    const upload = await uploadFile(bunnyThumbPath, thumbBuffer)
-    if (!upload.success) throw new Error(upload.error || 'Upload failed')
+    // Sin Bunny no podemos generar (necesitamos descargar video y subir imagen)
+    if (!isBunnyConfigured()) {
+      return redirectToPlaceholder(req)
+    }
 
-    await (admin as any)
-      .from('videos')
-      .update({ thumbnail_url: pathJpg, updated_at: new Date().toISOString() })
-      .eq('file_path', sanitized)
+    // 3) Generar con ffmpeg: límite de concurrencia (solo el finally de este bloque limpia pathsInProgress)
+    if (pathsInProgress.has(sanitized)) return redirectToPlaceholder(req)
+    if (activeGenerations.count >= MAX_CONCURRENT_GENERATIONS) return redirectToPlaceholder(req)
+    pathsInProgress.add(sanitized)
+    activeGenerations.count += 1
 
-    return NextResponse.redirect(new URL(`/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`, req.url))
+    try {
+      const signedUrl = generateSignedUrl(`${BUNNY_PACK_PREFIX}/${sanitized}`, 300)
+      const res = await fetch(signedUrl, {
+        headers: { Range: `bytes=0-${MAX_VIDEO_CHUNK - 1}` },
+        signal: AbortSignal.timeout(18000),
+      })
+      if (!res.ok) throw new Error(`Video fetch: ${res.status}`)
+      const buf = Buffer.from(await res.arrayBuffer())
+      await fs.promises.writeFile(tmpVideo, buf)
+
+      // Extraer frame a 1s (o primer frame si falla)
+      try {
+        await execAsync(
+          `ffmpeg -ss 1 -i "${tmpVideo}" -vframes 1 -q:v 2 -y "${tmpThumb}"`,
+          { timeout: 15000 }
+        )
+      } catch {
+        await execAsync(
+          `ffmpeg -i "${tmpVideo}" -vframes 1 -q:v 2 -y "${tmpThumb}"`,
+          { timeout: 15000 }
+        )
+      }
+
+      if (!fs.existsSync(tmpThumb)) throw new Error('No se generó thumbnail')
+      const thumbBuffer = await fs.promises.readFile(tmpThumb)
+      const bunnyThumbPath = `${BUNNY_PACK_PREFIX}/${pathJpg}`
+      const upload = await uploadFile(bunnyThumbPath, thumbBuffer)
+      if (!upload.success) throw new Error(upload.error || 'Upload failed')
+
+      await (admin as any)
+        .from('videos')
+        .update({ thumbnail_url: pathJpg, updated_at: new Date().toISOString() })
+        .eq('file_path', sanitized)
+
+      return NextResponse.redirect(new URL(`/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`, req.url))
+    } catch (e) {
+      console.warn('thumbnail-from-video:', e)
+      return redirectToPlaceholder(req)
+    } finally {
+      pathsInProgress.delete(sanitized)
+      activeGenerations.count = Math.max(0, activeGenerations.count - 1)
+      try {
+        if (fs.existsSync(tmpVideo)) fs.unlinkSync(tmpVideo)
+      } catch {
+        // ignore
+      }
+      try {
+        if (fs.existsSync(tmpThumb)) fs.unlinkSync(tmpThumb)
+      } catch {
+        // ignore
+      }
+    }
   } catch (e) {
     console.warn('thumbnail-from-video:', e)
     return redirectToPlaceholder(req)
-  } finally {
-    pathsInProgress.delete(sanitized)
-    activeGenerations.count = Math.max(0, activeGenerations.count - 1)
-    try {
-      if (fs.existsSync(tmpVideo)) fs.unlinkSync(tmpVideo)
-    } catch {
-      // ignore
-    }
-    try {
-      if (fs.existsSync(tmpThumb)) fs.unlinkSync(tmpThumb)
-    } catch {
-      // ignore
-    }
   }
 }

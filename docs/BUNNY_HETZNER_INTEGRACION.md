@@ -102,9 +102,11 @@ Ver [HETZNER_FTP_REAL.md](./HETZNER_FTP_REAL.md) para detalles de la API y opcio
 - [ ] Archivos de demo en la Storage (o en el origen) en la ruta que usa el front (ej. `Bachata/Video Demo.mp4`).
 - [ ] Si no usas CDN: **FTP_HOST**, **FTP_USER**, **FTP_PASSWORD** (o HETZNER_FTP_*) para que `/api/demo` haga proxy desde FTP; si no, en prod verás 503 con mensaje “Demos no disponibles”.
 
-### 4.2 Portadas
+### 4.2 Portadas (thumbnails)
 
 - [ ] **BUNNY_CDN_URL** y **BUNNY_TOKEN_KEY** para que thumbnail-from-video pueda descargar el trozo de video desde Bunny.
+- [ ] **Render debe usar Docker** (runtime: docker en render.yaml) para que ffmpeg esté instalado y se puedan generar thumbnails desde el video. Si el servicio se creó con runtime: node, en Dashboard → Settings se puede cambiar a Docker o crear un nuevo servicio desde el repo con Docker.
+- [ ] Opción sin ffmpeg: sube en Bunny Storage archivos .jpg con el mismo path que cada video (ej. `packs/enero-2026/Genre/Video.jpg`). La API comprueba primero si existe ese .jpg y lo usa.
 - [ ] Si falla (timeout, sin ffmpeg, etc.), la API redirige al placeholder; no debe haber pantalla rota.
 
 ### 4.3 Descargas

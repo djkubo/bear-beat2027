@@ -1,13 +1,12 @@
 # Render.com - Web Service para Bear Beat
 # https://docs.render.com/blueprint-spec
+# runtime: docker → usa Dockerfile (incluye ffmpeg para generar thumbnails de video)
 services:
   - type: web
     name: bear-beat2027
-    runtime: node
+    runtime: docker
     region: oregon
-
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
+    dockerfilePath: ./Dockerfile
 
     envVars:
       - key: NODE_ENV
