@@ -22,12 +22,23 @@ async function getPackBySlug(supabase: Awaited<ReturnType<typeof createServerCli
   return pack
 }
 
+function getPayPalBaseUrl(): string {
+  const useSandbox =
+    process.env.PAYPAL_USE_SANDBOX === 'true' ||
+    process.env.PAYPAL_USE_SANDBOX === '1' ||
+    process.env.NEXT_PUBLIC_PAYPAL_USE_SANDBOX === 'true' ||
+    process.env.NEXT_PUBLIC_PAYPAL_USE_SANDBOX === '1'
+  const isProd = process.env.NODE_ENV === 'production'
+  if (useSandbox || !isProd) return 'https://api-m.sandbox.paypal.com'
+  return 'https://api-m.paypal.com'
+}
+
 async function getPayPalAccessToken(): Promise<string> {
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || process.env.PAYPAL_CLIENT_ID
   const secret = process.env.PAYPAL_CLIENT_SECRET
   if (!clientId || !secret) throw new Error('PayPal credentials not configured')
   const auth = Buffer.from(`${clientId}:${secret}`).toString('base64')
-  const baseUrl = process.env.NODE_ENV === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'
+  const baseUrl = getPayPalBaseUrl()
   const res = await fetch(`${baseUrl}/v1/oauth2/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Authorization: `Basic ${auth}` },
@@ -50,7 +61,7 @@ export async function GET(req: NextRequest) {
       if (!orderID) return NextResponse.json({ error: 'Invalid PayPal session' }, { status: 400 })
 
       const token = await getPayPalAccessToken()
-      const baseUrl = process.env.NODE_ENV === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'
+      const baseUrl = getPayPalBaseUrl()
 
       const getRes = await fetch(`${baseUrl}/v2/checkout/orders/${orderID}`, {
         headers: { Authorization: `Bearer ${token}` },

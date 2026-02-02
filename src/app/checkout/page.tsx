@@ -21,7 +21,8 @@ type PaymentMethod = 'card' | 'paypal' | 'oxxo' | 'spei'
 type Step = 'select' | 'processing' | 'redirect'
 
 const RESERVATION_MINUTES = 15
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!)
+const stripePk = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ?? ''
+const stripePromise = stripePk ? loadStripe(stripePk) : null
 
 // —— Formulario de pago con tarjeta (Stripe Elements) ——
 function CardPaymentForm({
@@ -40,6 +41,7 @@ function CardPaymentForm({
   const stripe = useStripe()
   const elements = useElements()
   const [loading, setLoading] = useState(false)
+  const [elementReady, setElementReady] = useState(false)
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -73,12 +75,17 @@ function CardPaymentForm({
     [stripe, elements, onError]
   )
 
+  const canSubmit = stripe && elements && elementReady && !loading
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement options={{ layout: 'tabs' }} />
+      <PaymentElement
+        options={{ layout: 'tabs' }}
+        onReady={() => setElementReady(true)}
+      />
       <button
         type="submit"
-        disabled={!stripe || !elements || loading}
+        disabled={!canSubmit}
         className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
       >
         {loading ? 'Procesando...' : `PAGAR $${price} ${currencyLabel} Y ACCEDER →`}
@@ -103,6 +110,13 @@ function StripeCardSection({
   error: string | null
   setError: (s: string | null) => void
 }) {
+  if (!stripePromise) {
+    return (
+      <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3">
+        <p className="text-sm text-amber-400">Stripe no está configurado (falta NEXT_PUBLIC_STRIPE_PUBLIC_KEY). Usa PayPal u OXXO/SPEI.</p>
+      </div>
+    )
+  }
   const options = {
     clientSecret,
     appearance: {
@@ -227,9 +241,19 @@ export default function CheckoutPage() {
 
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || ''
   const isPayPalAvailable = !!paypalClientId
+  const isStripeTest = stripePk.startsWith('pk_test_')
+  const isPayPalSandbox = process.env.NEXT_PUBLIC_PAYPAL_USE_SANDBOX === 'true' || process.env.NEXT_PUBLIC_PAYPAL_USE_SANDBOX === '1'
+  const isTestMode = isStripeTest || isPayPalSandbox
 
   return (
     <div className="min-h-screen bg-[#050505] text-white antialiased">
+      {isTestMode && (
+        <div className="border-b border-amber-500/30 bg-amber-500/10 py-2 px-4 text-center">
+          <p className="text-xs text-amber-400 font-medium">
+            Modo pruebas: {[isStripeTest && 'Stripe (test)', isPayPalSandbox && 'PayPal (sandbox)'].filter(Boolean).join(' · ')} — No se cobra dinero real
+          </p>
+        </div>
+      )}
       {step === 'select' && reservationSeconds > 0 && reservationSeconds <= RESERVATION_MINUTES * 60 && (
         <div className="border-b border-white/5 bg-white/[0.02] py-2 px-4 text-center">
           <p className="text-xs text-gray-500">

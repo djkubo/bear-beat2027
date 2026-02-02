@@ -8,6 +8,17 @@ async function getPack(supabase: Awaited<ReturnType<typeof createServerClient>>,
   return { ...packRow, total_videos: count ?? packRow.total_videos ?? 0 }
 }
 
+function getPayPalBaseUrl(): string {
+  const useSandbox =
+    process.env.PAYPAL_USE_SANDBOX === 'true' ||
+    process.env.PAYPAL_USE_SANDBOX === '1' ||
+    process.env.NEXT_PUBLIC_PAYPAL_USE_SANDBOX === 'true' ||
+    process.env.NEXT_PUBLIC_PAYPAL_USE_SANDBOX === '1'
+  const isProd = process.env.NODE_ENV === 'production'
+  if (useSandbox || !isProd) return 'https://api-m.sandbox.paypal.com'
+  return 'https://api-m.paypal.com'
+}
+
 async function getPayPalAccessToken(): Promise<string> {
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || process.env.PAYPAL_CLIENT_ID
   const secret = process.env.PAYPAL_CLIENT_SECRET
@@ -15,9 +26,7 @@ async function getPayPalAccessToken(): Promise<string> {
     throw new Error('PayPal credentials not configured (PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET)')
   }
   const auth = Buffer.from(`${clientId}:${secret}`).toString('base64')
-  const baseUrl = process.env.NODE_ENV === 'production'
-    ? 'https://api-m.paypal.com'
-    : 'https://api-m.sandbox.paypal.com'
+  const baseUrl = getPayPalBaseUrl()
   const res = await fetch(`${baseUrl}/v1/oauth2/token`, {
     method: 'POST',
     headers: {
@@ -68,9 +77,7 @@ export async function POST(req: NextRequest) {
     const valueStr = amount.toFixed(2)
 
     const token = await getPayPalAccessToken()
-    const baseUrl = process.env.NODE_ENV === 'production'
-      ? 'https://api-m.paypal.com'
-      : 'https://api-m.sandbox.paypal.com'
+    const baseUrl = getPayPalBaseUrl()
 
     const orderRes = await fetch(`${baseUrl}/v2/checkout/orders`, {
       method: 'POST',
