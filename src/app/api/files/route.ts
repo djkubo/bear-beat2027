@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { generateSignedUrl, generateStreamUrl, listFiles } from '@/lib/storage/bunny'
+import { generateSignedUrl } from '@/lib/bunny'
+import { generateStreamUrl, listFiles } from '@/lib/storage/bunny'
 
 // Mismo prefijo que /api/download para que listado y descarga usen la misma carpeta en Bunny
 const BUNNY_PACK_PATH_PREFIX = process.env.BUNNY_PACK_PATH_PREFIX || 'packs/enero-2026'

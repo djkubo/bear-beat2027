@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { generateSignedUrl, uploadFile } from '@/lib/storage/bunny'
+import { generateSignedUrl, isBunnyConfigured } from '@/lib/bunny'
+import { uploadFile } from '@/lib/storage/bunny'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
@@ -23,10 +24,6 @@ function redirectToPlaceholder(req: NextRequest) {
   )
 }
 
-/** Bunny y token deben estar configurados para descargar/generar thumbnails */
-function isBunnyConfigured(): boolean {
-  return !!(process.env.BUNNY_CDN_URL && process.env.BUNNY_TOKEN_KEY)
-}
 
 /**
  * GET /api/thumbnail-from-video?path=Genre/Video.mp4

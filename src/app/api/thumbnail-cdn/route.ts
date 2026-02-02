@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateSignedUrl } from '@/lib/storage/bunny'
+import { generateSignedUrl } from '@/lib/bunny'
 
 const BUNNY_PACK_PREFIX = process.env.BUNNY_PACK_PATH_PREFIX || 'packs/enero-2026'
 

@@ -1,35 +1,37 @@
 /**
- * BunnyCDN – URL firmadas para descargas (Token Authentication)
- * Usa BUNNY_PULL_ZONE y BUNNY_SECURITY_KEY.
- * Fórmula: token = Base64(SHA256(securityKey + path + expires))
+ * BunnyCDN – URLs firmadas (Token Authentication)
+ * Hetzner Storage Box como origen; BunnyCDN Pull Zone como entrega.
+ * Variables: NEXT_PUBLIC_BUNNY_CDN_URL, BUNNY_TOKEN_KEY
+ * Fórmula: token = Base64(SHA256(BUNNY_TOKEN_KEY + path + expires))
  */
 
 import crypto from 'crypto'
 
-// Sin barra final para evitar dobles slashes al concatenar pathEncoded (que empieza con /)
-const BUNNY_PULL_ZONE = (process.env.BUNNY_PULL_ZONE || '').replace(/^https?:\/\//, '').replace(/\/+$/, '').trim()
-const BUNNY_SECURITY_KEY = process.env.BUNNY_SECURITY_KEY || ''
+const BUNNY_CDN_URL = (
+  process.env.NEXT_PUBLIC_BUNNY_CDN_URL ||
+  process.env.BUNNY_CDN_URL ||
+  ''
+).trim().replace(/\/+$/, '')
+const BUNNY_TOKEN_KEY = process.env.BUNNY_TOKEN_KEY || ''
 
-export function isBunnyDownloadConfigured(): boolean {
-  return !!(BUNNY_PULL_ZONE && BUNNY_SECURITY_KEY)
+export function isBunnyConfigured(): boolean {
+  return !!(BUNNY_CDN_URL && BUNNY_TOKEN_KEY)
 }
 
 /**
- * Genera una URL firmada para descarga en BunnyCDN.
- * @param filePath - Ruta del archivo (ej: Bachata/Video1.mp4 o _ZIPS/Cumbia.zip)
- * @param expiresInSeconds - Segundos hasta expiración (default 3600)
- * @returns URL completa con token y expires, o '' si no está configurado
+ * Genera URL firmada para BunnyCDN (demos y descargas).
+ * Path normalizado sin ..; URL con segmentos codificados (encodeURIComponent).
+ * Sin dobles slashes: base sin barra final, pathEncoded empieza con /.
  */
-export function getSignedDownloadUrl(
+export function generateSignedUrl(
   filePath: string,
-  expiresInSeconds: number = 3600
+  expiresInSeconds: number = 3600,
+  allowedReferrer?: string
 ): string {
-  if (!BUNNY_PULL_ZONE || !BUNNY_SECURITY_KEY) return ''
-
-  const pathNormalized = '/' + (filePath || '').replace(/^\/+/, '').replace(/\.\./g, '')
+  const pathNormalized = '/' + (filePath || '').replace(/^\/+/, '').replace(/\.\./g, '').trim()
   const expires = Math.floor(Date.now() / 1000) + expiresInSeconds
 
-  const hashable = BUNNY_SECURITY_KEY + pathNormalized + expires.toString()
+  const hashable = BUNNY_TOKEN_KEY + pathNormalized + expires.toString()
   const token = crypto
     .createHash('sha256')
     .update(hashable)
@@ -38,7 +40,17 @@ export function getSignedDownloadUrl(
     .replace(/\//g, '_')
     .replace(/=/g, '')
 
-  const base = BUNNY_PULL_ZONE.startsWith('http') ? BUNNY_PULL_ZONE.replace(/\/+$/, '') : `https://${BUNNY_PULL_ZONE}`
   const pathEncoded = '/' + pathNormalized.split('/').filter(Boolean).map(encodeURIComponent).join('/')
-  return `${base}${pathEncoded}?token=${token}&expires=${expires}`
+  const url = `${BUNNY_CDN_URL}${pathEncoded}?token=${token}&expires=${expires}`
+
+  if (allowedReferrer) {
+    const refHash = crypto
+      .createHash('sha256')
+      .update(allowedReferrer)
+      .digest('base64')
+      .substring(0, 8)
+    return `${url}&token_countries=MX,US&token_referrer=${refHash}`
+  }
+
+  return url
 }
