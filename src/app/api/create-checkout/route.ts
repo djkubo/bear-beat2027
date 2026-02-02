@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/complete-purchase?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/complete-purchase?session_id={CHECKOUT_SESSION_ID}${loggedUser?.email ? `&email=${encodeURIComponent(loggedUser.email)}` : ''}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout?canceled=true&pack=${pack.slug}`,
       metadata: {
         pack_id: pack.id.toString(),

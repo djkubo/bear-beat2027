@@ -170,18 +170,24 @@ export default function CheckoutPage() {
   const [cardClientSecret, setCardClientSecret] = useState<string | null>(null)
   const [cardClientSecretLoading, setCardClientSecretLoading] = useState(false)
 
+  // HARDCODED FOR TESTING: forzar MX para ver OXXO/SPEI desde cualquier país (ej. USA)
   useEffect(() => {
-    fetch('https://ipapi.co/json/')
-      .then((res) => res.json())
-      .then((data) => {
-        setCountry(data.country_code || 'MX')
-        setCurrency(data.country_code === 'MX' ? 'mxn' : 'usd')
-      })
-      .catch(() => {
-        setCountry('MX')
-        setCurrency('mxn')
-      })
+    setCountry('MX')
+    setCurrency('mxn')
   }, [])
+  // Lógica real (geolocalización) — descomentar para producción:
+  // useEffect(() => {
+  //   fetch('https://ipapi.co/json/')
+  //     .then((res) => res.json())
+  //     .then((data) => {
+  //       setCountry(data.country_code || 'MX')
+  //       setCurrency(data.country_code === 'MX' ? 'mxn' : 'usd')
+  //     })
+  //     .catch(() => {
+  //       setCountry('MX')
+  //       setCurrency('mxn')
+  //     })
+  // }, [])
 
   useEffect(() => {
     if (step !== 'select' || reservationSeconds <= 0) return

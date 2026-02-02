@@ -36,6 +36,7 @@ export default function CompletePurchasePage() {
   const sessionId = searchParams.get('session_id')
   const paymentIntentId = searchParams.get('payment_intent')
   const provider = searchParams.get('provider')
+  const emailFromUrl = searchParams.get('email')
   
   const [state, setState] = useState<PageState>('loading')
   const [purchaseData, setPurchaseData] = useState<any>(null)
@@ -50,10 +51,12 @@ export default function CompletePurchasePage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [hasExistingAccount, setHasExistingAccount] = useState(false)
+  const [emailFromPayment, setEmailFromPayment] = useState(false) // true = email vino del pago o URL, input readOnly
   const [generatedCredentials, setGeneratedCredentials] = useState<{email: string, password: string} | null>(null)
   const [ftpCredentials, setFtpCredentials] = useState<{ ftp_username?: string; ftp_password?: string; ftp_host?: string } | null>(null)
   const [showFtpAccordion, setShowFtpAccordion] = useState(false)
   const confettiFired = useRef(false)
+  const checkEmailTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Confeti al entrar en estado "done" (una sola vez)
   useEffect(() => {
@@ -83,6 +86,26 @@ export default function CompletePurchasePage() {
       })
     }, 200)
   }, [state])
+
+  // Auto-fill email desde URL (checkout puede pasar ?email=...)
+  useEffect(() => {
+    if (emailFromUrl && typeof emailFromUrl === 'string') {
+      try {
+        const decoded = decodeURIComponent(emailFromUrl.trim())
+        if (decoded.includes('@')) {
+          setEmail(decoded)
+          setEmailFromPayment(true)
+        }
+      } catch (_) {}
+    }
+  }, [emailFromUrl])
+
+  // Limpiar debounce al desmontar
+  useEffect(() => {
+    return () => {
+      if (checkEmailTimeoutRef.current) clearTimeout(checkEmailTimeoutRef.current)
+    }
+  }, [])
 
   // Cargar datos de la compra (session_id para Stripe Checkout/PayPal, payment_intent para Stripe Elements)
   useEffect(() => {
@@ -145,9 +168,10 @@ export default function CompletePurchasePage() {
           return
         }
         
-        // Si no está logueado, mostrar formulario
+        // Si no está logueado, mostrar formulario (email del pago = readOnly)
         if (stripeData.customerEmail) {
           setEmail(stripeData.customerEmail)
+          setEmailFromPayment(true)
           await checkExistingAccount(stripeData.customerEmail)
         }
         if (stripeData.customerName) setName(stripeData.customerName)
@@ -179,6 +203,7 @@ export default function CompletePurchasePage() {
           
           if (data.customer_email) {
             setEmail(data.customer_email)
+            setEmailFromPayment(true)
             await checkExistingAccount(data.customer_email)
           }
           if (data.customer_name) setName(data.customer_name)
@@ -212,23 +237,36 @@ export default function CompletePurchasePage() {
 
   const checkExistingAccount = async (checkEmail: string) => {
     try {
-      const { data } = await supabase
+      const { data, error: qError } = await supabase
         .from('users')
         .select('id')
         .eq('email', checkEmail)
-        .single()
-      
+        .maybeSingle()
+      if (qError) {
+        setHasExistingAccount(false)
+        return
+      }
       setHasExistingAccount(!!data)
     } catch {
       setHasExistingAccount(false)
     }
   }
 
-  const handleEmailChange = async (newEmail: string) => {
+  // Debounce validación de email para evitar 406 / spam a Supabase
+  const handleEmailChange = (newEmail: string) => {
     setEmail(newEmail)
-    if (newEmail.includes('@')) {
-      await checkExistingAccount(newEmail)
+    if (checkEmailTimeoutRef.current) {
+      clearTimeout(checkEmailTimeoutRef.current)
+      checkEmailTimeoutRef.current = null
     }
+    if (!newEmail.includes('@') || newEmail.length < 6) {
+      setHasExistingAccount(false)
+      return
+    }
+    checkEmailTimeoutRef.current = setTimeout(() => {
+      checkEmailTimeoutRef.current = null
+      checkExistingAccount(newEmail)
+    }, 500)
   }
 
   // Completar con cuenta existente (login)
@@ -286,54 +324,53 @@ export default function CompletePurchasePage() {
     setState('activating')
 
     try {
-      // Verificar si email ya existe (puede fallar si la tabla no existe)
+      const finalPassword = password || `Bear${Math.random().toString(36).slice(2, 10)}!`
+      const normalizedPhone = normalizePhoneNumber(phone, country) || phone
+
+      // Verificar si email ya existe en tabla users (evitar conflicto con webhook)
       try {
         const { data: existing } = await supabase
           .from('users')
           .select('id')
           .eq('email', email)
-          .single()
-
-        if (existing) {
-          toast.error('Este email ya tiene cuenta. Inicia sesión.')
+          .maybeSingle()
+        if (existing?.id) {
+          toast.error('Este email ya tiene cuenta. Inicia sesión con tu contraseña.')
           setHasExistingAccount(true)
           setState('login')
           return
         }
-      } catch (checkErr) {
-        console.log('User check failed (non-critical)')
-      }
+      } catch (_) {}
 
-      // Crear cuenta en Supabase Auth
-      const finalPassword = password || `Bear${Math.random().toString(36).slice(2, 10)}!`
-      
       const { data: authData, error: signupError } = await supabase.auth.signUp({
         email,
         password: finalPassword,
-        options: {
-          data: { name, phone },
-        },
+        options: { data: { name, phone } },
       })
 
-      if (signupError) throw signupError
+      // Usuario ya registrado (p. ej. creado por webhook) → pedir login
+      if (signupError) {
+        const msg = (signupError.message || '').toLowerCase()
+        if (msg.includes('already') || msg.includes('registered') || msg.includes('already been') || signupError.status === 422) {
+          toast.info('Tu cuenta ya existe. Inicia sesión con tu contraseña o usa "¿Olvidaste contraseña?" para crear una.')
+          setHasExistingAccount(true)
+          setState('login')
+          return
+        }
+        throw signupError
+      }
 
       const userId = authData.user!.id
-      const normalizedPhone = normalizePhoneNumber(phone, country) || phone
-
-      // Guardar credenciales para mostrar al usuario
       setGeneratedCredentials({ email, password: finalPassword })
 
-      // Crear usuario en tabla (puede fallar si la tabla no existe)
+      // Upsert en tabla users para evitar 409 si el webhook ya insertó
       try {
-        await supabase.from('users').insert({
-          id: userId,
-          email,
-          name,
-          phone: normalizedPhone,
-          country_code: country,
-        })
-      } catch (insertErr) {
-        console.log('User insert failed (non-critical):', insertErr)
+        await supabase.from('users').upsert(
+          { id: userId, email, name, phone: normalizedPhone, country_code: country },
+          { onConflict: 'id' }
+        )
+      } catch (upsertErr) {
+        console.log('User upsert failed (non-critical):', upsertErr)
       }
 
       // Iniciar sesión automáticamente
@@ -619,12 +656,19 @@ export default function CompletePurchasePage() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => handleEmailChange(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border-2 border-bear-blue/30 rounded-xl focus:border-bear-blue focus:outline-none text-lg"
+                    readOnly={emailFromPayment}
+                    onChange={(e) => !emailFromPayment && handleEmailChange(e.target.value)}
+                    className={`w-full px-4 py-3 rounded-xl text-lg focus:outline-none ${
+                      emailFromPayment
+                        ? 'bg-white/5 border-2 border-zinc-600 text-gray-300 cursor-default'
+                        : 'bg-white/5 border-2 border-bear-blue/30 focus:border-bear-blue'
+                    }`}
                     placeholder="tu@email.com"
                     required
                   />
-                  <p className="text-xs text-gray-500 mt-1">Te enviaremos tu acceso aquí</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {emailFromPayment ? 'Email de tu compra (no editable)' : 'Te enviaremos tu acceso aquí'}
+                  </p>
                 </div>
 
                 <div>
@@ -769,13 +813,20 @@ export default function CompletePurchasePage() {
                 </button>
               </form>
 
-              <div className="mt-4 text-center">
+              <div className="mt-4 text-center space-y-2">
+                <p className="text-xs text-gray-500">
+                  ¿No recuerdas tu contraseña?{' '}
+                  <Link href={`/forgot-password?email=${encodeURIComponent(email)}`} className="text-bear-blue hover:underline">
+                    Crear o restablecer contraseña
+                  </Link>
+                </p>
                 <button
+                  type="button"
                   onClick={() => {
                     setHasExistingAccount(false)
                     setState('form')
                   }}
-                  className="text-gray-400 hover:text-white text-sm"
+                  className="block w-full text-gray-400 hover:text-white text-sm"
                 >
                   Usar otro email
                 </button>
