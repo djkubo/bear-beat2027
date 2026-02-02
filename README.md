@@ -78,6 +78,8 @@ Tablas principales: `users`, `packs`, `genres`, `videos`, `purchases`, `pending_
 
 ## 🚀 Deploy
 
+**Guía completa:** [docs/DEPLOY_PRODUCCION.md](docs/DEPLOY_PRODUCCION.md) — pasos para llevar todo a producción (verificación local, commit, push, Render, verificación post-deploy, rollback). Índice de documentación: [docs/README_DOCS.md](docs/README_DOCS.md).
+
 Hosting en **Render**. Conecta tu repo en [render.com](https://render.com):
 
 1. New → Web Service → Conecta tu repositorio

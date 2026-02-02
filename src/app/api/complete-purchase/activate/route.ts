@@ -56,6 +56,28 @@ export async function POST(req: NextRequest) {
     const customerEmail =
       session.customer_details?.email || session.customer_email || email || ''
 
+    const admin = createAdminClient()
+
+    // Idempotencia: si ya existe purchase para este user+pack, devolver éxito sin duplicar
+    const { data: existingPurchase } = await (admin as any)
+      .from('purchases')
+      .select('ftp_username, ftp_password')
+      .eq('user_id', userId)
+      .eq('pack_id', packId)
+      .maybeSingle()
+
+    if (existingPurchase) {
+      const ftp_user = existingPurchase.ftp_username || `dj_${userId.slice(0, 8)}`
+      return NextResponse.json({
+        ok: true,
+        ftp_username: ftp_user,
+        ftp_password: existingPurchase.ftp_password || '',
+        ftp_host: ftp_user.includes('-sub')
+          ? `${ftp_user}.your-storagebox.de`
+          : undefined,
+      })
+    }
+
     let ftp_username: string
     let ftp_password: string
 
@@ -82,9 +104,7 @@ export async function POST(req: NextRequest) {
       ftp_password = generatePassword()
     }
 
-    const admin = createAdminClient()
-
-    // Cast a any: el cliente tipado con Database infiere never para pending_purchases/purchases en build
+    // Marcar pending_purchases como completada (solo si no lo está ya)
     await (admin as any)
       .from('pending_purchases')
       .update({
@@ -109,6 +129,23 @@ export async function POST(req: NextRequest) {
     })
 
     if (insertError) {
+      // Idempotencia: unique violation (user_id, pack_id) = ya activado
+      const code = (insertError as { code?: string }).code
+      if (code === '23505') {
+        const { data: existing } = await (admin as any)
+          .from('purchases')
+          .select('ftp_username, ftp_password')
+          .eq('user_id', userId)
+          .eq('pack_id', packId)
+          .maybeSingle()
+        const fu = existing?.ftp_username || ftp_username
+        return NextResponse.json({
+          ok: true,
+          ftp_username: fu,
+          ftp_password: existing?.ftp_password || ftp_password,
+          ftp_host: fu.includes('-sub') ? `${fu}.your-storagebox.de` : undefined,
+        })
+      }
       console.error('Purchase insert error:', insertError)
       return NextResponse.json(
         { error: insertError.message || 'Error al guardar la compra' },

@@ -16,6 +16,7 @@
     "db:update-videos-metadata": "node scripts/update-videos-metadata.js",
     "deploy:env": "node scripts/render-set-env.js",
     "supabase:set-auth-urls": "node scripts/supabase-set-auth-urls.js",
+    "test": "npm run type-check",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createBypassToken } from '@/lib/admin-bypass'
@@ -16,16 +17,18 @@ function Box({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * /fix-admin: asigna admin a test@bearbeat.com
- *
- * 1) Con token: /fix-admin?token=XXX (FIX_ADMIN_SECRET en Render). No requiere sesión.
- * 2) Sin token: requiere estar logueado como test@bearbeat.com.
+ * /fix-admin: asigna admin a test@bearbeat.com (SOLO desarrollo/staging).
+ * En producción (NODE_ENV=production) esta ruta NO existe: 404.
  */
 export default async function FixAdminPage({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string }>
 }) {
+  if (process.env.NODE_ENV === 'production') {
+    notFound()
+  }
+
   const params = await searchParams
   const token = params?.token
   const secret = process.env.FIX_ADMIN_SECRET

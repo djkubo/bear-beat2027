@@ -34,6 +34,17 @@ export async function POST(req: NextRequest) {
     const packId = Math.max(1, parseInt(session.metadata?.pack_id || '1', 10) || 1)
 
     try {
+      // Idempotencia: si ya procesamos esta sesión, no duplicar
+      const { data: existing } = await supabase
+        .from('pending_purchases')
+        .select('id')
+        .eq('stripe_session_id', session.id)
+        .maybeSingle()
+
+      if (existing) {
+        return NextResponse.json({ received: true })
+      }
+
       // 1. Crear registro de COMPRA PENDIENTE (pago exitoso, datos pendientes)
       const { error: pendingError } = await supabase
         .from('pending_purchases')

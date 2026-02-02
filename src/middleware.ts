@@ -12,11 +12,16 @@ function looksLikeBypassCookie(value: string | undefined): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: { headers: request.headers },
   })
 
   const pathname = request.nextUrl.pathname
+
+  // En producción /fix-admin no existe (404)
+  if (pathname === '/fix-admin' && process.env.NODE_ENV === 'production') {
+    return new NextResponse(null, { status: 404 })
+  }
 
   try {
     // Rutas /admin: permitir si hay cookie de bypass (tras /fix-admin cuando la sesión no persiste)

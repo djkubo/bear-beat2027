@@ -29,12 +29,17 @@ test.describe('Login + fix-admin', () => {
     }
   })
 
-  test('fix-admin con token debe mostrar Listo o instrucción de Render', async ({ page }) => {
+  test('fix-admin: en producción devuelve 404; en local muestra Listo o instrucción', async ({ page }) => {
     test.setTimeout(20000)
-    await page.goto(`${BASE_URL}/fix-admin?token=${FIX_ADMIN_TOKEN}`, { waitUntil: 'networkidle' })
-    await expect(
-      page.getByText(/listo|admin asignado|token no válido|fix_admin_secret|opción b/i).first()
-    ).toBeVisible({ timeout: 10000 })
+    const isProd = BASE_URL.includes('bear-beat2027.onrender.com') || BASE_URL.includes('render.com')
+    const res = await page.goto(`${BASE_URL}/fix-admin?token=${FIX_ADMIN_TOKEN}`, { waitUntil: 'networkidle' })
+    if (isProd) {
+      expect(res?.status()).toBe(404)
+    } else {
+      await expect(
+        page.getByText(/listo|admin asignado|token no válido|fix_admin_secret|opción b|not found/i).first()
+      ).toBeVisible({ timeout: 10000 })
+    }
   })
 
   test('login y luego ir a /admin no debe redirigir a login (sesión leída en middleware)', async ({ page }) => {

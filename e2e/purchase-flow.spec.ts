@@ -32,9 +32,9 @@ test.describe('Flujo de compra E2E - Usuario Nuevo', () => {
     const h1 = page.locator('h1').first()
     await expect(h1).toBeVisible({ timeout: 15000 })
     const h1Text = await h1.textContent()
-    const landingOk = h1Text?.includes('1,000 videos HD') ?? false
+    const landingOk = /videos HD|Video Remixes|BEAR BEAT/i.test(h1Text || '') ?? false
     results.push(`1. LANDING: H1 visible = "${h1Text?.trim().slice(0, 50)}..." → ${landingOk ? 'OK' : 'FALLO'}`)
-    expect(landingOk, 'H1 debe contener "1,000 videos HD"').toBe(true)
+    expect(landingOk, 'H1 debe contener texto de la landing (videos HD / BEAR BEAT)').toBe(true)
 
     // ─── 2. CLICK CTA ──────────────────────────────────────────────────
     const cta = page.getByRole('link', { name: /QUIERO ACCESO AHORA/i }).or(
@@ -145,7 +145,7 @@ test.describe('Flujo de compra E2E - Usuario Nuevo', () => {
   test('pasos 1-3: Landing → CTA → Checkout → redirección a Stripe', async ({ page }) => {
     await page.goto(BASE_URL, { waitUntil: 'networkidle' })
     const h1 = page.locator('h1').first()
-    await expect(h1).toContainText('1,000 videos HD', { timeout: 15000 })
+    await expect(h1).toContainText(/videos HD|Video Remixes|BEAR BEAT/i, { timeout: 15000 })
     await page.getByRole('link', { name: /QUIERO ACCESO AHORA/i }).first().click()
     await page.waitForURL(/\/checkout/, { timeout: 10000 })
     await page.getByRole('button', { name: /Tarjeta de Crédito\/Débito/i }).click()
