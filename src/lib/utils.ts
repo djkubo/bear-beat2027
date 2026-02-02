@@ -63,10 +63,30 @@ export function generateSecurePassword(length: number = 16): string {
   return password
 }
 
+/** Patrón para detectar orígenes no públicos (evitar Mixed Content / Connection Refused en producción). */
+const LOCAL_ORIGIN_REGEX = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?(\/|$)/i
+
+/**
+ * Devuelve la URL base pública de la app para redirects y enlaces en el servidor.
+ * NUNCA usar req.nextUrl.origin en producción si puede ser 0.0.0.0 o localhost.
+ */
+export function getPublicAppOrigin(request?: { headers?: Headers; nextUrl?: { origin: string }; url?: string }): string {
+  const app = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
+  if (app && !LOCAL_ORIGIN_REGEX.test(app)) return app
+  const headers = request?.headers
+  if (headers) {
+    const host = headers.get('x-forwarded-host') || headers.get('host') || ''
+    if (host && !/^(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(host)) return `https://${host}`
+  }
+  const origin = request?.nextUrl?.origin || (request?.url ? new URL(request.url).origin : '')
+  if (origin && !LOCAL_ORIGIN_REGEX.test(origin)) return origin
+  return app || origin || ''
+}
+
 /**
  * URL de demo: Bunny CDN (prioridad) o fallback a /api/demo (proxy Next.js).
  * Usa, en orden: baseUrl (desde /api/cdn-base → BUNNY_CDN_URL), o NEXT_PUBLIC_BUNNY_CDN_URL.
- * Si no hay CDN configurado, devuelve /api/demo/... para que los demos intenten cargar vía API (puede 503 en prod si FTP no está).
+ * Si no hay CDN configurado, devuelve /api/demo/... (ruta relativa; el navegador usa el mismo dominio).
  */
 export function getDemoCdnUrl(path: string, baseUrl?: string | null): string {
   const base =

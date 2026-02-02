@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { headers } from 'next/headers'
 import { upsertSubscriber, addMultipleTags, BEAR_BEAT_TAGS } from '@/lib/manychat'
+import { sendServerEvent } from '@/lib/fpixel-server'
+
+function generateRandomPassword(): string {
+  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  let s = ''
+  for (let i = 0; i < 16; i++) s += chars[Math.floor(Math.random() * chars.length)]
+  return s
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -27,6 +36,64 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = await createServerClient()
+
+  // CAPI Purchase: mismo event_id que el Pixel para deduplicación
+  const sendCapiPurchase = async (eventId: string, email: string | undefined, amount: number, currency: string) => {
+    try {
+      await sendServerEvent(
+        'Purchase',
+        eventId,
+        { email: email || undefined },
+        {
+          value: amount,
+          currency: currency.toUpperCase(),
+          content_ids: ['pack-enero-2026'],
+          content_type: 'product',
+          num_items: 1,
+          order_id: eventId,
+        }
+      )
+    } catch (e) {
+      console.warn('CAPI Purchase failed (non-critical):', e)
+    }
+  }
+
+  // payment_intent.succeeded (pago con tarjeta / Elements)
+  if (event.type === 'payment_intent.succeeded') {
+    const pi = event.data.object as { id: string; amount: number; currency: string; receipt_email?: string; metadata?: { customer_email?: string; customer_name?: string } }
+    const email = pi.receipt_email || (pi.metadata?.customer_email as string)
+    const amount = (pi.amount || 0) / 100
+    const currency = (pi.currency || 'mxn').toUpperCase()
+    await sendCapiPurchase(pi.id, email, amount, currency)
+    if (email && typeof email === 'string' && email.includes('@')) {
+      try {
+        const admin = createAdminClient()
+        const { data: existingUser } = await admin.from('users').select('id').eq('email', email).maybeSingle()
+        const customerName = (pi.metadata?.customer_name as string) || ''
+        if (existingUser?.id) {
+          await (admin.auth as any).admin.updateUserById(existingUser.id, { email_confirm: true })
+        } else {
+          const tempPassword = generateRandomPassword()
+          const { data: newAuth, error: createErr } = await (admin.auth as any).admin.createUser({
+            email,
+            password: tempPassword,
+            email_confirm: true,
+            user_metadata: { name: customerName || undefined },
+          })
+          if (!createErr && newAuth?.user) {
+            await admin.from('users').insert({ id: newAuth.user.id, email, name: customerName || null })
+          } else if (createErr?.message?.includes('already') || createErr?.message?.includes('registered')) {
+            const { data: list } = await (admin.auth as any).admin.listUsers({ page: 1, perPage: 1000 })
+            const authUser = list?.users?.find((u: { email?: string }) => u.email === email)
+            if (authUser?.id) {
+              await (admin.auth as any).admin.updateUserById(authUser.id, { email_confirm: true })
+              await admin.from('users').upsert({ id: authUser.id, email, name: customerName || null }, { onConflict: 'id' })
+            }
+          }
+        }
+      } catch (_) {}
+    }
+  }
 
   // Procesar el evento
   if (event.type === 'checkout.session.completed') {
@@ -121,9 +188,52 @@ export async function POST(req: NextRequest) {
         }
       }
       // ==========================================
-      
-      // NOTA: NO creamos usuario ni activamos acceso todavía
-      // Eso sucede cuando el usuario complete sus datos en /complete-purchase
+
+      // Crear o confirmar usuario Auth con email_confirm: true (evita bloqueo de login)
+      if (customerEmail && typeof customerEmail === 'string' && customerEmail.includes('@')) {
+        try {
+          const admin = createAdminClient()
+          const { data: existingUser } = await admin.from('users').select('id').eq('email', customerEmail).maybeSingle()
+          if (existingUser?.id) {
+            await (admin.auth as any).admin.updateUserById(existingUser.id, { email_confirm: true })
+            console.log('Usuario existente confirmado:', customerEmail)
+          } else {
+            const tempPassword = generateRandomPassword()
+            const { data: newAuth, error: createErr } = await (admin.auth as any).admin.createUser({
+              email: customerEmail,
+              password: tempPassword,
+              email_confirm: true,
+              user_metadata: { name: customerName || undefined },
+            })
+            if (!createErr && newAuth?.user) {
+              await admin.from('users').insert({
+                id: newAuth.user.id,
+                email: customerEmail,
+                name: customerName || null,
+              })
+              console.log('Usuario Auth creado (email confirmado):', customerEmail)
+            } else if (createErr?.message?.includes('already') || createErr?.message?.includes('registered')) {
+              const { data: list } = await (admin.auth as any).admin.listUsers({ page: 1, perPage: 1000 })
+              const authUser = list?.users?.find((u: { email?: string }) => u.email === customerEmail)
+              if (authUser?.id) {
+                await (admin.auth as any).admin.updateUserById(authUser.id, { email_confirm: true })
+                await admin.from('users').upsert({ id: authUser.id, email: customerEmail, name: customerName || null }, { onConflict: 'id' })
+                console.log('Usuario Auth ya existía, confirmado:', customerEmail)
+              }
+            }
+          }
+        } catch (authErr) {
+          console.warn('Webhook: crear/confirmar usuario Auth (non-critical):', authErr)
+        }
+      }
+
+      // CAPI Purchase (mismo event_id que el cliente para deduplicación)
+      await sendCapiPurchase(
+        session.id,
+        session.customer_details?.email,
+        session.amount_total / 100,
+        (session.currency || 'mxn').toUpperCase()
+      )
       
       return NextResponse.json({ received: true })
     } catch (error) {

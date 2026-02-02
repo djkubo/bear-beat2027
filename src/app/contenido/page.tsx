@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
+import { fbTrackViewContent, fbTrackSearch } from '@/components/analytics/MetaPixel'
 // Demo: /api/demo-url redirige a CDN firmado (rápido) o a proxy
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
@@ -83,7 +84,22 @@ export default function ContenidoPage() {
     trackPageView('contenido')
     verificarAcceso()
     loadVideos()
+    fbTrackViewContent(
+      { content_name: 'Biblioteca Bear Beat', content_type: 'product', content_ids: ['contenido'] },
+      undefined
+    )
   }, [])
+
+  const lastSearchRef = useRef('')
+  useEffect(() => {
+    const q = searchQuery.trim()
+    if (!q || q.length < 2 || q === lastSearchRef.current) return
+    const t = setTimeout(() => {
+      lastSearchRef.current = q
+      fbTrackSearch({ search_string: q })
+    }, 600)
+    return () => clearTimeout(t)
+  }, [searchQuery])
 
   const verificarAcceso = async () => {
     try {
@@ -168,18 +184,14 @@ export default function ContenidoPage() {
           toast.error('No se pudo iniciar la descarga.')
         }
       } else if (res.status === 404) {
-        const data = await res.json().catch(() => ({}))
-        if (data?.useFtp) {
-          toast.info('Para descargar la carpeta completa masivamente, por favor usa FTP desde el Dashboard.')
-        } else {
-          toast.error('ZIP no disponible. Usa FTP para descargar la carpeta completa.')
-        }
+        await res.json().catch(() => ({}))
+        toast.info('Este género aún no tiene paquete ZIP generado. Por favor descarga los videos individuales o usa FTP.')
       } else {
         const data = await res.json().catch(() => ({}))
-        toast.error(data?.error || 'Error al descargar la carpeta.')
+        toast.error(data?.error || 'Error al descargar. Intenta de nuevo o usa FTP.')
       }
     } catch {
-      toast.error('Error de conexión. Intenta de nuevo o usa FTP.')
+      toast.info('Este género aún no tiene paquete ZIP generado. Por favor descarga los videos individuales o usa FTP.')
     }
   }
 

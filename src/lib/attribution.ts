@@ -488,3 +488,72 @@ export function getAttributionForAPI(): Record<string, string | undefined> {
     os: attr.os,
   }
 }
+
+// ==========================================
+// COOKIE FIRST-TOUCH (bearbeat_attribution)
+// Para lectura en APIs (create-payment-intent, create-checkout)
+// ==========================================
+
+export const ATTRIBUTION_COOKIE_NAME = 'bearbeat_attribution'
+const ATTRIBUTION_COOKIE_DAYS = 30
+
+export interface AttributionCookieData {
+  utm_source?: string
+  utm_medium?: string
+  utm_campaign?: string
+  utm_content?: string
+  utm_term?: string
+  ref?: string
+  referrer_domain?: string
+}
+
+/**
+ * Parsea la cookie bearbeat_attribution desde el header Cookie (servidor).
+ */
+export function parseAttributionCookie(cookieHeader: string | null): AttributionCookieData | null {
+  if (!cookieHeader) return null
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${ATTRIBUTION_COOKIE_NAME}=([^;]*)`))
+  const value = match?.[1]
+  if (!value) return null
+  try {
+    const decoded = decodeURIComponent(value)
+    return JSON.parse(decoded) as AttributionCookieData
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Establece la cookie bearbeat_attribution en el cliente (document.cookie).
+ * maxAge en segundos = 30 días.
+ */
+export function setAttributionCookieClient(data: AttributionCookieData): void {
+  if (typeof document === 'undefined') return
+  const value = encodeURIComponent(JSON.stringify(data))
+  const maxAge = ATTRIBUTION_COOKIE_DAYS * 24 * 60 * 60
+  document.cookie = `${ATTRIBUTION_COOKIE_NAME}=${value}; path=/; max-age=${maxAge}; SameSite=Lax`
+}
+
+/**
+ * Lee la cookie bearbeat_attribution en el cliente.
+ */
+export function getAttributionCookieClient(): AttributionCookieData | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${ATTRIBUTION_COOKIE_NAME}=([^;]*)`))
+  const value = match?.[1]
+  if (!value) return null
+  try {
+    return JSON.parse(decodeURIComponent(value)) as AttributionCookieData
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Indica si la visita actual es explícitamente de retargeting (se permite sobrescribir First-Touch).
+ */
+export function isRetargetingCampaign(params: URLSearchParams): boolean {
+  const medium = (params.get('utm_medium') || '').toLowerCase()
+  const content = (params.get('utm_content') || '').toLowerCase()
+  return medium.includes('retargeting') || content.includes('retargeting') || medium === 'retargeting'
+}

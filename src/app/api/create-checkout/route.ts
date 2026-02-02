@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerClient } from '@/lib/supabase/server'
+import { parseAttributionCookie } from '@/lib/attribution'
 
 /** OXXO/SPEI (customer_balance) requieren customer en Stripe. Buscar o crear por email. */
 async function getOrCreateStripeCustomer(email: string): Promise<string> {
@@ -24,6 +25,8 @@ async function getPackWithVideoCount(supabase: Awaited<ReturnType<typeof createS
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
+    const cookieHeader = req.headers.get('cookie')
+    const attribution = parseAttributionCookie(cookieHeader)
     const { packSlug, paymentMethod, currency = 'mxn', email: bodyEmail } = body as {
       packSlug?: string
       paymentMethod?: string
@@ -130,6 +133,10 @@ export async function POST(req: NextRequest) {
           customer_email: loggedUser.email,
           ...(loggedUser.name && { customer_name: loggedUser.name }),
         }),
+        ...(attribution?.utm_source && { utm_source: attribution.utm_source }),
+        ...(attribution?.utm_medium && { utm_medium: attribution.utm_medium }),
+        ...(attribution?.utm_campaign && { utm_campaign: (attribution.utm_campaign || '').slice(0, 500) }),
+        ...(attribution?.ref && { ref: (attribution.ref || '').slice(0, 500) }),
       },
       billing_address_collection: 'auto',
       phone_number_collection: {

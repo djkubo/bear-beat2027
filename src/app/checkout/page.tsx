@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { trackCTAClick } from '@/lib/tracking'
+import { fbTrackInitiateCheckout, fbTrackAddPaymentInfo } from '@/components/analytics/MetaPixel'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Shield, Lock, CreditCard, Building2, Banknote, Wallet, ChevronRight } from 'lucide-react'
@@ -236,6 +237,22 @@ export default function CheckoutPage() {
 
   const price = currency === 'mxn' ? 350 : 19
   const currencyLabel = currency === 'mxn' ? 'MXN' : 'USD'
+
+  useEffect(() => {
+    fbTrackInitiateCheckout(
+      { content_name: 'Pack Enero 2026', content_ids: [packSlug], value: price, currency: currencyLabel, num_items: 1 },
+      checkoutEmail ? { email: checkoutEmail } : undefined
+    )
+  }, [packSlug, price, currencyLabel, checkoutEmail])
+
+  useEffect(() => {
+    if (selectedMethod === 'card' || selectedMethod === 'paypal') {
+      fbTrackAddPaymentInfo(
+        { content_ids: [packSlug], value: price, currency: currencyLabel },
+        checkoutEmail ? { email: checkoutEmail } : undefined
+      )
+    }
+  }, [selectedMethod, packSlug, price, currencyLabel, checkoutEmail])
   const totalVideos = inventory.loading ? '...' : (inventory.count ?? 0).toLocaleString()
   const reservationM = Math.floor(reservationSeconds / 60)
   const reservationS = reservationSeconds % 60

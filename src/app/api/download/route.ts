@@ -14,7 +14,7 @@ const USE_BUNNY_LEGACY = !!(process.env.BUNNY_CDN_URL && process.env.BUNNY_TOKEN
 /**
  * GET /api/download?file=genre/filename.mp4&stream=true
  * Solo usuarios con compras activas pueden descargar/ver.
- * Si Bunny está configurado → redirección a URL firmada (producción).
+ * Si Bunny está configurado → redirección a URL firmada del CDN (nunca a localhost/0.0.0.0).
  * Si no → sirve desde disco local (desarrollo).
  * stream=true para reproducción inline, sin él descarga el archivo
  */

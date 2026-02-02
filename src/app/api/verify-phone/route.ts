@@ -67,7 +67,10 @@ export async function POST(req: NextRequest) {
       })
       if (process.env.TWILIO_ACCOUNT_SID) {
         try {
-          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin}/api/send-sms`, {
+          const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
+          const isLocalOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?(\/|$)/i.test(appOrigin)
+          const baseForFetch = appOrigin && !isLocalOrigin ? appOrigin : req.nextUrl.origin
+          await fetch(`${baseForFetch}/api/send-sms`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

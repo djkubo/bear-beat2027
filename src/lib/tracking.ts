@@ -369,8 +369,16 @@ export const trackPaymentIntent = (packSlug: string, amount: number, currency: s
   })
 }
 
-export const trackPaymentSuccess = (userId: string, packId: number, amount: number, packName?: string, currency?: string, email?: string, phone?: string) => {
-  // Supabase + ManyChat
+export const trackPaymentSuccess = (
+  userId: string,
+  packId: number,
+  amount: number,
+  packName?: string,
+  currency?: string,
+  email?: string,
+  phone?: string,
+  orderId?: string
+) => {
   trackEvent({
     eventType: 'payment_success',
     eventName: 'Pago exitoso',
@@ -379,16 +387,21 @@ export const trackPaymentSuccess = (userId: string, packId: number, amount: numb
     email,
     phone,
   })
-  
-  // Facebook Pixel - Purchase (EL MÁS IMPORTANTE PARA CONVERSIONES)
-  fbTrackPurchase({
-    content_name: packName,
-    content_ids: [String(packId)],
-    content_type: 'product',
-    num_items: 1,
-    value: amount,
-    currency: currency || 'MXN',
-  })
+
+  // Facebook Pixel - Purchase con event_id = orderId para deduplicación con CAPI
+  fbTrackPurchase(
+    {
+      content_name: packName,
+      content_ids: [String(packId)],
+      content_type: 'product',
+      num_items: 1,
+      value: amount,
+      currency: currency || 'MXN',
+      order_id: orderId,
+      event_id: orderId,
+    },
+    { email, phone, externalId: userId }
+  )
 }
 
 export const trackLead = (source: string, email?: string, phone?: string) => {

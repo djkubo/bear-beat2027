@@ -167,7 +167,7 @@ function isFbqAvailable(): boolean {
 }
 
 /**
- * Trackea evento en Pixel + CAPI con deduplicación
+ * Trackea evento en Pixel + CAPI con deduplicación (genera event_id)
  */
 function trackWithDedup(
   eventName: string,
@@ -182,20 +182,34 @@ function trackWithDedup(
   }
 ) {
   const eventId = generateEventId()
-  
-  // 1. Enviar al Pixel (cliente) con eventID
+  return trackWithEventId(eventName, pixelData, eventId, userData)
+}
+
+/**
+ * Trackea evento con event_id dado (para Purchase: mismo ID que CAPI en webhook)
+ */
+function trackWithEventId(
+  eventName: string,
+  pixelData: Record<string, any>,
+  eventId: string,
+  userData?: {
+    email?: string
+    phone?: string
+    firstName?: string
+    lastName?: string
+    country?: string
+    externalId?: string
+  }
+) {
   if (isFbqAvailable()) {
     window.fbq('track', eventName, pixelData, { eventID: eventId })
   }
-  
-  // 2. Enviar a CAPI (servidor) con el mismo event_id
   sendToCAPI({
     eventName,
     eventId,
     userData,
     customData: pixelData,
   })
-  
   return eventId
 }
 
@@ -319,6 +333,7 @@ export function fbTrackAddPaymentInfo(data: {
 
 /**
  * Purchase - Cuando el usuario completa una compra (EL MÁS IMPORTANTE)
+ * Si se pasa event_id (p. ej. session.id o payment_intent.id), se usa para deduplicación con CAPI.
  */
 export function fbTrackPurchase(data: {
   content_name?: string
@@ -328,8 +343,9 @@ export function fbTrackPurchase(data: {
   value: number
   currency?: string
   order_id?: string
+  event_id?: string
 }, userData?: { email?: string; phone?: string; firstName?: string; lastName?: string; externalId?: string }) {
-  return trackWithDedup('Purchase', {
+  const pixelData = {
     content_name: data.content_name,
     content_ids: data.content_ids,
     content_type: data.content_type || 'product',
@@ -337,7 +353,11 @@ export function fbTrackPurchase(data: {
     value: data.value,
     currency: data.currency || 'MXN',
     order_id: data.order_id,
-  }, userData)
+  }
+  if (data.event_id) {
+    return trackWithEventId('Purchase', pixelData, data.event_id, userData)
+  }
+  return trackWithDedup('Purchase', pixelData, userData)
 }
 
 /**

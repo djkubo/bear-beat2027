@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@/lib/supabase/server'
 import { verifyBypassCookie, COOKIE_NAME } from '@/lib/admin-bypass'
+import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 
 export default async function AdminLayout({
   children,
@@ -24,6 +25,11 @@ export default async function AdminLayout({
 
   if (!user) {
     redirect('/login?redirect=/admin')
+  }
+
+  // Permitir: role admin en public.users O email en lista blanca
+  if (isAdminEmailWhitelist(user.email ?? undefined)) {
+    return <>{children}</>
   }
 
   const { data: userData } = await supabase

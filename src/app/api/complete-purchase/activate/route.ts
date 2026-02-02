@@ -57,6 +57,9 @@ export async function POST(req: NextRequest) {
     let currency: string
     let paymentIntent: string
     let customerEmail: string
+    let utm_source: string | null = null
+    let utm_medium: string | null = null
+    let utm_campaign: string | null = null
 
     if (isPayPal) {
       if (bodyPackId == null || bodyAmountPaid == null) {
@@ -83,6 +86,9 @@ export async function POST(req: NextRequest) {
       currency = (pi.currency || 'mxn').toUpperCase()
       paymentIntent = sessionId
       customerEmail = email || (pi.receipt_email as string) || ''
+      utm_source = (pi.metadata?.utm_source as string) || null
+      utm_medium = (pi.metadata?.utm_medium as string) || null
+      utm_campaign = (pi.metadata?.utm_campaign as string) || null
     } else {
       const session = await stripe.checkout.sessions.retrieve(sessionId, {
         expand: ['payment_intent', 'line_items'],
@@ -102,6 +108,9 @@ export async function POST(req: NextRequest) {
           : session.payment_intent?.id || sessionId
       customerEmail =
         session.customer_details?.email || session.customer_email || email || ''
+      utm_source = (session.metadata?.utm_source as string) || null
+      utm_medium = (session.metadata?.utm_medium as string) || null
+      utm_campaign = (session.metadata?.utm_campaign as string) || null
     }
 
     const admin = createAdminClient()
@@ -176,6 +185,10 @@ export async function POST(req: NextRequest) {
       payment_id: paymentIntent,
       ftp_username,
       ftp_password,
+      ...(utm_source && { utm_source }),
+      ...(utm_medium && { utm_medium }),
+      ...(utm_campaign && { utm_campaign }),
+      ...(utm_source && { traffic_source: utm_source }),
     })
 
     if (insertError) {

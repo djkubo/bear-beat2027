@@ -1,8 +1,26 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { formatPrice, formatDate } from '@/lib/utils'
+import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import { Users, DollarSign, Package, TrendingUp } from 'lucide-react'
 import { SyncVideosFtpButton } from './SyncVideosFtpButton'
+
+const USD_TO_MXN_RATE = Number(process.env.CURRENCY_USD_TO_MXN_RATE) || 17
+
+function sourceDisplay(source: string): { label: string; icon: string } {
+  const s = (source || 'direct').toLowerCase()
+  const map: Record<string, { label: string; icon: string }> = {
+    facebook: { label: 'Facebook Ads', icon: '📘' },
+    instagram: { label: 'Instagram Orgánico', icon: '📸' },
+    google: { label: 'Google', icon: '🔍' },
+    direct: { label: 'Directo/Desconocido', icon: '⚫' },
+    whatsapp: { label: 'WhatsApp', icon: '💚' },
+    tiktok: { label: 'TikTok', icon: '🎵' },
+    email: { label: 'Email', icon: '📧' },
+    referral: { label: 'Referido', icon: '🔗' },
+  }
+  return map[s] || { label: s, icon: '🌐' }
+}
 
 export default async function AdminDashboardPage() {
   const supabase = await createServerClient()
@@ -13,21 +31,93 @@ export default async function AdminDashboardPage() {
   }
   const user = session?.user
   if (!user) redirect('/login')
-  
+
   const { data: userData } = await supabase
     .from('users')
     .select('email, role')
     .eq('id', user.id)
     .single()
-  
-  if (!userData || userData.role !== 'admin') {
-    redirect('/')
+
+  const isAdmin = userData?.role === 'admin' || isAdminEmailWhitelist(user.email ?? undefined)
+  if (!isAdmin) {
+    redirect('/dashboard')
   }
-  
-  // Obtener estadísticas
-  const { data: stats } = await supabase.rpc('get_admin_stats')
-  
-  // Obtener últimas compras
+
+  // KPIs: RPC get_admin_stats (real). Fallback con queries directas si RPC no existe o falla.
+  let stats: {
+    total_users?: number
+    total_purchases?: number
+    total_revenue?: number
+    users_today?: number
+    purchases_today?: number
+    conversion_rate?: number
+  } | null = null
+  const { data: rpcStats } = await supabase.rpc('get_admin_stats')
+  if (rpcStats && typeof rpcStats === 'object') {
+    stats = rpcStats as typeof stats
+  }
+
+  if (!stats) {
+    const todayStart = new Date().toISOString().slice(0, 10)
+    const todayEnd = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+    const [{ count: totalUsers }, { count: totalPurchases }, { data: purchasesForRevenue }, { count: usersToday }, { count: purchasesToday }] = await Promise.all([
+      supabase.from('users').select('*', { count: 'exact', head: true }),
+      supabase.from('purchases').select('*', { count: 'exact', head: true }),
+      supabase.from('purchases').select('amount_paid, currency'),
+      supabase.from('users').select('*', { count: 'exact', head: true }).gte('created_at', todayStart).lt('created_at', todayEnd),
+      supabase.from('purchases').select('*', { count: 'exact', head: true }).gte('purchased_at', todayStart).lt('purchased_at', todayEnd),
+    ])
+    const revenueMxn = (purchasesForRevenue || [])
+      .filter((p: { currency?: string }) => (p.currency || '').toUpperCase() === 'MXN')
+      .reduce((s: number, p: { amount_paid?: number }) => s + (p.amount_paid || 0), 0)
+    const revenueUsdConverted = (purchasesForRevenue || [])
+      .filter((p: { currency?: string }) => (p.currency || '').toUpperCase() === 'USD')
+      .reduce((s: number, p: { amount_paid?: number }) => s + (p.amount_paid || 0) * USD_TO_MXN_RATE, 0)
+    stats = {
+      total_users: totalUsers ?? 0,
+      total_purchases: totalPurchases ?? 0,
+      total_revenue: Math.round(revenueMxn + revenueUsdConverted),
+      users_today: usersToday ?? 0,
+      purchases_today: purchasesToday ?? 0,
+      conversion_rate: (totalUsers ?? 0) > 0
+        ? Math.round(((totalPurchases ?? 0) / (totalUsers ?? 1)) * 10000) / 100
+        : 0,
+    }
+  }
+
+  // Ingresos totales: MXN + USD convertido a MXN (query real; RPC solo devuelve MXN)
+  const { data: purchasesForRevenue } = await supabase.from('purchases').select('amount_paid, currency')
+  const revenueMxn = (purchasesForRevenue || [])
+    .filter((p: { currency?: string }) => (p.currency || '').toUpperCase() === 'MXN')
+    .reduce((s: number, p: { amount_paid?: number }) => s + (p.amount_paid || 0), 0)
+  const revenueUsdConverted = (purchasesForRevenue || [])
+    .filter((p: { currency?: string }) => (p.currency || '').toUpperCase() === 'USD')
+    .reduce((s: number, p: { amount_paid?: number }) => s + (p.amount_paid || 0) * USD_TO_MXN_RATE, 0)
+  const totalRevenueMxn = Math.round(revenueMxn + revenueUsdConverted)
+
+  // Fuentes de tráfico: agrupar ventas por utm_source (First-Touch). Requiere migración add_purchases_attribution.
+  let sourceRows: { source: string; count: number; revenueMxn: number }[] = []
+  const { data: purchasesForAttribution, error: _attrError } = await supabase
+    .from('purchases')
+    .select('utm_source, traffic_source, amount_paid, currency')
+  if (!_attrError && purchasesForAttribution?.length !== undefined) {
+    const bySource = purchasesForAttribution.reduce(
+      (acc: Record<string, { count: number; revenueMxn: number }>, p: { utm_source?: string | null; traffic_source?: string | null; amount_paid?: number; currency?: string }) => {
+        const source = (p.utm_source || p.traffic_source || 'direct').toLowerCase()
+        if (!acc[source]) acc[source] = { count: 0, revenueMxn: 0 }
+        acc[source].count += 1
+        const amount = Number(p.amount_paid) || 0
+        acc[source].revenueMxn += (p.currency || '').toUpperCase() === 'USD' ? amount * USD_TO_MXN_RATE : amount
+        return acc
+      },
+      {}
+    )
+    sourceRows = Object.entries(bySource)
+      .map(([source, { count, revenueMxn }]) => ({ source, count, revenueMxn: Math.round(revenueMxn) }))
+      .sort((a, b) => b.revenueMxn - a.revenueMxn)
+  }
+
+  // Últimas compras: SELECT real a purchases con join a users (email, name) y packs (name)
   const { data: recentPurchases } = await supabase
     .from('purchases')
     .select(`
@@ -56,7 +146,7 @@ export default async function AdminDashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">👤 {userData?.email}</span>
+              <span className="text-sm text-muted-foreground">👤 {userData?.email ?? user?.email ?? '—'}</span>
               <a href="/dashboard">
                 <button className="px-4 py-2 bg-bear-blue text-bear-black rounded-lg font-bold hover:bg-bear-blue/90">
                   Ver como Cliente
@@ -93,10 +183,10 @@ export default async function AdminDashboardPage() {
               </span>
             </div>
             <div className="text-4xl font-extrabold mb-1">
-              ${stats?.total_revenue?.toLocaleString() || '0'}
+              ${totalRevenueMxn.toLocaleString()}
             </div>
             <div className="text-sm font-medium opacity-90">
-              Ingresos Totales
+              Ingresos Totales (MXN + USD convertido)
             </div>
           </div>
 
@@ -128,6 +218,30 @@ export default async function AdminDashboardPage() {
             <div className="text-sm font-medium opacity-90">
               Tasa de Conversión
             </div>
+          </div>
+        </div>
+
+        {/* Fuentes de Tráfico (First-Touch) */}
+        <div className="mb-8">
+          <div className="bg-card rounded-2xl p-6 border-2 border-cyan-500/30 shadow-xl">
+            <h2 className="text-xl font-extrabold mb-4">📊 Fuentes de Tráfico</h2>
+            {sourceRows.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Aún no hay compras con atribución.</p>
+            ) : (
+              <ul className="space-y-2">
+                {sourceRows.map(({ source, count, revenueMxn }) => {
+                  const { label, icon } = sourceDisplay(source)
+                  return (
+                    <li key={source} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                      <span className="font-medium">{icon} {label}</span>
+                      <span className="text-muted-foreground text-sm">
+                        {count} ventas · ${revenueMxn.toLocaleString()} MXN
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </div>
         </div>
 
@@ -199,6 +313,7 @@ export default async function AdminDashboardPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b-2 border-bear-blue/20">
+                    <th className="text-left py-3 px-4 font-bold w-10" title="Fuente">Fuente</th>
                     <th className="text-left py-3 px-4 font-bold">Fecha</th>
                     <th className="text-left py-3 px-4 font-bold">Usuario</th>
                     <th className="text-left py-3 px-4 font-bold">Pack</th>
@@ -207,8 +322,13 @@ export default async function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentPurchases.map((purchase: any) => (
+                  {recentPurchases.map((purchase: any) => {
+                    const { icon } = sourceDisplay(purchase.utm_source || purchase.traffic_source || 'direct')
+                    return (
                     <tr key={purchase.id} className="border-b hover:bg-bear-blue/5">
+                      <td className="py-3 px-4 text-xl" title={purchase.utm_source || 'direct'}>
+                        {icon}
+                      </td>
                       <td className="py-3 px-4">
                         {formatDate(purchase.purchased_at)}
                       </td>
@@ -228,7 +348,7 @@ export default async function AdminDashboardPage() {
                         </span>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>

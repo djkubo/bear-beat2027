@@ -55,6 +55,10 @@ export default function CompletePurchasePage() {
   const [generatedCredentials, setGeneratedCredentials] = useState<{email: string, password: string} | null>(null)
   const [ftpCredentials, setFtpCredentials] = useState<{ ftp_username?: string; ftp_password?: string; ftp_host?: string } | null>(null)
   const [showFtpAccordion, setShowFtpAccordion] = useState(false)
+  const [showEmailNotConfirmed, setShowEmailNotConfirmed] = useState(false)
+  const [claimMode, setClaimMode] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [claimLoading, setClaimLoading] = useState(false)
   const confettiFired = useRef(false)
   const checkEmailTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -272,6 +276,7 @@ export default function CompletePurchasePage() {
   // Completar con cuenta existente (login)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setShowEmailNotConfirmed(false)
     setState('activating')
 
     try {
@@ -281,7 +286,13 @@ export default function CompletePurchasePage() {
       })
 
       if (loginError) {
-        toast.error('Contraseña incorrecta')
+        const msg = (loginError.message || '').toLowerCase()
+        if (msg.includes('email not confirmed') || msg.includes('email_not_confirmed')) {
+          setShowEmailNotConfirmed(true)
+          toast.error('Tu email aún no está confirmado. Reenvía el correo o establece tu contraseña abajo.')
+        } else {
+          toast.error('Contraseña incorrecta')
+        }
         setState('login')
         return
       }
@@ -342,36 +353,30 @@ export default function CompletePurchasePage() {
         }
       } catch (_) {}
 
-      const { data: authData, error: signupError } = await supabase.auth.signUp({
-        email,
-        password: finalPassword,
-        options: { data: { name, phone } },
+      const createRes = await fetch('/api/auth/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password: finalPassword,
+          name,
+          phone: normalizedPhone,
+        }),
       })
+      const createData = await createRes.json().catch(() => ({}))
 
-      // Usuario ya registrado (p. ej. creado por webhook) → pedir login
-      if (signupError) {
-        const msg = (signupError.message || '').toLowerCase()
-        if (msg.includes('already') || msg.includes('registered') || msg.includes('already been') || signupError.status === 422) {
-          toast.info('Tu cuenta ya existe. Inicia sesión con tu contraseña o usa "¿Olvidaste contraseña?" para crear una.')
-          setHasExistingAccount(true)
-          setState('login')
-          return
-        }
-        throw signupError
+      if (createRes.status === 409 || createData?.error === 'already_exists') {
+        toast.info('Tu cuenta ya existe. Inicia sesión con tu contraseña o usa "Establecer contraseña" si aún no la tienes.')
+        setHasExistingAccount(true)
+        setState('login')
+        return
+      }
+      if (!createRes.ok) {
+        throw new Error(createData?.error || 'Error al crear cuenta')
       }
 
-      const userId = authData.user!.id
+      const userId = createData.userId
       setGeneratedCredentials({ email, password: finalPassword })
-
-      // Upsert en tabla users para evitar 409 si el webhook ya insertó
-      try {
-        await supabase.from('users').upsert(
-          { id: userId, email, name, phone: normalizedPhone, country_code: country },
-          { onConflict: 'id' }
-        )
-      } catch (upsertErr) {
-        console.log('User upsert failed (non-critical):', upsertErr)
-      }
 
       // Iniciar sesión automáticamente
       await supabase.auth.signInWithPassword({
@@ -442,7 +447,8 @@ export default function CompletePurchasePage() {
           purchaseInfo?.pack?.name,
           purchaseInfo?.currency || 'MXN',
           email || purchaseInfo?.customer_email,
-          phone
+          phone,
+          purchaseInfo?.stripe_session_id
         )
       } catch (trackErr) {
         console.log('Tracking error (non-critical):', trackErr)
@@ -534,7 +540,7 @@ export default function CompletePurchasePage() {
         trackRegistration(userId, 'email', email, normalizedPhone)
       }
 
-      // Facebook Pixel Purchase con valor real
+      // Facebook Pixel Purchase con event_id = stripe_session_id para deduplicación con CAPI
       trackPaymentSuccess(
         userId,
         purchaseData?.pack_id || 1,
@@ -542,7 +548,8 @@ export default function CompletePurchasePage() {
         purchaseData?.pack?.name,
         purchaseData?.currency || 'MXN',
         email,
-        normalizedPhone
+        normalizedPhone,
+        purchaseData?.stripe_session_id
       )
 
       setState('done')
@@ -782,36 +789,123 @@ export default function CompletePurchasePage() {
                 Inicia sesión
               </h2>
 
-              <form onSubmit={handleLogin} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-bold mb-2">📧 Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    className="w-full px-4 py-3 bg-white/10 border-2 border-gray-600 rounded-xl text-lg"
-                    disabled
-                  />
+              {showEmailNotConfirmed && (
+                <div className="bg-amber-500/20 border border-amber-500 rounded-xl p-4 mb-6">
+                  <p className="text-amber-300 font-bold mb-2">Tu email aún no está confirmado</p>
+                  <p className="text-amber-200/90 text-sm mb-4">
+                    Si acabas de pagar, puedes reenviar el correo de confirmación o establecer tu contraseña aquí (si aún no la tienes).
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      disabled={resendLoading}
+                      onClick={async () => {
+                        setResendLoading(true)
+                        try {
+                          const { error } = await supabase.auth.resend({ type: 'signup', email })
+                          if (error) throw error
+                          toast.success('Correo reenviado. Revisa tu bandeja (y spam).')
+                        } catch (e: any) {
+                          toast.error(e?.message || 'No se pudo reenviar. Prueba "Establecer contraseña".')
+                        } finally {
+                          setResendLoading(false)
+                        }
+                      }}
+                      className="px-4 py-2 bg-amber-500/30 hover:bg-amber-500/50 rounded-lg text-amber-200 text-sm font-medium disabled:opacity-50"
+                    >
+                      {resendLoading ? 'Enviando…' : 'Reenviar correo de confirmación'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClaimMode(!claimMode)}
+                      className="px-4 py-2 bg-cyan-500/30 hover:bg-cyan-500/50 rounded-lg text-cyan-200 text-sm font-medium"
+                    >
+                      {claimMode ? 'Ocultar' : 'Establecer contraseña (reclamar cuenta)'}
+                    </button>
+                  </div>
+                  {claimMode && (
+                    <form
+                      className="mt-4 pt-4 border-t border-amber-500/40 space-y-3"
+                      onSubmit={async (e) => {
+                        e.preventDefault()
+                        if (!password || password.length < 6 || password !== confirmPassword) {
+                          toast.error('Contraseña mínimo 6 caracteres y deben coincidir')
+                          return
+                        }
+                        setClaimLoading(true)
+                        try {
+                          const res = await fetch('/api/claim-account', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email, password }),
+                          })
+                          const data = await res.json().catch(() => ({}))
+                          if (!res.ok) throw new Error(data?.error || 'Error')
+                          toast.success('Contraseña establecida. Inicia sesión abajo.')
+                          setClaimMode(false)
+                        } catch (err: any) {
+                          toast.error(err?.message || 'No se pudo establecer la contraseña')
+                        } finally {
+                          setClaimLoading(false)
+                        }
+                      }}
+                    >
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Nueva contraseña (mín. 6)"
+                        className="w-full px-3 py-2 bg-white/5 border border-amber-500/40 rounded-lg text-sm"
+                        minLength={6}
+                      />
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirmar contraseña"
+                        className="w-full px-3 py-2 bg-white/5 border border-amber-500/40 rounded-lg text-sm"
+                        minLength={6}
+                      />
+                      <button type="submit" disabled={claimLoading} className="px-4 py-2 bg-cyan-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                        {claimLoading ? 'Guardando…' : 'Guardar contraseña'}
+                      </button>
+                    </form>
+                  )}
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-sm font-bold mb-2">🔑 Contraseña</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border-2 border-bear-blue/30 rounded-xl focus:border-bear-blue focus:outline-none text-lg"
-                    placeholder="Tu contraseña"
-                    required
-                  />
-                </div>
+              {!claimMode && (
+                <form onSubmit={handleLogin} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-bold mb-2">📧 Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      className="w-full px-4 py-3 bg-white/10 border-2 border-gray-600 rounded-xl text-lg"
+                      disabled
+                    />
+                  </div>
 
-                <button
-                  type="submit"
-                  className="w-full bg-bear-blue text-bear-black font-black text-xl py-4 rounded-xl hover:bg-bear-blue/90 transition-colors"
-                >
-                  INICIAR SESIÓN Y ACTIVAR →
-                </button>
-              </form>
+                  <div>
+                    <label className="block text-sm font-bold mb-2">🔑 Contraseña</label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 bg-white/5 border-2 border-bear-blue/30 rounded-xl focus:border-bear-blue focus:outline-none text-lg"
+                      placeholder="Tu contraseña"
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-bear-blue text-bear-black font-black text-xl py-4 rounded-xl hover:bg-bear-blue/90 transition-colors"
+                  >
+                    INICIAR SESIÓN Y ACTIVAR →
+                  </button>
+                </form>
+              )}
 
               <div className="mt-4 text-center space-y-2">
                 <p className="text-xs text-gray-500">
@@ -825,6 +919,8 @@ export default function CompletePurchasePage() {
                   onClick={() => {
                     setHasExistingAccount(false)
                     setState('form')
+                    setShowEmailNotConfirmed(false)
+                    setClaimMode(false)
                   }}
                   className="block w-full text-gray-400 hover:text-white text-sm"
                 >

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerClient } from '@/lib/supabase/server'
+import { parseAttributionCookie } from '@/lib/attribution'
 
 async function getPack(supabase: Awaited<ReturnType<typeof createServerClient>>, packSlug: string) {
   const { data: packRow } = await supabase.from('packs').select('*').eq('slug', packSlug).eq('status', 'available').single()
@@ -30,6 +31,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const { packSlug, currency = 'mxn', email: bodyEmail } = body as { packSlug?: string; currency?: string; email?: string }
+    const cookieHeader = req.headers.get('cookie')
+    const attribution = parseAttributionCookie(cookieHeader)
 
     if (!packSlug) {
       return NextResponse.json({ error: 'Pack slug required' }, { status: 400 })
@@ -88,6 +91,10 @@ export async function POST(req: NextRequest) {
         pack_slug: pack.slug,
         ...(userId && { user_id: userId }),
         ...(email && { customer_email: email }),
+        ...(attribution?.utm_source && { utm_source: attribution.utm_source }),
+        ...(attribution?.utm_medium && { utm_medium: attribution.utm_medium }),
+        ...(attribution?.utm_campaign && { utm_campaign: (attribution.utm_campaign || '').slice(0, 500) }),
+        ...(attribution?.ref && { ref: (attribution.ref || '').slice(0, 500) }),
       },
     }
     if (customerId) {

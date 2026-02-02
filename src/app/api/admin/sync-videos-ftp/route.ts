@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import { Client } from 'basic-ftp'
 
 const PACK_SLUG = 'enero-2026'
@@ -39,8 +40,9 @@ function parseKeyBpmFromFilename(filename: string): { key: string | null; bpm: s
 /**
  * POST /api/admin/sync-videos-ftp
  * Solo admin. Sincroniza el listado de videos desde el FTP (Hetzner Storage Box)
- * a la tabla videos de Supabase usando las variables de entorno del servidor.
- * Así no hace falta tener FTP en .env.local: las credenciales están en Render.
+ * a la tabla videos de Supabase.
+ * Variables de entorno: FTP_HOST, FTP_USER, FTP_PASSWORD (o HETZNER_FTP_HOST, etc.).
+ * Local: .env.local. Producción: Render → Environment.
  */
 export async function POST() {
   try {
@@ -51,13 +53,14 @@ export async function POST() {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
     }
 
+    const isWhitelist = isAdminEmailWhitelist(user.email ?? undefined)
     const { data: profile } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (profile?.role !== 'admin') {
+    if (!isWhitelist && profile?.role !== 'admin') {
       return NextResponse.json({ error: 'Solo administradores' }, { status: 403 })
     }
 

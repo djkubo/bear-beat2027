@@ -2,9 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
-import { ManyChatWidget } from '@/components/manychat/ManyChat'
-import { MetaPixel } from '@/components/analytics/MetaPixel'
 import { AttributionTracker } from '@/components/tracking/AttributionTracker'
+import { TrackingScripts } from '@/components/tracking/TrackingScripts'
 import { ChatWidget } from '@/components/chat/ChatWidget'
 import { PushPrompt } from '@/components/notifications/PushPrompt'
 import { Suspense } from 'react'
@@ -150,13 +149,10 @@ export default function RootLayout({
           <AttributionTracker />
         </Suspense>
 
-        {/* Meta Pixel (Facebook) */}
+        {/* Facebook Pixel + ManyChat + PageView en cambio de ruta (next/script afterInteractive) */}
         <Suspense fallback={null}>
-          <MetaPixel />
+          <TrackingScripts />
         </Suspense>
-
-        {/* ManyChat Widget: solo si hay Page ID configurado (evita "Page Id is required") */}
-        {process.env.NEXT_PUBLIC_MANYCHAT_PAGE_ID && <ManyChatWidget />}
         
         {/* Chat Widget Web */}
         <Suspense fallback={null}>
