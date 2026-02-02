@@ -368,7 +368,7 @@ export default function ContenidoPage() {
                     className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4 select-none"
                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); if (!hasAccess) setShowPaywall(true) }}
                   >
-                    {/* Portada: thumbnail o fallback con inicial del artista */}
+                    {/* Portada: thumbnail o fondo con icono de play */}
                     <div className="absolute inset-0 z-0">
                       {selectedVideo.thumbnailUrl && !posterError ? (
                         <img
@@ -377,13 +377,14 @@ export default function ContenidoPage() {
                           className="absolute inset-0 w-full h-full object-cover"
                           onError={() => setPosterError(true)}
                         />
-                      ) : (
-                        <div className="absolute inset-0 bg-gradient-to-br from-bear-blue/30 to-purple-500/30 flex items-center justify-center">
-                          <span className="text-6xl md:text-8xl font-black text-white/60 select-none">
-                            {(selectedVideo.artist || selectedVideo.title || 'V')[0].toUpperCase()}
-                          </span>
+                      ) : null}
+                      {/* Cuando no hay imagen: gradiente + icono de play */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-bear-blue/30 via-gray-900 to-purple-900/40 flex flex-col items-center justify-center">
+                        <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-bear-blue/90 flex items-center justify-center shadow-2xl">
+                          <span className="text-white text-4xl md:text-5xl ml-2 select-none" aria-hidden>▶</span>
                         </div>
-                      )}
+                        <span className="text-white/80 text-sm md:text-base mt-3 font-medium">Reproducir video</span>
+                      </div>
                     </div>
 
                     {/* Watermark */}

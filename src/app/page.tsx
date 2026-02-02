@@ -235,7 +235,7 @@ const GENRE_ICONS: Record<string, string> = {
   rock: '🎸', electronica: '💿', default: '🎬'
 }
 
-/** Tarjeta de video con portada o placeholder (gradient + inicial) si no hay thumbnail o falla */
+/** Tarjeta de video: siempre muestra fondo + icono de play (sin depender de portadas que fallen) */
 function VideoCard({ video, onSelect }: { video: Video; onSelect: () => void }) {
   const [thumbError, setThumbError] = useState(false)
   const showThumb = video.thumbnailUrl && !thumbError
@@ -254,20 +254,24 @@ function VideoCard({ video, onSelect }: { video: Video; onSelect: () => void }) 
             loading="lazy"
             onError={() => setThumbError(true)}
           />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-bear-blue/20 to-purple-500/20 flex items-center justify-center">
-            <span className="text-3xl md:text-4xl font-black text-white/60">
-              {(video.artist || video.title || 'V')[0].toUpperCase()}
-            </span>
+        ) : null}
+        {/* Fondo cuando no hay imagen o falló: gradiente + icono de play siempre visible */}
+        <div className={`absolute inset-0 bg-gradient-to-br from-bear-blue/25 via-gray-900 to-purple-900/30 flex flex-col items-center justify-center ${showThumb ? 'opacity-0 group-hover:opacity-100' : ''}`}>
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-bear-blue/90 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+            <span className="text-white text-2xl md:text-3xl ml-1" aria-hidden>▶</span>
+          </div>
+          <span className="text-white/70 text-xs mt-2 font-medium">Reproducir</span>
+        </div>
+        {/* Overlay play al hacer hover si hay thumbnail */}
+        {showThumb && (
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div className="w-14 h-14 rounded-full bg-bear-blue flex items-center justify-center shadow-xl">
+              <span className="text-bear-black text-2xl ml-1">▶</span>
+            </div>
           </div>
         )}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <div className="w-12 h-12 bg-bear-blue rounded-full flex items-center justify-center shadow-lg">
-            <span className="text-xl ml-1">▶</span>
-          </div>
-        </div>
         {video.duration && (
-          <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-0.5 rounded text-xs font-mono">
+          <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-0.5 rounded text-xs font-mono z-10">
             {video.duration}
           </div>
         )}

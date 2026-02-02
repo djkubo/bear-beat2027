@@ -153,7 +153,7 @@ export function ProtectedPlayer({
           className="w-full h-full cursor-pointer group relative"
           onClick={handlePlay}
         >
-          {/* Thumbnail o placeholder */}
+          {/* Thumbnail o placeholder con icono de play */}
           {thumbnail ? (
             <img
               src={thumbnail}
@@ -162,8 +162,13 @@ export function ProtectedPlayer({
               draggable={false}
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-              <span className="text-6xl opacity-50">🎬</span>
+            <div className="w-full h-full bg-gradient-to-br from-bear-blue/25 via-gray-900 to-purple-900/30 flex flex-col items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-bear-blue/90 flex items-center justify-center shadow-xl">
+                <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+              <span className="text-white/70 text-xs mt-2 font-medium">Reproducir</span>
             </div>
           )}
 
