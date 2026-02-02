@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
           },
         ],
       },
-      metadata: { userId, model, fragmentsCount: fragments.length },
+      metadata: { userId, model: getOpenAIChatModel(), fragmentsCount: fragments.length },
     })
   } catch (err: any) {
     console.error('Chat webhook RAG error:', err)
