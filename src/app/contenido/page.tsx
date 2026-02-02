@@ -167,6 +167,9 @@ export default function ContenidoPage() {
     trackCTAClick('preview', 'contenido', video.name)
   }
 
+  const ZIP_NOT_AVAILABLE_MSG =
+    '⚠️ El paquete ZIP de este género aún no está disponible. Por favor usa la opción FTP para descargar la carpeta completa.'
+
   const handleDownloadFolderZip = async (genre: Genre) => {
     if (!hasAccess) {
       setShowPaywall(true)
@@ -175,23 +178,28 @@ export default function ContenidoPage() {
     const zipName = `${genre.name}.zip`
     try {
       const res = await fetch(`/api/download?file=${encodeURIComponent(zipName)}`, { redirect: 'manual' })
-      if (res.status === 302) {
-        const location = res.headers.get('Location')
-        if (location) {
-          window.open(location, '_blank')
-          trackCTAClick('download_folder_zip', 'contenido', zipName)
-        } else {
-          toast.error('No se pudo iniciar la descarga.')
+      const isRedirect = res.status === 302 || res.status === 307
+      const location = res.headers.get('Location')
+
+      if (isRedirect && location) {
+        const headRes = await fetch(location, { method: 'HEAD', redirect: 'follow' }).catch(() => null)
+        if (headRes && !headRes.ok) {
+          toast.warning(ZIP_NOT_AVAILABLE_MSG)
+          return
         }
+        window.open(location, '_blank')
+        trackCTAClick('download_folder_zip', 'contenido', zipName)
+      } else if (isRedirect && !location) {
+        toast.error('No se pudo iniciar la descarga.')
       } else if (res.status === 404) {
         await res.json().catch(() => ({}))
-        toast.info('Este género aún no tiene paquete ZIP generado. Por favor descarga los videos individuales o usa FTP.')
+        toast.warning(ZIP_NOT_AVAILABLE_MSG)
       } else {
         const data = await res.json().catch(() => ({}))
         toast.error(data?.error || 'Error al descargar. Intenta de nuevo o usa FTP.')
       }
     } catch {
-      toast.info('Este género aún no tiene paquete ZIP generado. Por favor descarga los videos individuales o usa FTP.')
+      toast.warning(ZIP_NOT_AVAILABLE_MSG)
     }
   }
 

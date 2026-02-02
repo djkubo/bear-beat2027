@@ -21,19 +21,19 @@ export async function POST(req: NextRequest) {
     // Obtener usuario si está autenticado
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Guardar suscripción
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .upsert({
-        endpoint: subscription.endpoint,
-        keys: subscription.keys,
-        user_id: user?.id || null,
-        user_agent: req.headers.get('user-agent'),
-        created_at: new Date().toISOString(),
-        active: true
-      }, {
-        onConflict: 'endpoint'
-      })
+    // Guardar suscripción (endpoint + keys para compatibilidad; subscription jsonb con objeto completo)
+    const row = {
+      endpoint: subscription.endpoint,
+      keys: subscription.keys,
+      subscription: subscription as unknown as Record<string, unknown>,
+      user_id: user?.id || null,
+      user_agent: req.headers.get('user-agent'),
+      created_at: new Date().toISOString(),
+      active: true,
+    }
+    const { error } = await (supabase.from('push_subscriptions') as any).upsert(row, {
+      onConflict: 'endpoint',
+    })
 
     if (error) {
       console.error('Error guardando suscripción:', error)

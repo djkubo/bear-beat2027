@@ -24,7 +24,7 @@ export default function AdminPushPage() {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [url, setUrl] = useState('/')
-  const [target, setTarget] = useState<'all' | 'users' | 'anonymous'>('all')
+  const [icon, setIcon] = useState('/favicon.png')
 
   // Plantillas predefinidas
   const templates = [
@@ -60,7 +60,7 @@ export default function AdminPushPage() {
 
   const loadStats = async () => {
     try {
-      const res = await fetch('/api/push/send')
+      const res = await fetch('/api/admin/send-push')
       const data = await res.json()
       setStats(data)
     } catch (error) {
@@ -85,23 +85,26 @@ export default function AdminPushPage() {
     setSending(true)
 
     try {
-      const res = await fetch('/api/push/send', {
+      const res = await fetch('/api/admin/send-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body, url, target })
+        body: JSON.stringify({ title, body, url, icon }),
       })
 
       const data = await res.json()
 
       if (data.success) {
-        toast.success(`Notificación enviada a ${data.sent} usuarios`)
+        toast.success(`Notificación enviada a ${data.sent} dispositivos`)
         if (data.failed > 0) {
           toast.warning(`${data.failed} envíos fallaron`)
         }
-        // Limpiar formulario
+        if (data.removed > 0) {
+          toast.info(`${data.removed} suscripciones obsoletas eliminadas`)
+        }
         setTitle('')
         setBody('')
         setUrl('/')
+        loadStats()
       } else {
         toast.error(data.error || 'Error enviando notificación')
       }
@@ -121,7 +124,7 @@ export default function AdminPushPage() {
             <Link href="/admin" className="text-bear-blue hover:underline text-sm">
               ← Volver al Admin
             </Link>
-            <h1 className="text-3xl font-black mt-2">🔔 Notificaciones Push</h1>
+            <h1 className="text-3xl font-black mt-2">📢 Notificaciones</h1>
           </div>
         </div>
 
@@ -135,7 +138,7 @@ export default function AdminPushPage() {
             <p className="text-4xl font-black text-bear-blue">
               {loading ? '...' : stats?.total || 0}
             </p>
-            <p className="text-sm text-gray-400">Suscriptores totales</p>
+            <p className="text-sm text-gray-400">Dispositivos suscritos</p>
           </motion.div>
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -193,40 +196,28 @@ export default function AdminPushPage() {
                 />
               </div>
 
-              {/* URL */}
+              {/* URL de destino */}
               <div>
                 <label className="block text-sm font-bold mb-2">URL al hacer clic</label>
                 <input
                   type="text"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="/"
+                  placeholder="/contenido"
                   className="w-full bg-white/10 border border-bear-blue/30 rounded-xl px-4 py-3 focus:outline-none focus:border-bear-blue"
                 />
               </div>
 
-              {/* Target */}
+              {/* Icono (opcional) */}
               <div>
-                <label className="block text-sm font-bold mb-2">Enviar a</label>
-                <div className="flex gap-2">
-                  {[
-                    { value: 'all', label: 'Todos' },
-                    { value: 'users', label: 'Solo usuarios' },
-                    { value: 'anonymous', label: 'Solo anónimos' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setTarget(opt.value as any)}
-                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-                        target === opt.value
-                          ? 'bg-bear-blue text-bear-black'
-                          : 'bg-white/10 text-gray-400 hover:bg-white/20'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+                <label className="block text-sm font-bold mb-2">Icono (opcional)</label>
+                <input
+                  type="text"
+                  value={icon}
+                  onChange={(e) => setIcon(e.target.value)}
+                  placeholder="/favicon.png"
+                  className="w-full bg-white/10 border border-bear-blue/30 rounded-xl px-4 py-3 focus:outline-none focus:border-bear-blue"
+                />
               </div>
 
               {/* Preview */}
@@ -251,7 +242,7 @@ export default function AdminPushPage() {
                 disabled={sending || !title.trim()}
                 className="w-full bg-bear-blue text-bear-black font-black py-4 rounded-xl hover:bg-bear-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {sending ? 'Enviando...' : `Enviar a ${stats?.total || 0} suscriptores`}
+                {sending ? 'Enviando...' : 'ENVIAR A TODOS'}
               </button>
             </div>
           </div>

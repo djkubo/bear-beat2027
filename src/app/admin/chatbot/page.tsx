@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { AnalyzeChatButton } from './AnalyzeChatButton'
 
 // Iconos para intenciones
 const INTENT_ICONS: Record<string, string> = {
@@ -91,14 +92,17 @@ export default async function AdminChatbotPage() {
     <div className="min-h-screen bg-gradient-to-br from-bear-blue/5 via-background to-bear-black/5">
       {/* Header */}
       <div className="bg-card border-b-2 border-bear-blue/20 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block">
-            ← Volver al Dashboard
-          </Link>
-          <h1 className="text-3xl font-extrabold">🤖 Centro de Chatbot</h1>
-          <p className="text-muted-foreground">
-            Analytics, conversaciones y mejora del bot
-          </p>
+        <div className="max-w-7xl mx-auto px-4 py-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block">
+              ← Volver al Dashboard
+            </Link>
+            <h1 className="text-3xl font-extrabold">🤖 Centro de Chatbot</h1>
+            <p className="text-muted-foreground">
+              Analytics, conversaciones y mejora del bot
+            </p>
+          </div>
+          <AnalyzeChatButton />
         </div>
       </div>
 
@@ -133,7 +137,7 @@ export default async function AdminChatbotPage() {
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Conversaciones que necesitan humano */}
-          <div className="bg-card rounded-2xl p-6 border-2 border-yellow-500/50 shadow-xl">
+          <div id="esperando-atencion-humana" className="bg-card rounded-2xl p-6 border-2 border-yellow-500/50 shadow-xl">
             <h2 className="text-2xl font-extrabold mb-6 flex items-center gap-2">
               <span>👤</span> Esperando Atención Humana
               {pendingHuman && pendingHuman.length > 0 && (

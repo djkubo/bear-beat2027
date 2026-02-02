@@ -4,6 +4,8 @@
 
 **Índice completo (todo en un solo lugar):** [INDICE_COMPLETO.md](./INDICE_COMPLETO.md) — rutas, APIs, BD, variables, scripts, documentos por tema, flujos clave.
 
+**Cambios recientes y despliegue:** [DESPLIEGUE_Y_CAMBIOS_RECIENTES.md](./DESPLIEGUE_Y_CAMBIOS_RECIENTES.md) — descargas 307, push admin, chat RAG + chat_messages, analyze-chat, migraciones.
+
 ---
 
 ## Embudo y producto
@@ -57,10 +59,11 @@
 
 ---
 
-## Chatbot, auth y descargas
+## Chatbot, chat web, auth y descargas
 
 | Documento | Descripción |
 |-----------|-------------|
+| [DESPLIEGUE_Y_CAMBIOS_RECIENTES.md](./DESPLIEGUE_Y_CAMBIOS_RECIENTES.md) | Chat web RAG + chat_messages, feed-brain, analyze-chat admin, descargas 307, push admin. |
 | [SISTEMA_CHATBOT.md](../SISTEMA_CHATBOT.md) | Chatbot (intents, ManyChat). |
 | [INTEGRACION_MANYCHAT.md](../INTEGRACION_MANYCHAT.md) | ManyChat (webhook, External Request). |
 | [SISTEMA_ATRIBUCION.md](../SISTEMA_ATRIBUCION.md) | Atribución First-Touch (cookie, purchases UTM). |

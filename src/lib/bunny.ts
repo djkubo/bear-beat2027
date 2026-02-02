@@ -38,5 +38,6 @@ export function getSignedDownloadUrl(
     .replace(/=/g, '')
 
   const base = BUNNY_PULL_ZONE.startsWith('http') ? BUNNY_PULL_ZONE : `https://${BUNNY_PULL_ZONE}`
-  return `${base}${pathNormalized}?token=${token}&expires=${expires}`
+  const pathEncoded = '/' + pathNormalized.split('/').filter(Boolean).map(encodeURIComponent).join('/')
+  return `${base}${pathEncoded}?token=${token}&expires=${expires}`
 }

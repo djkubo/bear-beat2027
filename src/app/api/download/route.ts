@@ -12,21 +12,21 @@ const BUNNY_PACK_PREFIX = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUN
 const USE_BUNNY_LEGACY = !!(process.env.BUNNY_CDN_URL && process.env.BUNNY_TOKEN_KEY)
 
 /**
- * GET /api/download?file=genre/filename.mp4&stream=true
- * Solo usuarios con compras activas pueden descargar/ver.
- * Si Bunny está configurado → redirección a URL firmada del CDN (nunca a localhost/0.0.0.0).
- * Si no → sirve desde disco local (desarrollo).
- * stream=true para reproducción inline, sin él descarga el archivo
+ * GET /api/download?file=genre/filename.mp4 | Banda.zip
+ * Solo usuarios con compras activas pueden descargar.
+ * Si Bunny está configurado (BUNNY_PULL_ZONE + BUNNY_SECURITY_KEY): 307 redirect a URL firmada del CDN.
+ * No lee archivos ni hace fetch al CDN desde el servidor; libera carga en Render.
+ * Si no hay Bunny: sirve desde disco local (desarrollo).
  */
 export async function GET(req: NextRequest) {
   try {
     const filePath = req.nextUrl.searchParams.get('file')
     const isStream = req.nextUrl.searchParams.get('stream') === 'true'
-    
+
     if (!filePath) {
       return NextResponse.json({ error: 'File path required' }, { status: 400 })
     }
-    
+
     const supabase = await createServerClient()
     let { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) {
@@ -40,45 +40,27 @@ export async function GET(req: NextRequest) {
         { status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
       )
     }
-    
+
     const { data: purchases, error } = await supabase
       .from('purchases')
       .select('id, pack_id')
       .eq('user_id', user.id)
-    
+
     if (error || !purchases || purchases.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'No tienes acceso a las descargas. Compra el pack para descargar.',
         redirect: '/checkout?pack=enero-2026'
       }, { status: 403 })
     }
-    
-    const sanitizedPath = filePath.replace(/\.\./g, '').replace(/^\//, '')
-    const isZipRequest = sanitizedPath.toLowerCase().endsWith('.zip')
 
-    // Producción: BunnyCDN con BUNNY_PULL_ZONE + BUNNY_SECURITY_KEY (Token Auth)
+    const sanitizedPath = filePath.replace(/\.\./g, '').replace(/^\//, '')
+
+    // Producción: BunnyCDN Token Auth → 307 redirect a URL firmada (sin fs ni fetch desde servidor)
     if (isBunnyDownloadConfigured()) {
       const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
       const signedUrl = getSignedDownloadUrl(bunnyPath, 3600)
       if (!signedUrl) {
         return NextResponse.json({ error: 'Bunny CDN no configurado' }, { status: 503 })
-      }
-      // Para ZIP: comprobar si existe en Bunny antes de redirigir (evitar 404 en nueva pestaña)
-      if (isZipRequest) {
-        try {
-          const headRes = await fetch(signedUrl, { method: 'HEAD', redirect: 'follow' })
-          if (!headRes.ok) {
-            return NextResponse.json(
-              { error: 'Archivo ZIP no encontrado en el CDN.', useFtp: true },
-              { status: 404 }
-            )
-          }
-        } catch {
-          return NextResponse.json(
-            { error: 'No se pudo verificar el archivo. Para descargar la carpeta completa, usa FTP.', useFtp: true },
-            { status: 404 }
-          )
-        }
       }
       try {
         await supabase.from('downloads').insert({
@@ -90,7 +72,7 @@ export async function GET(req: NextRequest) {
       } catch {
         // ignorar si falla (tabla no existe o RLS)
       }
-      const res = NextResponse.redirect(signedUrl, 302)
+      const res = NextResponse.redirect(signedUrl, 307)
       res.headers.set('Cache-Control', 'private, max-age=3600')
       return res
     }
@@ -109,7 +91,7 @@ export async function GET(req: NextRequest) {
       } catch {
         // ignorar
       }
-      const resLegacy = NextResponse.redirect(signedUrl, 302)
+      const resLegacy = NextResponse.redirect(signedUrl, 307)
       resLegacy.headers.set('Cache-Control', 'private, max-age=3600')
       return resLegacy
     }
