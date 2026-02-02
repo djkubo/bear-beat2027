@@ -25,6 +25,8 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 17. [Scripts npm](#17-scripts-npm)
 18. [Flujos principales](#18-flujos-principales)
 19. [Cambios recientes (sesión, consola, landing)](#19-cambios-recientes-sesión-consola-landing)
+20. [Documentación reciente (RAG, Auth, URLs, 3 vías, atribución)](#20-documentación-reciente-rag-auth-urls-3-vías-atribución)
+21. [Subir a producción](#21-subir-a-producción)
 
 ---
 
@@ -454,10 +456,10 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 - `NEXT_PUBLIC_MANYCHAT_PAGE_ID`: si no está definida, el widget de ManyChat no se carga (evita "Page Id is required").
 - `FB_ACCESS_TOKEN` o `FACEBOOK_CAPI_ACCESS_TOKEN`: Conversions API (CAPI) para eventos servidor (Purchase, etc.).
 
-### Chatbot RAG (ManyChat)
+### Chatbot RAG (ManyChat, BearBot, analyze-chat)
 - `OPENAI_API_KEY`: obligatoria para embeddings y chat.
-- `OPENAI_CHAT_MODEL`: opcional; por defecto `gpt-4o`. Para futuro: `gpt-5.2`.
-- `SUPABASE_SERVICE_ROLE_KEY`: para `match_documents` y script sync-knowledge.
+- `OPENAI_CHAT_MODEL`: opcional; por defecto `gpt-5.2` (config centralizada en `src/lib/openai-config.ts`). Ver [docs/CONFIGURACION_IA_Y_PRODUCCION.md](docs/CONFIGURACION_IA_Y_PRODUCCION.md).
+- `SUPABASE_SERVICE_ROLE_KEY`: para `match_documents` y scripts feed-brain / sync-knowledge.
 
 ### Otras
 - Meta Pixel, ManyChat, Twilio, Resend, Push (VAPID), Render API key, etc. (ver `.env.example` y PRODUCCION.md).
@@ -550,10 +552,12 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 
 ## 20. DOCUMENTACIÓN RECIENTE (RAG, AUTH, URLs, 3 VÍAS, ATRIBUCIÓN)
 
-### 20.1 Chatbot RAG (ManyChat)
-- **Base de conocimientos:** tabla `documents` (pgvector 3072), RPC `match_documents`. Migración: `supabase/migrations/20260130200000_vector_knowledge.sql`.
+### 20.1 Chatbot RAG (ManyChat, BearBot, analyze-chat)
+- **Modelo de chat:** GPT-5.2 (`gpt-5.2`). Config centralizada en `src/lib/openai-config.ts` (`getOpenAIChatModel()`). Variable `OPENAI_CHAT_MODEL` opcional; default `gpt-5.2`. Ver [docs/CONFIGURACION_IA_Y_PRODUCCION.md](docs/CONFIGURACION_IA_Y_PRODUCCION.md).
+- **Base de conocimientos:** tabla `documents` (pgvector 3072), RPC `match_documents`. Migración: `supabase/migrations/20260130200001_vector_knowledge_fix.sql`.
 - **Script de ingesta:** `scripts/sync-knowledge.ts` — páginas estáticas (términos, privacidad, reembolsos), catálogo videos, reglas de negocio; embeddings con `text-embedding-3-large`. Uso: `npx tsx scripts/sync-knowledge.ts`. Env: `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
-- **Webhook RAG:** POST `/api/chat/webhook` — Body: `message`, `userId`. Proceso: embedding → match_documents(5) → System Prompt con contexto → OpenAI (OPENAI_CHAT_MODEL o gpt-4o). Respuesta: formato ManyChat v2 `{ version: "v2", content: { messages: [...] } }`.
+- **Webhook RAG:** POST `/api/chat/webhook` — Body: `message`, `userId`. Proceso: embedding → match_documents(5) → System Prompt con contexto → OpenAI (GPT-5.2). Respuesta: formato ManyChat v2 `{ version: "v2", content: { messages: [...] } }`.
+- **Chat web BearBot:** POST `/api/chat` — RAG + GPT-5.2 + guardado en `chat_messages`. **Analyze-chat:** POST `/api/admin/analyze-chat` — últimos 100 mensajes → GPT-5.2 → reporte (tendencia, dolor, oportunidades, recomendación).
 
 ### 20.2 Auth: email_confirm (evitar bloqueo de login)
 - **Webhook Stripe:** En `checkout.session.completed` y `payment_intent.succeeded`, si hay email: crear o confirmar usuario Auth con `email_confirm: true` (createUser o updateUserById). Inserta/actualiza tabla `users`.
@@ -583,4 +587,16 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 
 ---
 
-*Documentación generada para Bear Beat 2027. Para detalles de despliegue y checklist ver PRODUCCION.md. Índice completo: docs/INDICE_COMPLETO.md. Tras cualquier cambio: subir a producción (git push) y actualizar esta doc y la afectada.*
+---
+
+## 21. SUBIR A PRODUCCIÓN
+
+1. **Código:** `git add .` (sin `.env.local`), `git commit -m "..."`, `git push origin main`. Render hace Auto-Deploy si está conectado al repo.
+2. **Variables de entorno en Render:** `npm run deploy:env` (requiere `RENDER_API_KEY` en `.env.local`). Sube todas las vars de `.env.local` al servicio bear-beat2027 y dispara un deploy.
+3. **Comprobaciones:** https://bear-beat2027.onrender.com, chat BearBot, admin → "Generar Reporte AI", ManyChat webhook si aplica.
+
+Ver [docs/CONFIGURACION_IA_Y_PRODUCCION.md](docs/CONFIGURACION_IA_Y_PRODUCCION.md) para IA (GPT-5.2) y proceso completo de subida.
+
+---
+
+*Documentación generada para Bear Beat 2027. Para detalles de despliegue y checklist ver PRODUCCION.md. Índice completo: docs/INDICE_COMPLETO.md. Tras cualquier cambio: subir a producción (git push + deploy:env) y actualizar esta doc y la afectada.*

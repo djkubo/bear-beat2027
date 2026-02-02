@@ -78,6 +78,8 @@ Tablas principales: `users`, `packs`, `genres`, `videos`, `purchases`, `pending_
 
 **Ver [docs/INDICE_COMPLETO.md](docs/INDICE_COMPLETO.md)** para: índice maestro (rutas, APIs, BD, variables, scripts, documentos por tema, flujos clave).
 
+**Ver [docs/CONFIGURACION_IA_Y_PRODUCCION.md](docs/CONFIGURACION_IA_Y_PRODUCCION.md)** para: IA (GPT-5.2), openai-config, RAG, variables OpenAI y proceso para subir todo a producción (git push + `npm run deploy:env`).
+
 ## 🚀 Deploy
 
 **Guía completa:** [docs/DEPLOY_PRODUCCION.md](docs/DEPLOY_PRODUCCION.md) — pasos para llevar todo a producción (verificación local, commit, push, Render, verificación post-deploy, rollback). Índice de documentación: [docs/README_DOCS.md](docs/README_DOCS.md).

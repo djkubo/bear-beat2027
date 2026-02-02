@@ -6,6 +6,8 @@
 
 **Cambios recientes y despliegue:** [DESPLIEGUE_Y_CAMBIOS_RECIENTES.md](./DESPLIEGUE_Y_CAMBIOS_RECIENTES.md) — descargas 307, push admin, chat RAG + chat_messages, analyze-chat, migraciones.
 
+**IA (OpenAI) y subida a producción:** [CONFIGURACION_IA_Y_PRODUCCION.md](./CONFIGURACION_IA_Y_PRODUCCION.md) — GPT-5.2, openai-config, variables, proceso git push + deploy:env.
+
 ---
 
 ## Embudo y producto
@@ -63,6 +65,7 @@
 
 | Documento | Descripción |
 |-----------|-------------|
+| [CONFIGURACION_IA_Y_PRODUCCION.md](./CONFIGURACION_IA_Y_PRODUCCION.md) | **IA:** GPT-5.2, openai-config, RAG, variables OpenAI, subir todo a producción (git + deploy:env). |
 | [DESPLIEGUE_Y_CAMBIOS_RECIENTES.md](./DESPLIEGUE_Y_CAMBIOS_RECIENTES.md) | Chat web RAG + chat_messages, feed-brain, analyze-chat admin, descargas 307, push admin. |
 | [SISTEMA_CHATBOT.md](../SISTEMA_CHATBOT.md) | Chatbot (intents, ManyChat). |
 | [INTEGRACION_MANYCHAT.md](../INTEGRACION_MANYCHAT.md) | ManyChat (webhook, External Request). |

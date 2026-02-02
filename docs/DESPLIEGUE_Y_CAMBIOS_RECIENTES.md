@@ -33,7 +33,7 @@ Documentación de lo subido a producción: descargas, push, chat RAG, panel admi
   - **Input:** `{ message, history?, sessionId? }` (history = mensajes anteriores para contexto).  
   - **Paso 1:** Embedding del mensaje → RPC `match_documents` en Supabase (fragmentos relevantes).  
   - **Paso 2:** System prompt BearBot + fragmentos RAG (precios $19 USD, FTP/Drive, catálogo).  
-  - **Paso 3:** OpenAI (`OPENAI_CHAT_MODEL` o `gpt-4o`).  
+  - **Paso 3:** OpenAI (GPT-5.2 vía `OPENAI_CHAT_MODEL` o default `gpt-5.2` en `src/lib/openai-config.ts`).  
   - **Paso 4:** Guarda en `chat_messages`: (1) mensaje usuario `role: 'user'`, `is_bot: false`; (2) respuesta `role: 'assistant'`, `is_bot: true`.  
   - **Output:** `{ role: 'assistant', content: '...', sessionId }`. Cookie `chat_session_id` se establece/actualiza.
 
@@ -56,7 +56,7 @@ Documentación de lo subido a producción: descargas, push, chat RAG, panel admi
   - ⚠️ Puntos de dolor  
   - 💰 Oportunidades de venta  
   - 💡 Recomendación  
-- **API:** `POST /api/admin/analyze-chat` (solo admin). Lee últimos 100 mensajes de usuarios (`messages`, `direction = 'inbound'`), los envía a OpenAI y devuelve el JSON del reporte.
+- **API:** `POST /api/admin/analyze-chat` (solo admin). Lee últimos 100 mensajes de usuarios (`messages`, `direction = 'inbound'`), los envía a OpenAI (GPT-5.2) y devuelve el JSON del reporte.
 - **Acción rápida:** Si hay "Oportunidades de venta", el modal muestra el botón **"Ir a esos chats →"** que hace scroll a la sección "Esperando Atención Humana".
 
 **Archivos:** `src/app/api/admin/analyze-chat/route.ts`, `src/app/admin/chatbot/AnalyzeChatButton.tsx`, `src/app/admin/chatbot/page.tsx`.
@@ -81,7 +81,7 @@ Documentación de lo subido a producción: descargas, push, chat RAG, panel admi
 
 | Variable | Uso |
 |----------|-----|
-| OPENAI_API_KEY, OPENAI_CHAT_MODEL | Chat RAG, analyze-chat, feed-brain. |
+| OPENAI_API_KEY, OPENAI_CHAT_MODEL | Chat RAG (GPT-5.2), analyze-chat, feed-brain. Default: `gpt-5.2`. Ver [CONFIGURACION_IA_Y_PRODUCCION.md](./CONFIGURACION_IA_Y_PRODUCCION.md). |
 | SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY | RAG, chat_messages, push send-push, feed-brain. |
 | BUNNY_PULL_ZONE, BUNNY_SECURITY_KEY | Descargas (URL firmada, 307 redirect). |
 | NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY | Push (web-push). |
@@ -101,4 +101,14 @@ Ver también [INDICE_COMPLETO.md](./INDICE_COMPLETO.md) §5 y DOCUMENTACION_COMP
 
 ---
 
-*Última actualización: despliegue con descargas 307, push admin, chat RAG + chat_messages, analyze-chat y documentación.*
+## 8. Subir todo a producción
+
+1. **Código:** `git add .` (sin `.env.local`), `git commit -m "..."`, `git push origin main`. Render hace Auto-Deploy si el servicio está conectado al repo.
+2. **Variables en Render:** `npm run deploy:env` (requiere `RENDER_API_KEY` en `.env.local`). Sube todas las vars de `.env.local` al servicio bear-beat2027 y dispara un deploy.
+3. **Comprobaciones:** https://bear-beat2027.onrender.com, chat BearBot, admin → "Generar Reporte AI".
+
+Ver [CONFIGURACION_IA_Y_PRODUCCION.md](./CONFIGURACION_IA_Y_PRODUCCION.md) para IA (GPT-5.2) y proceso completo.
+
+---
+
+*Última actualización: GPT-5.2 como modelo de chat, openai-config centralizado, subida a producción documentada.*

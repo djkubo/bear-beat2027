@@ -77,41 +77,41 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
 
   return (
     <>
-      {/* Botón hamburger – área de toque mínima 44px, siempre visible en móvil */}
+      {/* Botón hamburger – área toque 48px, z alto para quedar sobre overlay */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden relative z-[60] shrink-0 min-w-[48px] min-h-[48px] flex flex-col justify-center items-center gap-1.5 p-3 rounded-xl bg-zinc-900 border border-cyan-500/40 hover:bg-zinc-800 hover:border-cyan-400/60 active:scale-95 transition-all touch-manipulation"
+        className={`md:hidden relative shrink-0 min-w-[48px] min-h-[48px] flex flex-col justify-center items-center gap-1.5 p-3 rounded-xl border transition-all touch-manipulation select-none ${isOpen ? 'z-[110] bg-zinc-900 border-cyan-400/60' : 'z-[60] bg-zinc-900 border-cyan-500/40 hover:bg-zinc-800 hover:border-cyan-400/60 active:scale-95'}`}
         aria-label={isOpen ? 'Cerrar menú' : 'Abrir menú'}
         aria-expanded={isOpen}
         aria-controls="mobile-drawer"
       >
         <span
-          className={`w-6 h-1 bg-cyan-400 block rounded-full transition-all duration-200 ${isOpen ? 'rotate-45 translate-y-2' : ''}`}
+          className={`w-6 h-0.5 bg-cyan-400 block rounded-full transition-all duration-200 origin-center ${isOpen ? 'rotate-45 translate-y-[7px]' : ''}`}
         />
         <span
-          className={`w-6 h-1 bg-cyan-400 block rounded-full transition-all duration-200 ${isOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}
+          className={`w-6 h-0.5 bg-cyan-400 block rounded-full transition-all duration-200 ${isOpen ? 'opacity-0 scale-x-0' : 'opacity-100 scale-x-100'}`}
         />
         <span
-          className={`w-6 h-1 bg-cyan-400 block rounded-full transition-all duration-200 ${isOpen ? '-rotate-45 -translate-y-2' : ''}`}
+          className={`w-6 h-0.5 bg-cyan-400 block rounded-full transition-all duration-200 origin-center ${isOpen ? '-rotate-45 -translate-y-[7px]' : ''}`}
         />
       </button>
 
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Overlay pantalla completa – negro + blur */}
+            {/* Overlay – cubre toda la ventana, tap para cerrar */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[55] md:hidden"
+              className="fixed inset-0 min-h-[100dvh] bg-black/85 backdrop-blur-md z-[100] md:hidden"
               aria-hidden="true"
             />
 
-            {/* Side Drawer – glassmorphism, safe-area para muescas */}
+            {/* Drawer – pantalla completa en móvil, safe-area, scroll interno */}
             <motion.div
               id="mobile-drawer"
               role="dialog"
@@ -120,34 +120,33 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              className="fixed top-0 right-0 h-full w-[min(100%,20rem)] max-w-sm bg-zinc-950 backdrop-blur-xl border-l border-cyan-500/20 shadow-[-20px_0_60px_rgba(0,0,0,0.5)] z-[58] md:hidden flex flex-col"
+              transition={{ type: 'spring', damping: 30, stiffness: 260 }}
+              className="fixed top-0 right-0 bottom-0 w-full max-w-[320px] min-h-[100dvh] bg-zinc-950 border-l border-white/10 shadow-[-8px_0_32px_rgba(0,0,0,0.6)] z-[105] md:hidden flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
             >
-              {/* Header con logo */}
-              <div className="shrink-0 p-6 pb-4 border-b border-white/10">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Image
-                      src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png"
-                      alt="Bear Beat"
-                      width={44}
-                      height={44}
-                      className="w-11 h-11"
-                    />
-                    <span className="font-bold text-xl text-cyan-400 tracking-tight">BEAR BEAT</span>
-                  </div>
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition"
-                    aria-label="Cerrar"
-                  >
-                    <span className="text-2xl">×</span>
-                  </button>
+              {/* Header: logo + cerrar */}
+              <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-4 border-b border-white/10">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Image
+                    src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png"
+                    alt="Bear Beat"
+                    width={40}
+                    height={40}
+                    className="w-10 h-10 shrink-0"
+                  />
+                  <span className="font-bold text-lg text-cyan-400 tracking-tight truncate">BEAR BEAT</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 active:bg-white/15 transition"
+                  aria-label="Cerrar menú"
+                >
+                  <span className="text-2xl leading-none">×</span>
+                </button>
               </div>
 
-              {/* Links – texto grande, scroll si hay muchos */}
-              <nav className="flex-1 min-h-0 overflow-y-auto py-6 px-6">
+              {/* Navegación – scroll si hay muchos ítems */}
+              <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-4 px-4">
                 <ul className="space-y-1">
                   {menuItems.map((item) => (
                     <li key={item.href}>
@@ -155,45 +154,45 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
                         href={item.href}
                         onClick={() => setIsOpen(false)}
                         className={`
-                          flex items-center gap-4 px-5 py-4 rounded-2xl text-2xl font-medium transition-all
+                          flex items-center gap-4 px-4 py-3.5 rounded-xl text-lg font-medium transition-colors
                           ${item.highlight
-                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-[0_0_20px_rgba(34,211,238,0.15)]'
+                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
                             : currentPath === item.href
                               ? 'bg-white/10 text-cyan-400'
                               : 'text-zinc-300 hover:bg-white/5 hover:text-white'
                           }
                         `}
                       >
-                        <span className="text-2xl opacity-90">{item.icon}</span>
-                        <span>{item.label}</span>
+                        <span className="text-xl shrink-0 opacity-90">{item.icon}</span>
+                        <span className="truncate">{item.label}</span>
                       </Link>
                     </li>
                   ))}
                 </ul>
               </nav>
 
-              {/* CTA destacado abajo */}
-              <div className="shrink-0 p-6 pt-4 border-t border-white/10 space-y-4">
+              {/* CTA y ayuda – fijo abajo */}
+              <div className="shrink-0 p-4 pt-4 border-t border-white/10 space-y-3">
                 <Link
                   href={ctaItem.href}
                   onClick={() => setIsOpen(false)}
                   className={`
-                    flex items-center justify-center w-full py-4 rounded-2xl text-xl font-bold transition-all
+                    flex items-center justify-center w-full py-3.5 rounded-xl text-base font-bold transition-all active:scale-[0.98]
                     ${ctaItem.primary
-                      ? 'bg-cyan-500 text-zinc-950 shadow-[0_0_24px_rgba(34,211,238,0.4)] hover:bg-cyan-400 active:scale-[0.98]'
-                      : 'bg-white/10 text-cyan-400 border-2 border-cyan-500/50 hover:bg-white/15'
+                      ? 'bg-cyan-500 text-zinc-950 hover:bg-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+                      : 'bg-white/10 text-cyan-400 border border-cyan-500/50 hover:bg-white/15'
                     }
                   `}
                 >
                   {ctaItem.label}
                 </Link>
-                <p className="text-center text-sm text-zinc-500">¿Necesitas ayuda?</p>
-                <div className="flex gap-3">
+                <p className="text-center text-xs text-zinc-500">¿Necesitas ayuda?</p>
+                <div className="flex gap-2">
                   <a
                     href={getMessengerUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 py-3 rounded-xl bg-blue-600/90 text-white text-center font-semibold text-sm hover:bg-blue-500 transition"
+                    className="flex-1 py-2.5 rounded-lg bg-blue-600/90 text-white text-center font-semibold text-sm hover:bg-blue-500 transition"
                   >
                     💬 Chat
                   </a>
@@ -201,7 +200,7 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
                     href="https://wa.me/5215512345678?text=Hola%2C%20necesito%20ayuda%20con%20Bear%20Beat"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 py-3 rounded-xl bg-green-600/90 text-white text-center font-semibold text-sm hover:bg-green-500 transition"
+                    className="flex-1 py-2.5 rounded-lg bg-green-600/90 text-white text-center font-semibold text-sm hover:bg-green-500 transition"
                   >
                     📱 WhatsApp
                   </a>
