@@ -174,12 +174,13 @@ export default function RegisterPage() {
       const normalizedPhone = normalizePhoneNumber(phone, country)
       if (!normalizedPhone) throw new Error('Teléfono inválido')
 
+      const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '')
       const { data: authData, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { name, phone: normalizedPhone },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${baseUrl || (typeof window !== 'undefined' ? window.location.origin : '')}/auth/callback`,
         },
       })
       if (error) throw error

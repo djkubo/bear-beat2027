@@ -50,9 +50,38 @@ Ahora deberías ver una página con **Site URL** y **Redirect URLs**.
    ```
 4. Haz clic en **Save**.
 
+**Importante:** Si el enlace del email de confirmación te llevaba a `https://0.0.0.0:10000/login`, era porque **Site URL** estaba mal (o vacía y Supabase usaba otra). Con **Site URL** = `https://bear-beat2027.onrender.com` y **NEXT_PUBLIC_APP_URL** en Render con el mismo valor, el enlace del email irá a tu web en producción.
+
 ---
 
-## Paso 5 — Probar
+## Paso 5 — Personalizar el email de confirmación (opcional)
+
+El email por defecto de Supabase ("Confirm your signup", de noreply@mail.app.supabase.io) se puede cambiar para que se vea con tu marca.
+
+1. En Supabase: **Authentication** → **Email Templates**.
+2. Elige **Confirm signup**.
+3. Puedes editar:
+   - **Subject:** por ejemplo: `Bear Beat – Confirma tu correo`
+   - **Body (HTML):** el texto y el enlace. El enlace de confirmación debe quedarse como `{{ .ConfirmationURL }}` (es una variable que Supabase reemplaza).
+
+**Ejemplo de cuerpo** (más limpio, en español):
+
+```html
+<h2>¡Hola!</h2>
+<p>Gracias por registrarte en Bear Beat.</p>
+<p>Haz clic en el siguiente enlace para confirmar tu correo y activar tu cuenta:</p>
+<p><a href="{{ .ConfirmationURL }}" style="background:#08E1F7;color:#000;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:bold;">Confirmar mi correo</a></p>
+<p>Si no te registraste en Bear Beat, puedes ignorar este mensaje.</p>
+<p>— El equipo Bear Beat</p>
+```
+
+4. Guarda los cambios. Los próximos emails de confirmación usarán esta plantilla.
+
+**Para que los emails salgan desde tu propio dominio** (ej. noreply@bearbeat.mx) en lugar de noreply@mail.app.supabase.io, configura **Custom SMTP** en **Project Settings** → **Auth** → **SMTP Settings** (con Resend, SendGrid, etc.).
+
+---
+
+## Paso 6 — Probar
 
 1. Abre: **https://bear-beat2027.onrender.com/login**
 2. Inicia sesión con tu usuario (por ejemplo test@bearbeat.com).

@@ -2,14 +2,23 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
+/** En producción usar siempre NEXT_PUBLIC_APP_URL para no redirigir a 0.0.0.0 o localhost. */
+function getBaseUrl(request: Request): string {
+  const origin = new URL(request.url).origin
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
+  if (process.env.NODE_ENV === 'production' && appUrl) return appUrl
+  return origin
+}
+
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/dashboard'
+  const baseUrl = getBaseUrl(request)
 
   if (code) {
     const cookieStore = await cookies()
-    const redirectResponse = NextResponse.redirect(`${origin}${next}`)
+    const redirectResponse = NextResponse.redirect(`${baseUrl}${next}`)
     const isProd = process.env.NODE_ENV === 'production'
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,5 +46,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login`)
+  return NextResponse.redirect(`${baseUrl}/login`)
 }
