@@ -95,6 +95,12 @@ export async function POST(req: NextRequest) {
       }
       const code = userCode.replace(/\D/g, '').trim()
 
+      // Código provisional: en desarrollo 111111 siempre vale; en producción solo si DEV_OTP_BYPASS está definido
+      const bypassCode = process.env.DEV_OTP_BYPASS_CODE || (process.env.NODE_ENV === 'development' ? '111111' : '')
+      if (bypassCode && code === bypassCode) {
+        return NextResponse.json({ success: true, verified: true })
+      }
+
       if (USE_TWILIO_VERIFY) {
         const client = getTwilioClient()
         if (!client) {
