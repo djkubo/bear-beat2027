@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import confetti from 'canvas-confetti'
+import { Check, Copy, ExternalLink, Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { normalizePhoneNumber } from '@/lib/phone'
 import { toast } from 'sonner'
@@ -51,6 +53,36 @@ export default function CompletePurchasePage() {
   const [generatedCredentials, setGeneratedCredentials] = useState<{email: string, password: string} | null>(null)
   const [ftpCredentials, setFtpCredentials] = useState<{ ftp_username?: string; ftp_password?: string; ftp_host?: string } | null>(null)
   const [showFtpAccordion, setShowFtpAccordion] = useState(false)
+  const confettiFired = useRef(false)
+
+  // Confeti al entrar en estado "done" (una sola vez)
+  useEffect(() => {
+    if (state !== 'done' || confettiFired.current) return
+    confettiFired.current = true
+    const colors = ['#22d3ee', '#ffffff', '#eab308', '#0ea5e9']
+    confetti({
+      particleCount: 120,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors,
+    })
+    setTimeout(() => {
+      confetti({
+        particleCount: 60,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0.2, y: 0.7 },
+        colors,
+      })
+      confetti({
+        particleCount: 60,
+        angle: 120,
+        spread: 55,
+        origin: { x: 0.8, y: 0.7 },
+        colors,
+      })
+    }, 200)
+  }, [state])
 
   // Cargar datos de la compra (session_id para Stripe Checkout/PayPal, payment_intent para Stripe Elements)
   useEffect(() => {
@@ -764,108 +796,137 @@ export default function CompletePurchasePage() {
             </motion.div>
           )}
 
-          {/* ==================== DONE – Página de éxito post-pago ==================== */}
+          {/* ==================== DONE – Página de éxito post-pago (Efecto WOW) ==================== */}
           {state === 'done' && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-center py-6 max-w-lg mx-auto"
+              transition={{ duration: 0.4 }}
+              className="py-8 max-w-2xl mx-auto text-center"
             >
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }} className="text-7xl mb-4">🎉</motion.div>
-              <h1 className="text-2xl md:text-3xl font-black text-green-400 mb-2">
-                ¡Pago confirmado! Tu acceso está listo
+              {/* Header de éxito: checkmark animado + título + subtítulo recibo */}
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-cyan-500/20 border-2 border-cyan-400 mb-6"
+              >
+                <Check className="w-14 h-14 text-cyan-400" strokeWidth={2.5} />
+              </motion.div>
+              <h1 className="text-3xl md:text-4xl font-black text-white mb-2">
+                ¡Todo listo! Eres oficialmente parte de Bear Beat.
               </h1>
-              <p className="text-gray-400 mb-8">Elige cómo quieres descargar</p>
+              <p className="text-zinc-400 text-lg mb-10">
+                Hemos enviado tu recibo a <strong className="text-white">{generatedCredentials?.email || email}</strong>.
+              </p>
 
-              {/* Opción A: Descargar por Web (principal) */}
-              <Link href="/contenido" className="block mb-4">
-                <button className="w-full bg-bear-blue text-bear-black font-black text-xl py-5 rounded-2xl hover:bg-bear-blue/90 transition-colors shadow-lg">
-                  🌐 Descargar por Web
-                </button>
-              </Link>
-              <p className="text-xs text-gray-500 mb-6">Video a video desde el navegador</p>
+              {/* User Badge: Avatar (iniciales) + Email + Miembro PRO */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="flex items-center justify-center gap-3 mb-10"
+              >
+                <div className="flex items-center gap-3 bg-zinc-900/80 border border-zinc-700/50 rounded-xl px-4 py-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-amber-500 flex items-center justify-center text-white font-black text-sm shrink-0">
+                    {(generatedCredentials?.email || email || 'U').slice(0, 1).toUpperCase()}
+                  </div>
+                  <span className="text-zinc-300 font-mono text-sm truncate max-w-[180px]">{generatedCredentials?.email || email}</span>
+                  <span className="bg-gradient-to-r from-amber-500/90 to-cyan-500/90 text-black text-xs font-bold px-2.5 py-1 rounded-full shrink-0">
+                    Miembro PRO
+                  </span>
+                </div>
+              </motion.div>
 
-              {/* Opción B: Datos FTP (acordeón) */}
-              <div className="mb-6">
+              {/* Opción A: CTA Biblioteca (Web) – tarjeta destacada */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mb-6"
+              >
+                <p className="text-zinc-400 text-sm mb-3">Quiero descargar video por video</p>
+                <Link href="/contenido" className="block">
+                  <button className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-black text-lg py-5 rounded-2xl transition-all shadow-lg shadow-cyan-500/25 hover:shadow-cyan-400/30 flex items-center justify-center gap-2">
+                    IR A LA BIBLIOTECA (WEB) <ExternalLink className="w-5 h-5" />
+                  </button>
+                </Link>
+              </motion.div>
+
+              {/* Opción B: Credenciales FTP – estilo developer */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="mb-6"
+              >
                 <button
                   type="button"
                   onClick={() => setShowFtpAccordion(!showFtpAccordion)}
-                  className="w-full bg-white/5 border-2 border-bear-blue/40 text-white font-bold py-4 px-4 rounded-2xl hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-zinc-950 border border-zinc-700/60 text-zinc-300 font-bold py-4 px-4 rounded-xl hover:bg-zinc-900/80 transition-colors flex items-center justify-center gap-2"
                 >
-                  📁 Datos FTP
-                  <span className="text-xl">{showFtpAccordion ? '▲' : '▼'}</span>
+                  <Lock className="w-4 h-4 text-cyan-500" />
+                  Credenciales FTP Privadas
+                  <span className="text-lg text-cyan-500">{showFtpAccordion ? '▲' : '▼'}</span>
                 </button>
                 {showFtpAccordion && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-3 bg-black/40 rounded-xl p-4 text-left overflow-hidden"
+                    className="mt-3 bg-zinc-950 border border-cyan-500/30 rounded-xl p-5 text-left overflow-hidden"
                   >
+                    <p className="text-zinc-500 text-xs mb-4">Guarda estos datos en un lugar seguro.</p>
                     {ftpCredentials?.ftp_username ? (
-                      <>
-                        <p className="text-xs text-gray-400 mb-3">Guarda estos datos por si el email tarda en llegar:</p>
-                        <div className="space-y-3 text-sm">
-                          <div className="flex flex-wrap gap-2 items-center justify-between">
-                            <span className="text-gray-500 shrink-0">Host:</span>
-                            <span className="font-mono text-white break-all flex-1 min-w-0">{ftpCredentials.ftp_host || `${ftpCredentials.ftp_username}.your-storagebox.de`}</span>
-                            <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_host || ''); toast.success('Copiado') }} className="text-bear-blue text-xs font-bold shrink-0">Copiar</button>
-                          </div>
-                          <div className="flex flex-wrap gap-2 items-center justify-between">
-                            <span className="text-gray-500 shrink-0">Usuario:</span>
-                            <span className="font-mono text-white flex-1 min-w-0">{ftpCredentials.ftp_username}</span>
-                            <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_username ?? ''); toast.success('Copiado') }} className="text-bear-blue text-xs font-bold shrink-0">Copiar</button>
-                          </div>
-                          <div className="flex flex-wrap gap-2 items-center justify-between">
-                            <span className="text-gray-500 shrink-0">Contraseña:</span>
-                            <span className="font-mono text-white flex-1 min-w-0 truncate">{ftpCredentials.ftp_password}</span>
-                            <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_password || ''); toast.success('Copiado') }} className="text-bear-blue text-xs font-bold shrink-0">Copiar</button>
-                          </div>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-zinc-500 text-xs font-mono w-16 shrink-0">Host</span>
+                          <span className="font-mono text-cyan-300 text-sm break-all flex-1 min-w-0">{ftpCredentials.ftp_host || `${ftpCredentials.ftp_username}.your-storagebox.de`}</span>
+                          <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_host || ''); toast.success('Copiado') }} className="p-1.5 rounded text-zinc-500 hover:text-cyan-400 hover:bg-zinc-800 shrink-0"><Copy className="w-4 h-4" /></button>
                         </div>
-                      </>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-zinc-500 text-xs font-mono w-16 shrink-0">User</span>
+                          <span className="font-mono text-cyan-300 text-sm flex-1 min-w-0">{ftpCredentials.ftp_username}</span>
+                          <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_username ?? ''); toast.success('Copiado') }} className="p-1.5 rounded text-zinc-500 hover:text-cyan-400 hover:bg-zinc-800 shrink-0"><Copy className="w-4 h-4" /></button>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-zinc-500 text-xs font-mono w-16 shrink-0">Pass</span>
+                          <span className="font-mono text-cyan-300 text-sm truncate flex-1 min-w-0">{ftpCredentials.ftp_password}</span>
+                          <button type="button" onClick={() => { navigator.clipboard.writeText(ftpCredentials.ftp_password || ''); toast.success('Copiado') }} className="p-1.5 rounded text-zinc-500 hover:text-cyan-400 hover:bg-zinc-800 shrink-0"><Copy className="w-4 h-4" /></button>
+                        </div>
+                      </div>
                     ) : (
-                      <p className="text-gray-400 text-sm">Tus credenciales FTP llegarán por email. También las verás en tu panel.</p>
+                      <p className="text-zinc-500 text-sm">Tus credenciales FTP llegarán por email. También las verás en tu panel.</p>
                     )}
                   </motion.div>
                 )}
-              </div>
+              </motion.div>
 
-              {/* Cuenta: ALERTA VISUAL para usuario nuevo (contraseña autogenerada) */}
-              {generatedCredentials?.password && generatedCredentials.password !== '(tu contraseña actual)' ? (
-                <div className="bg-amber-500/15 border-2 border-amber-500/50 rounded-xl p-5 text-left mb-4">
-                  <p className="text-amber-400 font-bold text-sm mb-1">🔐 Guarda estos datos</p>
-                  <p className="text-xs text-gray-400 mb-3">También te los enviamos por email.</p>
-                  <div className="space-y-3 mb-4">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-0.5">Email</p>
-                      <p className="text-white font-mono text-sm break-all">{generatedCredentials.email || email}</p>
+              {/* Contraseña autogenerada (solo si es usuario nuevo) */}
+              {generatedCredentials?.password && generatedCredentials.password !== '(tu contraseña actual)' && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="bg-amber-500/10 border border-amber-500/40 rounded-xl p-4 text-left mb-6"
+                >
+                  <p className="text-amber-400 font-bold text-sm mb-2">🔐 Guarda estos datos</p>
+                  <p className="text-zinc-400 text-xs mb-3">También te los enviamos por email.</p>
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-zinc-500 text-xs w-14">Email</span>
+                      <span className="font-mono text-white text-sm break-all flex-1">{generatedCredentials.email || email}</span>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-500 mb-0.5">Contraseña</p>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-white text-sm bg-black/30 px-2 py-1 rounded flex-1 min-w-0 truncate">{generatedCredentials.password}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(generatedCredentials.password)
-                            toast.success('Contraseña copiada al portapapeles')
-                          }}
-                          className="bg-bear-blue text-bear-black font-black text-sm px-4 py-2 rounded-lg shrink-0"
-                        >
-                          Copiar Contraseña
-                        </button>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-zinc-500 text-xs w-14">Contraseña</span>
+                      <span className="font-mono text-white text-sm bg-black/30 px-2 py-1 rounded flex-1 truncate">{generatedCredentials.password}</span>
+                      <button type="button" onClick={() => { navigator.clipboard.writeText(generatedCredentials.password); toast.success('Copiado') }} className="p-1.5 rounded text-zinc-500 hover:text-cyan-400"><Copy className="w-4 h-4" /></button>
                     </div>
                   </div>
-                  <p className="text-xs text-amber-200/90">Si cierras esta pestaña sin copiarla, podrás recuperar el acceso por email. Guárdala para entrar cuando quieras.</p>
-                </div>
-              ) : (
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-left mb-4">
-                  <p className="text-gray-400 font-bold text-sm mb-1">🔐 Tu cuenta</p>
-                  <p className="text-xs text-gray-500">Email: <span className="text-white font-mono break-all">{generatedCredentials?.email || email}</span></p>
-                </div>
+                  <p className="text-amber-200/80 text-xs">Si cierras sin copiarla, podrás recuperar el acceso por email.</p>
+                </motion.div>
               )}
 
-              <Link href="/dashboard" className="text-sm text-gray-500 hover:text-bear-blue">
+              <Link href="/dashboard" className="text-sm text-zinc-500 hover:text-cyan-400 transition-colors">
                 Ir a Mi Panel →
               </Link>
             </motion.div>

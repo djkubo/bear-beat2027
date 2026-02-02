@@ -170,12 +170,39 @@ async function main() {
     }
   }
 
-  console.log('\n✅ Listo. Haz un Manual Deploy en Render para que el build use las nuevas variables.')
+  // Disparar deploy para que el build use las nuevas variables (NEXT_PUBLIC_* se inyectan en build)
+  console.log('\n🚀 Disparando deploy en Render...')
+  try {
+    const deployRes = await fetch(`${BASE}/services/${serviceId}/deploys`, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify({}),
+    })
+    if (deployRes.ok) {
+      const text = await deployRes.text()
+      let deployId = null
+      if (text) {
+        try {
+          const deployData = JSON.parse(text)
+          deployId = deployData.id ?? deployData.deploy?.id
+        } catch (_) {}
+      }
+      console.log('   ✅ Deploy iniciado.' + (deployId ? ` ID: ${deployId}` : ''))
+      console.log('   En Render → Deploys verás el build en curso. Las NEXT_PUBLIC_* ya están en Environment.')
+    } else {
+      console.warn('   ⚠️ No se pudo disparar deploy:', deployRes.status, await deployRes.text())
+      console.log('   Haz un Manual Deploy en Render para que el build use las nuevas variables.')
+    }
+  } catch (e) {
+    console.warn('   ⚠️ Error al disparar deploy:', e.message)
+    console.log('   Haz un Manual Deploy en Render para que el build use las nuevas variables.')
+  }
+
   const bunnyPushed = vars.filter((v) => v.key.startsWith('BUNNY_') || v.key === 'NEXT_PUBLIC_BUNNY_CDN_URL').length
   if (bunnyPushed) {
     console.log('   🐰 Bunny:', bunnyPushed, 'variable(s) subidas (demos/descargas por CDN).')
   } else {
-    console.log('   Para demos por Bunny: añade BUNNY_CDN_URL=https://bear-beat.b-cdn.net (o tu Pull Zone) en .env.local y vuelve a ejecutar: npm run deploy:env')
+    console.log('   Para demos por Bunny: añade BUNNY_CDN_URL en .env.local y vuelve a ejecutar: npm run deploy:env')
   }
 }
 

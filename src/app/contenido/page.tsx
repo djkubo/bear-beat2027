@@ -61,12 +61,23 @@ export default function ContenidoPage() {
   const [demoError, setDemoError] = useState(false)
   const [cdnBaseUrl, setCdnBaseUrl] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const expandedSectionRef = useRef<HTMLDivElement>(null)
   const inventory = useVideoInventory()
 
   useEffect(() => {
     setPosterError(false)
     setDemoError(false)
   }, [selectedVideo?.id])
+
+  // Al expandir una carpeta, hacer scroll suave hasta la lista de videos para que se vea que se abrió
+  useEffect(() => {
+    if (expandedGenre && expandedSectionRef.current) {
+      const t = setTimeout(() => {
+        expandedSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 150)
+      return () => clearTimeout(t)
+    }
+  }, [expandedGenre])
 
   useEffect(() => {
     trackPageView('contenido')
@@ -171,8 +182,8 @@ export default function ContenidoPage() {
           </Link>
           <div className="flex items-center gap-3">
             {hasAccess ? (
-              <Link href="/dashboard" className="text-sm font-medium text-green-400">
-                Acceso activo
+              <Link href="/dashboard" className="text-sm font-medium text-bear-blue hover:underline">
+                Mi Panel
               </Link>
             ) : (
               <Link href="/checkout?pack=enero-2026">
@@ -274,6 +285,7 @@ export default function ContenidoPage() {
             <AnimatePresence>
               {expandedGenre && (
                 <motion.div
+                  ref={expandedSectionRef}
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -283,7 +295,7 @@ export default function ContenidoPage() {
                     .filter((g) => g.id === expandedGenre)
                     .map((genre) => (
                       <div key={genre.id} className="max-h-[420px] overflow-y-auto">
-                        {genre.videos.map((video, i) => (
+                        {genre.videos.map((video) => (
                           <div
                             key={video.id}
                             className={`flex items-center gap-3 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer transition-colors ${
@@ -291,9 +303,17 @@ export default function ContenidoPage() {
                             }`}
                             onClick={() => handlePreview(video)}
                           >
-                            <span className="text-zinc-500 font-mono text-sm w-6">
-                              {String(i + 1).padStart(2, '0')}
-                            </span>
+                            <button
+                              type="button"
+                              className="p-2 rounded-lg bg-bear-blue/20 text-bear-blue hover:bg-bear-blue/30 transition shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handlePreview(video)
+                              }}
+                              aria-label="Reproducir demo"
+                            >
+                              <Play className="h-4 w-4" />
+                            </button>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-white truncate">{video.artist}</p>
                               <p className="text-sm text-gray-500 truncate">{video.title}</p>
@@ -310,34 +330,21 @@ export default function ContenidoPage() {
                                 </span>
                               )}
                             </div>
-                            <div className="flex gap-1 shrink-0">
-                              <button
-                                type="button"
-                                className="p-2 rounded-lg bg-bear-blue/20 text-bear-blue hover:bg-bear-blue/30 transition"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handlePreview(video)
-                                }}
-                                aria-label="Ver demo"
-                              >
-                                <Play className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDownloadAttempt(video)
-                                }}
-                                className={`p-2 rounded-lg transition ${
-                                  hasAccess
-                                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                                    : 'bg-zinc-700/50 text-zinc-400 hover:bg-zinc-600/50'
-                                }`}
-                                aria-label="Descargar"
-                              >
-                                <Download className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDownloadAttempt(video)
+                              }}
+                              className={`p-2 rounded-lg transition shrink-0 ${
+                                hasAccess
+                                  ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                  : 'bg-zinc-700/50 text-zinc-400 hover:bg-zinc-600/50'
+                              }`}
+                              aria-label="Descargar"
+                            >
+                              <Download className="h-4 w-4" />
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -347,155 +354,243 @@ export default function ContenidoPage() {
             </AnimatePresence>
           </div>
 
-          {/* SIDEBAR STICKY – Preview + Oferta + Testimonio */}
+          {/* SIDEBAR: Pro = Panel de Detalles (utilidad); Free = Preview + Oferta + Testimonio (venta) */}
           <aside className="space-y-6">
-            {/* Reproductor demo */}
             <div className="lg:sticky lg:top-24 space-y-6">
-              {selectedVideo ? (
-                <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4">
-                  <h3 className="font-bold text-white mb-3 flex items-center gap-2">
-                    <Play className="h-4 w-4 text-bear-blue" />
-                    Preview Demo
-                  </h3>
-                  <div
-                    className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4 select-none"
-                    onContextMenu={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      if (!hasAccess) setShowPaywall(true)
-                    }}
-                    onDragStart={(e) => e.preventDefault()}
-                  >
-                    {selectedVideo.thumbnailUrl && !posterError ? (
-                      <img
-                        src={selectedVideo.thumbnailUrl}
-                        alt=""
-                        className="absolute inset-0 w-full h-full object-cover"
-                        onError={() => setPosterError(true)}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-br from-bear-blue/20 via-zinc-900 to-purple-900/20 flex items-center justify-center">
-                        <div className="w-16 h-16 rounded-full bg-bear-blue/20 flex items-center justify-center">
-                          <Play className="h-8 w-8 text-bear-blue ml-1" />
+              {hasAccess ? (
+                /* ---------- USUARIO PRO: Panel de Utilidad / Reproducción ---------- */
+                selectedVideo ? (
+                  <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4">
+                    {/* Reproductor */}
+                    <div
+                      className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4 select-none"
+                      onContextMenu={(e) => e.preventDefault()}
+                      onDragStart={(e) => e.preventDefault()}
+                    >
+                      {selectedVideo.thumbnailUrl && !posterError ? (
+                        <img
+                          src={selectedVideo.thumbnailUrl}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={() => setPosterError(true)}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-bear-blue/20 via-zinc-900 to-purple-900/20 flex items-center justify-center">
+                          <div className="w-16 h-16 rounded-full bg-bear-blue/20 flex items-center justify-center">
+                            <Play className="h-8 w-8 text-bear-blue ml-1" />
+                          </div>
+                        </div>
+                      )}
+                      {(() => {
+                        const demoUrl = getDemoCdnUrl(selectedVideo.path, cdnBaseUrl)
+                        if (demoError || !demoUrl) return null
+                        return (
+                          <video
+                            ref={videoRef}
+                            key={selectedVideo.path}
+                            src={demoUrl}
+                            className="relative z-10 w-full h-full object-contain"
+                            controls
+                            controlsList="nodownload nofullscreen noplaybackrate noremoteplayback"
+                            disablePictureInPicture
+                            disableRemotePlayback
+                            playsInline
+                            draggable={false}
+                            autoPlay
+                            preload="metadata"
+                            onContextMenu={(e) => e.preventDefault()}
+                            onError={() => setDemoError(true)}
+                            onLoadedMetadata={(e) => {
+                              const v = e.currentTarget
+                              if (v) v.volume = 1
+                            }}
+                          />
+                        )
+                      })()}
+                      <div className="absolute top-2 right-2 z-10">
+                        <span className="bg-red-500/90 px-2 py-0.5 rounded text-xs font-bold">DEMO</span>
+                      </div>
+                    </div>
+                    {/* Meta datos: título, artista, grid BPM / Key / Peso */}
+                    <h3 className="text-lg font-bold text-white mb-1 truncate">{selectedVideo.title}</h3>
+                    <p className="text-sm text-gray-400 mb-3 truncate">{selectedVideo.artist}</p>
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      {selectedVideo.bpm != null && selectedVideo.bpm !== '' && (
+                        <div className="rounded-lg bg-zinc-800/80 px-3 py-2 text-center">
+                          <p className="text-xs text-zinc-500 uppercase tracking-wide">BPM</p>
+                          <p className="text-sm font-mono font-bold text-cyan-400">{selectedVideo.bpm}</p>
+                        </div>
+                      )}
+                      {selectedVideo.key != null && selectedVideo.key !== '' && (
+                        <div className="rounded-lg bg-zinc-800/80 px-3 py-2 text-center">
+                          <p className="text-xs text-zinc-500 uppercase tracking-wide">Key</p>
+                          <p className="text-sm font-mono font-bold text-cyan-400">{selectedVideo.key}</p>
+                        </div>
+                      )}
+                      <div className="rounded-lg bg-zinc-800/80 px-3 py-2 text-center">
+                        <p className="text-xs text-zinc-500 uppercase tracking-wide">Peso</p>
+                        <p className="text-sm font-mono font-medium text-zinc-400">{selectedVideo.sizeFormatted}</p>
+                      </div>
+                    </div>
+                    {/* Acción principal: descarga directa */}
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadAttempt(selectedVideo)}
+                      className="w-full py-4 rounded-xl bg-cyan-500 text-black font-black text-base hover:bg-cyan-400 transition flex items-center justify-center gap-2"
+                    >
+                      <Download className="h-5 w-5" />
+                      DESCARGAR VIDEO
+                    </button>
+                  </div>
+                ) : (
+                  /* Estado vacío Pro: icono + texto + tip FTP */
+                  <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-8 text-center">
+                    <Folder className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
+                    <p className="text-sm text-zinc-400 mb-2">
+                      Selecciona un video de la lista para ver la vista previa y descargar.
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      💡 Puedes descargar carpetas completas desde el Dashboard (FTP).
+                    </p>
+                  </div>
+                )
+              ) : (
+                /* ---------- USUARIO FREE: Preview + Oferta + Testimonio (venta) ---------- */
+                <>
+                  {selectedVideo ? (
+                    <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4">
+                      <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+                        <Play className="h-4 w-4 text-bear-blue" />
+                        Preview Demo
+                      </h3>
+                      <div
+                        className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4 select-none"
+                        onContextMenu={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setShowPaywall(true)
+                        }}
+                        onDragStart={(e) => e.preventDefault()}
+                      >
+                        {selectedVideo.thumbnailUrl && !posterError ? (
+                          <img
+                            src={selectedVideo.thumbnailUrl}
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={() => setPosterError(true)}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-br from-bear-blue/20 via-zinc-900 to-purple-900/20 flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-full bg-bear-blue/20 flex items-center justify-center">
+                              <Play className="h-8 w-8 text-bear-blue ml-1" />
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                          <p className="text-white/20 text-2xl font-black rotate-[-25deg]">BEAR BEAT</p>
+                        </div>
+                        {(() => {
+                          const demoUrl = getDemoCdnUrl(selectedVideo.path, cdnBaseUrl)
+                          if (demoError || !demoUrl) return null
+                          return (
+                            <video
+                              ref={videoRef}
+                              key={selectedVideo.path}
+                              src={demoUrl}
+                              className="relative z-10 w-full h-full object-contain"
+                              controls
+                              controlsList="nodownload nofullscreen noplaybackrate noremoteplayback"
+                              disablePictureInPicture
+                              disableRemotePlayback
+                              playsInline
+                              draggable={false}
+                              autoPlay
+                              preload="metadata"
+                              onContextMenu={(e) => e.preventDefault()}
+                              onError={() => setDemoError(true)}
+                              onLoadedMetadata={(e) => {
+                                const v = e.currentTarget
+                                if (v) v.volume = 1
+                              }}
+                            />
+                          )
+                        })()}
+                        <div className="absolute top-2 right-2 z-10">
+                          <span className="bg-red-500/90 px-2 py-0.5 rounded text-xs font-bold">DEMO</span>
                         </div>
                       </div>
-                    )}
-                    {!hasAccess && (
-                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                        <p className="text-white/20 text-2xl font-black rotate-[-25deg]">BEAR BEAT</p>
+                      <p className="font-bold text-white truncate">{selectedVideo.artist}</p>
+                      <p className="text-sm text-gray-500 truncate">{selectedVideo.title}</p>
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {selectedVideo.key && (
+                          <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-300">
+                            {selectedVideo.key}
+                          </span>
+                        )}
+                        {selectedVideo.bpm && (
+                          <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-300">
+                            {selectedVideo.bpm} BPM
+                          </span>
+                        )}
                       </div>
-                    )}
-                    {(() => {
-                      const demoUrl = getDemoCdnUrl(selectedVideo.path, cdnBaseUrl)
-                      if (demoError || !demoUrl) return null
-                      return (
-                        <video
-                          ref={videoRef}
-                          key={selectedVideo.path}
-                          src={demoUrl}
-                          className="relative z-10 w-full h-full object-contain"
-                          controls
-                          controlsList="nodownload nofullscreen noplaybackrate noremoteplayback"
-                          disablePictureInPicture
-                          disableRemotePlayback
-                          playsInline
-                          draggable={false}
-                          autoPlay
-                          muted
-                          preload="metadata"
-                          onContextMenu={(e) => e.preventDefault()}
-                          onError={() => setDemoError(true)}
-                        />
-                      )
-                    })()}
-                    <div className="absolute top-2 right-2 z-10">
-                      <span className="bg-red-500/90 px-2 py-0.5 rounded text-xs font-bold">
-                        DEMO
-                      </span>
+                      <button
+                        onClick={() => setShowPaywall(true)}
+                        className="w-full mt-3 h-11 rounded-xl bg-bear-blue text-bear-black font-black hover:brightness-110 transition flex items-center justify-center gap-2"
+                      >
+                        <Lock className="h-4 w-4" />
+                        Desbloquear descarga
+                      </button>
                     </div>
-                  </div>
-                  <p className="font-bold text-white truncate">{selectedVideo.artist}</p>
-                  <p className="text-sm text-gray-500 truncate">{selectedVideo.title}</p>
-                  <div className="flex gap-2 mt-2 flex-wrap">
-                    {selectedVideo.key && (
-                      <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-300">
-                        {selectedVideo.key}
-                      </span>
-                    )}
-                    {selectedVideo.bpm && (
-                      <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-300">
-                        {selectedVideo.bpm} BPM
-                      </span>
-                    )}
-                  </div>
-                  {hasAccess ? (
-                    <button
-                      onClick={() => handleDownloadAttempt(selectedVideo)}
-                      className="w-full mt-3 h-11 rounded-xl bg-green-500/20 text-green-400 font-bold border border-green-500/40 hover:bg-green-500/30 transition flex items-center justify-center gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Descargar
-                    </button>
                   ) : (
-                    <button
-                      onClick={() => setShowPaywall(true)}
-                      className="w-full mt-3 h-11 rounded-xl bg-bear-blue text-bear-black font-black hover:brightness-110 transition flex items-center justify-center gap-2"
-                    >
-                      <Lock className="h-4 w-4" />
-                      Desbloquear descarga
-                    </button>
+                    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-8 text-center">
+                      <Music2 className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500">Selecciona un video</p>
+                      <p className="text-xs text-gray-600">para ver la preview</p>
+                    </div>
                   )}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-8 text-center">
-                  <Music2 className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500">Selecciona un video</p>
-                  <p className="text-xs text-gray-600">para ver la preview</p>
-                </div>
-              )}
 
-              {/* Caja oferta – sticky */}
-              {!hasAccess && (
-                <div className="rounded-2xl border-2 border-bear-blue/60 bg-bear-blue/5 p-6 shadow-[0_0_30px_rgba(8,225,247,0.08)]">
-                  <h3 className="font-black text-white text-lg mb-1">Acceso Completo</h3>
-                  <p className="text-3xl md:text-4xl font-black text-bear-blue mb-4">$350 MXN</p>
-                  <ul className="space-y-2 mb-5 text-sm text-gray-300">
-                    {[
-                      `${totalVideos.toLocaleString()} videos HD`,
-                      'Descarga ilimitada',
-                      'Acceso FTP incluido',
-                      'Soporte 24/7',
-                      'Garantía 30 días',
-                    ].map((item, i) => (
-                      <li key={i} className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-green-500 shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('sidebar_main_cta', 'contenido')}>
-                    <button className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition">
-                      DESBLOQUEAR TODO AHORA →
-                    </button>
-                  </Link>
-                </div>
-              )}
+                  {/* Caja oferta – solo Free */}
+                  <div className="rounded-2xl border-2 border-bear-blue/60 bg-bear-blue/5 p-6 shadow-[0_0_30px_rgba(8,225,247,0.08)]">
+                    <h3 className="font-black text-white text-lg mb-1">Acceso Completo</h3>
+                    <p className="text-3xl md:text-4xl font-black text-bear-blue mb-4">$350 MXN</p>
+                    <ul className="space-y-2 mb-5 text-sm text-gray-300">
+                      {[
+                        `${totalVideos.toLocaleString()} videos HD`,
+                        'Descarga ilimitada',
+                        'Acceso FTP incluido',
+                        'Soporte 24/7',
+                        'Garantía 30 días',
+                      ].map((item, i) => (
+                        <li key={i} className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-500 shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('sidebar_main_cta', 'contenido')}>
+                      <button className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition">
+                        DESBLOQUEAR TODO AHORA →
+                      </button>
+                    </Link>
+                  </div>
 
-              {/* Testimonio DJ Carlos – compacto */}
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="h-9 w-9 rounded-full bg-bear-blue/20 flex items-center justify-center font-bold text-bear-blue text-sm">
-                    C
+                  {/* Testimonio DJ Carlos – solo Free */}
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="h-9 w-9 rounded-full bg-bear-blue/20 flex items-center justify-center font-bold text-bear-blue text-sm">
+                        C
+                      </div>
+                      <div>
+                        <p className="font-bold text-white text-sm">DJ Carlos · CDMX</p>
+                        <p className="text-yellow-500 text-xs">★★★★★</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400 italic leading-relaxed">
+                      &quot;Pagué y en 5 minutos ya estaba descargando por FTP. ¡Increíble calidad!&quot;
+                    </p>
                   </div>
-                  <div>
-                    <p className="font-bold text-white text-sm">DJ Carlos · CDMX</p>
-                    <p className="text-yellow-500 text-xs">★★★★★</p>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-400 italic leading-relaxed">
-                  &quot;Pagué y en 5 minutos ya estaba descargando por FTP. ¡Increíble calidad!&quot;
-                </p>
-              </div>
+                </>
+              )}
             </div>
           </aside>
         </div>
