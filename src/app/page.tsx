@@ -230,12 +230,6 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl }: { video: 
   )
 }
 
-const GENRE_ICONS: Record<string, string> = {
-  bachata: '💃', cubaton: '🇨🇺', cumbia: '🎺', dembow: '🔥',
-  merengue: '🎹', reggaeton: '🎤', salsa: '💫', pop: '🎵',
-  rock: '🎸', electronica: '💿', default: '🎬'
-}
-
 /** Tarjeta de video: siempre muestra fondo + icono de play (sin depender de portadas que fallen) */
 function VideoCard({ video, onSelect }: { video: Video; onSelect: () => void }) {
   const [thumbError, setThumbError] = useState(false)
@@ -643,14 +637,11 @@ export default function HomePage() {
                 href="/contenido"
                 className="flex items-center justify-between gap-4 p-4 bg-white/5 border border-bear-blue/20 rounded-xl hover:border-bear-blue/50 hover:bg-white/10 transition-colors text-left"
               >
-                <div className="flex items-center gap-4 min-w-0">
-                  <span className="text-3xl shrink-0">{GENRE_ICONS[genre.id] || GENRE_ICONS.default}</span>
-                  <div className="min-w-0">
-                    <h3 className="font-black text-bear-blue truncate">{genre.name}</h3>
-                    <p className="text-sm text-gray-400">
-                      {genre.videoCount} videos · {genre.totalSizeFormatted}
-                    </p>
-                  </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-black text-bear-blue truncate">{genre.name}</h3>
+                  <p className="text-sm text-gray-400">
+                    {genre.videoCount} videos · {genre.totalSizeFormatted}
+                  </p>
                 </div>
                 <span className="text-bear-blue text-xl shrink-0" aria-hidden>▶</span>
               </Link>
@@ -747,40 +738,6 @@ export default function HomePage() {
           </div>
         </section>
       )}
-
-      {/* ==========================================
-          PREVIEW DE VIDEOS - 6 TARJETAS + PDF
-          ========================================== */}
-      <section className="py-12 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl md:text-4xl font-black mb-2">
-              👀 Mira lo que vas a recibir
-            </h2>
-            <p className="text-gray-400 text-sm md:text-base">
-              Demos del pack. Haz clic para ver.
-            </p>
-          </div>
-
-          {/* Grid de 6 tarjetas de video (demos principales) - portada o placeholder */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-            {genres.flatMap((g) => g.videos).slice(0, 6).map((video) => (
-              <VideoCard key={video.id} video={video} onSelect={() => setSelectedVideo(video)} />
-            ))}
-          </div>
-
-          <p className="text-center">
-            <a
-              href="/api/tracks-pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-gray-500 hover:text-bear-blue transition underline underline-offset-2"
-            >
-              Ver listado completo de tracks (PDF)
-            </a>
-          </p>
-        </div>
-      </section>
 
       {/* ==========================================
           ¿ES BEAR BEAT PARA TI? – 2 columnas tipo card, iconos grandes

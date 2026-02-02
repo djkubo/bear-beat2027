@@ -48,11 +48,6 @@ interface PackInfo {
   genreCount: number
 }
 
-const GENRE_ICONS: Record<string, string> = {
-  bachata: '💃', cubaton: '🇨🇺', cumbia: '🎺', dembow: '🔥',
-  merengue: '🎹', reggaeton: '🎤', salsa: '💫', default: '🎬'
-}
-
 export default function ContenidoPage() {
   const [genres, setGenres] = useState<Genre[]>([])
   const [packInfo, setPackInfo] = useState<PackInfo | null>(null)
@@ -287,16 +282,13 @@ export default function ContenidoPage() {
                   onClick={() => setExpandedGenre(expandedGenre === genre.id ? null : genre.id)}
                   className="w-full p-5 flex items-center justify-between hover:bg-white/5"
                 >
-                  <div className="flex items-center gap-4">
-                    <span className="text-4xl">{GENRE_ICONS[genre.id] || GENRE_ICONS.default}</span>
-                    <div className="text-left">
-                      <h3 className="font-black text-xl text-bear-blue">{genre.name}</h3>
-                      <p className="text-sm text-gray-500">{genre.videoCount} videos • {genre.totalSizeFormatted}</p>
-                    </div>
+                  <div className="text-left min-w-0 flex-1">
+                    <h3 className="font-black text-xl text-bear-blue">{genre.name}</h3>
+                    <p className="text-sm text-gray-500">{genre.videoCount} videos • {genre.totalSizeFormatted}</p>
                   </div>
                   <motion.span
                     animate={{ rotate: expandedGenre === genre.id ? 90 : 0 }}
-                    className="text-2xl text-bear-blue"
+                    className="text-2xl text-bear-blue shrink-0"
                   >▶</motion.span>
                 </button>
 
