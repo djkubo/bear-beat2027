@@ -76,6 +76,8 @@ Tablas principales: `users`, `packs`, `genres`, `videos`, `purchases`, `pending_
 
 **Ver [DOCUMENTACION_COMPLETA.md](DOCUMENTACION_COMPLETA.md)** para: documentación detallada de cada sección, botón, texto, APIs, flujos y base de datos (nivel referencia completa).
 
+**Ver [docs/INDICE_COMPLETO.md](docs/INDICE_COMPLETO.md)** para: índice maestro (rutas, APIs, BD, variables, scripts, documentos por tema, flujos clave).
+
 ## 🚀 Deploy
 
 **Guía completa:** [docs/DEPLOY_PRODUCCION.md](docs/DEPLOY_PRODUCCION.md) — pasos para llevar todo a producción (verificación local, commit, push, Render, verificación post-deploy, rollback). Índice de documentación: [docs/README_DOCS.md](docs/README_DOCS.md).

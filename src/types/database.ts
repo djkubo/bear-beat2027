@@ -327,5 +327,20 @@ export interface Database {
         }
       }
     }
+    Functions: {
+      match_documents: {
+        Args: {
+          query_embedding: number[]
+          match_threshold?: number
+          match_count?: number
+        }
+        Returns: Array<{
+          id: string
+          content: string
+          metadata: Record<string, unknown>
+          similarity: number
+        }>
+      }
+    }
   }
 }

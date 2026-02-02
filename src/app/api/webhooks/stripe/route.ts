@@ -68,7 +68,8 @@ export async function POST(req: NextRequest) {
     if (email && typeof email === 'string' && email.includes('@')) {
       try {
         const admin = createAdminClient()
-        const { data: existingUser } = await admin.from('users').select('id').eq('email', email).maybeSingle()
+        const { data: existingUserData } = await (admin.from('users') as any).select('id').eq('email', email).maybeSingle()
+        const existingUser = existingUserData as { id: string } | null
         const customerName = (pi.metadata?.customer_name as string) || ''
         if (existingUser?.id) {
           await (admin.auth as any).admin.updateUserById(existingUser.id, { email_confirm: true })
@@ -81,13 +82,13 @@ export async function POST(req: NextRequest) {
             user_metadata: { name: customerName || undefined },
           })
           if (!createErr && newAuth?.user) {
-            await admin.from('users').insert({ id: newAuth.user.id, email, name: customerName || null })
+            await (admin.from('users') as any).insert({ id: newAuth.user.id, email, name: customerName || null })
           } else if (createErr?.message?.includes('already') || createErr?.message?.includes('registered')) {
             const { data: list } = await (admin.auth as any).admin.listUsers({ page: 1, perPage: 1000 })
             const authUser = list?.users?.find((u: { email?: string }) => u.email === email)
             if (authUser?.id) {
               await (admin.auth as any).admin.updateUserById(authUser.id, { email_confirm: true })
-              await admin.from('users').upsert({ id: authUser.id, email, name: customerName || null }, { onConflict: 'id' })
+              await (admin.from('users') as any).upsert({ id: authUser.id, email, name: customerName || null }, { onConflict: 'id' })
             }
           }
         }
@@ -193,7 +194,8 @@ export async function POST(req: NextRequest) {
       if (customerEmail && typeof customerEmail === 'string' && customerEmail.includes('@')) {
         try {
           const admin = createAdminClient()
-          const { data: existingUser } = await admin.from('users').select('id').eq('email', customerEmail).maybeSingle()
+          const { data: existingUserData } = await (admin.from('users') as any).select('id').eq('email', customerEmail).maybeSingle()
+          const existingUser = existingUserData as { id: string } | null
           if (existingUser?.id) {
             await (admin.auth as any).admin.updateUserById(existingUser.id, { email_confirm: true })
             console.log('Usuario existente confirmado:', customerEmail)
@@ -206,7 +208,7 @@ export async function POST(req: NextRequest) {
               user_metadata: { name: customerName || undefined },
             })
             if (!createErr && newAuth?.user) {
-              await admin.from('users').insert({
+              await (admin.from('users') as any).insert({
                 id: newAuth.user.id,
                 email: customerEmail,
                 name: customerName || null,
@@ -217,7 +219,7 @@ export async function POST(req: NextRequest) {
               const authUser = list?.users?.find((u: { email?: string }) => u.email === customerEmail)
               if (authUser?.id) {
                 await (admin.auth as any).admin.updateUserById(authUser.id, { email_confirm: true })
-                await admin.from('users').upsert({ id: authUser.id, email: customerEmail, name: customerName || null }, { onConflict: 'id' })
+                await (admin.from('users') as any).upsert({ id: authUser.id, email: customerEmail, name: customerName || null }, { onConflict: 'id' })
                 console.log('Usuario Auth ya existía, confirmado:', customerEmail)
               }
             }

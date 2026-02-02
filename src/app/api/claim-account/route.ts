@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient()
 
-    const { data: userRow } = await admin.from('users').select('id').eq('email', email.trim()).maybeSingle()
+    const { data } = await (admin.from('users') as any).select('id').eq('email', email.trim()).maybeSingle()
+    const userRow = data as { id: string } | null
     if (!userRow?.id) {
       return NextResponse.json({ error: 'No encontramos una cuenta con ese email' }, { status: 404 })
     }

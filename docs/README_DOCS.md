@@ -2,6 +2,8 @@
 
 Índice de la documentación del proyecto. **Para desplegar a producción:** ver [DEPLOY_PRODUCCION.md](./DEPLOY_PRODUCCION.md).
 
+**Índice completo (todo en un solo lugar):** [INDICE_COMPLETO.md](./INDICE_COMPLETO.md) — rutas, APIs, BD, variables, scripts, documentos por tema, flujos clave.
+
 ---
 
 ## Embudo y producto
@@ -55,8 +57,20 @@
 
 ---
 
+## Chatbot, auth y descargas
+
+| Documento | Descripción |
+|-----------|-------------|
+| [SISTEMA_CHATBOT.md](../SISTEMA_CHATBOT.md) | Chatbot (intents, ManyChat). |
+| [INTEGRACION_MANYCHAT.md](../INTEGRACION_MANYCHAT.md) | ManyChat (webhook, External Request). |
+| [SISTEMA_ATRIBUCION.md](../SISTEMA_ATRIBUCION.md) | Atribución First-Touch (cookie, purchases UTM). |
+| [DOCUMENTACION_COMPLETA.md](../DOCUMENTACION_COMPLETA.md) §6–7, §20 | 3 vías de descarga (Web, Google Drive, FTP), guía paso a paso (FileZilla / Air Explorer), email_confirm, claim-account, RAG. |
+
+---
+
 ## Flujo recomendado para producción
 
 1. Leer [EMBUDO_Y_SECCIONES_A_FONDO.md](./EMBUDO_Y_SECCIONES_A_FONDO.md) para entender el flujo.
 2. Seguir [DEPLOY_PRODUCCION.md](./DEPLOY_PRODUCCION.md) para desplegar.
 3. Usar [AUDITORIA_PRODUCCION_Y_RUNBOOK.md](./AUDITORIA_PRODUCCION_Y_RUNBOOK.md) para variables, monitoreo y rollback.
+4. Consultar [INDICE_COMPLETO.md](./INDICE_COMPLETO.md) para rutas, APIs, BD, variables y scripts.

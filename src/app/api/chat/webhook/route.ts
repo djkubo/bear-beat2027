@@ -59,8 +59,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 2. Búsqueda por similitud en Supabase
-    const { data: matches, error: rpcError } = await supabase.rpc('match_documents', {
+    // 2. Búsqueda por similitud en Supabase (RPC no tipada en cliente genérico)
+    const { data: matches, error: rpcError } = await (supabase as any).rpc('match_documents', {
       query_embedding: queryEmbedding,
       match_threshold: MATCH_THRESHOLD,
       match_count: MATCH_COUNT,

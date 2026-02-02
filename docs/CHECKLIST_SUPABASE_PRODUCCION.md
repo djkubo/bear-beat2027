@@ -119,3 +119,26 @@ Si ya configuraste Supabase (Site URL + Redirect URLs) pero **al ir a /admin te 
 4. Te llevará al panel admin. Tendrás acceso durante **15 minutos** sin tener que iniciar sesión de nuevo.
 
 Si en el paso 1 ves "Token no válido", es que **FIX_ADMIN_SECRET** no está en Render o no coincide con `bearbeat-admin-2027-secreto`. Añádela en Environment y vuelve a intentar.
+
+---
+
+## Aplicar migraciones de base de datos (si faltan)
+
+Si añadiste funcionalidades nuevas (atribución en compras, base vectorial para el chatbot RAG, etc.), asegúrate de que las migraciones estén aplicadas en tu proyecto de Supabase.
+
+**Opción A — Desde Supabase Dashboard**
+
+1. En Supabase: **SQL Editor** (menú izquierda).
+2. Crea una nueva query y pega el contenido de cada archivo (en este orden):
+   - `supabase/migrations/20260130000000_add_purchases_attribution.sql` (columnas utm en `purchases`)
+   - `supabase/migrations/20260130200000_vector_knowledge.sql` (tabla `documents` y función `match_documents` para el chatbot)
+   - `supabase/migrations/20260131000000_add_videos_key_bpm.sql` (si existe)
+3. Ejecuta cada uno con **Run**. Si ya aplicaste alguna antes, puede salir error tipo "column already exists" o "table already exists"; en ese caso ignora y sigue con la siguiente.
+
+**Opción B — Con Supabase CLI (si tienes el proyecto enlazado)**
+
+```bash
+supabase db push
+```
+
+Así se aplican todas las migraciones pendientes. Después del push, el chatbot RAG y el panel de Fuentes de tráfico en /admin usarán la base actualizada.

@@ -6,6 +6,9 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { Database } from '@/types/database'
+
+type UserInsert = Database['public']['Tables']['users']['Insert']
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,13 +52,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No se devolvió el usuario' }, { status: 500 })
     }
 
-    await admin.from('users').upsert(
+    await (admin.from('users') as any).upsert(
       {
         id: newAuth.user.id,
         email: email.trim(),
-        name: name || null,
-        phone: phone || null,
-      },
+        name: name ?? null,
+        phone: phone ?? null,
+      } as UserInsert,
       { onConflict: 'id' }
     )
 

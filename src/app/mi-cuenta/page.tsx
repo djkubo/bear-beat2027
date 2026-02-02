@@ -5,10 +5,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { Lock, Phone, ChevronLeft } from 'lucide-react'
 
 // ==========================================
-// MI CUENTA / MI PERFIL - Ver y editar perfil completo
-// Nombre, Email (solo lectura), Teléfono, Avatar (iniciales)
+// MI CUENTA / MI PERFIL – Dark Mode Premium
 // ==========================================
 
 function getInitials(name: string, email: string): string {
@@ -29,6 +29,13 @@ export default function MiCuentaPage() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
+  const [hasPurchases, setHasPurchases] = useState(false)
+
+  // Cambio de contraseña (Opción A: in-page)
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
 
   useEffect(() => {
     loadProfile()
@@ -56,6 +63,13 @@ export default function MiCuentaPage() {
       } else {
         setName(user.user_metadata?.name || user.email?.split('@')[0] || '')
       }
+
+      const { data: purchases } = await supabase
+        .from('purchases')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1)
+      setHasPurchases(!!purchases?.length)
     } catch (error) {
       console.error('Error cargando perfil:', error)
       toast.error('Error al cargar el perfil')
@@ -81,109 +95,202 @@ export default function MiCuentaPage() {
       if (error) throw error
       toast.success('Perfil actualizado')
     } catch (error: any) {
-      console.error('Error actualizando:', error)
       toast.error(error.message || 'Error al guardar')
     } finally {
       setSaving(false)
     }
   }
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newPassword.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Las contraseñas no coinciden')
+      return
+    }
+    setSavingPassword(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      toast.success('Contraseña actualizada')
+      setNewPassword('')
+      setConfirmPassword('')
+      setShowPasswordForm(false)
+    } catch (error: any) {
+      toast.error(error.message || 'Error al cambiar contraseña')
+    } finally {
+      setSavingPassword(false)
+    }
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-bear-black flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-bear-blue/30 border-t-bear-blue rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <div className="w-12 h-12 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
       </div>
     )
   }
 
   const initials = getInitials(name, email)
+  const displayName = name?.trim() || email?.split('@')[0] || 'Usuario'
 
   return (
-    <div className="min-h-screen bg-bear-black text-white">
-      <header className="py-4 px-4 border-b border-bear-blue/20">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-[#050505] text-white">
+      {/* Header con logo y volver */}
+      <header className="py-4 px-4 border-b border-zinc-800/80">
+        <div className="max-w-xl mx-auto flex items-center justify-between">
+          <Link href="/dashboard" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
+            <ChevronLeft className="w-5 h-5" />
+            <span className="text-sm font-medium">Volver al panel</span>
+          </Link>
           <Link href="/dashboard" className="flex items-center gap-2">
             <Image
               src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png"
               alt="Bear Beat"
-              width={40}
-              height={40}
+              width={32}
+              height={32}
             />
-            <span className="font-bold text-bear-blue">BEAR BEAT</span>
-          </Link>
-          <Link href="/dashboard" className="text-sm text-gray-400 hover:text-bear-blue">
-            ← Volver al panel
+            <span className="font-bold text-cyan-400">BEAR BEAT</span>
           </Link>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto py-12 px-4">
-        <h1 className="text-2xl md:text-3xl font-black mb-2">Mi perfil</h1>
-        <p className="text-gray-400 mb-8">
-          Revisa y edita tu información. Los datos se obtienen de tu cuenta en Supabase (conexión real).
-        </p>
-
-        {/* Avatar / Iniciales */}
-        <div className="flex items-center gap-6 mb-10">
+      <main className="max-w-xl mx-auto py-10 px-4">
+        {/* Avatar + Nombre + Badge */}
+        <div className="flex flex-col items-center mb-10">
           <div
-            className="w-24 h-24 rounded-full bg-bear-blue/30 border-2 border-bear-blue flex items-center justify-center text-3xl font-black text-bear-blue"
+            className="w-24 h-24 rounded-full bg-gradient-to-b from-zinc-800 to-zinc-900 border-2 border-cyan-500 flex items-center justify-center text-3xl font-black text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.25)]"
             aria-hidden
           >
             {initials}
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Foto de perfil</p>
-            <p className="text-xs text-gray-600">
-              Por ahora se muestran tus iniciales. Subida de avatar en una próxima actualización.
-            </p>
-          </div>
+          <h1 className="text-2xl md:text-3xl font-black text-white mt-4">
+            {displayName}
+          </h1>
+          {hasPurchases && (
+            <span className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">
+              Miembro PRO
+            </span>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-bold text-gray-300 mb-2">Nombre completo</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Tu nombre"
-              className="w-full bg-white/5 border-2 border-bear-blue/30 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-bear-blue"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-300 mb-2">Email</label>
-            <input
-              type="email"
-              value={email}
-              readOnly
-              className="w-full bg-white/5 border-2 border-gray-700 rounded-xl px-4 py-3 text-gray-400 cursor-not-allowed"
-              tabIndex={-1}
-              aria-readonly
-            />
-            <p className="text-xs text-gray-500 mt-1">Solo lectura. El email no se puede cambiar aquí.</p>
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-300 mb-2">Teléfono / WhatsApp</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Ej: 55 1234 5678"
-              className="w-full bg-white/5 border-2 border-bear-blue/30 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-bear-blue"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-bear-blue text-bear-black font-black py-4 rounded-xl hover:bg-bear-blue/90 disabled:opacity-50"
-          >
-            {saving ? 'Guardando...' : 'Guardar cambios'}
-          </button>
-        </form>
+        {/* Tarjeta: Datos del perfil */}
+        <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950 p-6 md:p-8 mb-6">
+          <h2 className="text-lg font-bold text-white mb-6">Datos del perfil</h2>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Nombre</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Tu nombre"
+                className="w-full bg-zinc-900/80 border border-zinc-700 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Email</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  value={email}
+                  readOnly
+                  disabled
+                  className="w-full bg-zinc-900/60 border border-zinc-700 rounded-xl px-4 py-3 pr-12 text-zinc-400 cursor-not-allowed"
+                  tabIndex={-1}
+                  aria-readonly
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500" aria-hidden>
+                  <Lock className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Teléfono / WhatsApp</label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Ej: 55 1234 5678"
+                  className="w-full bg-zinc-900/80 border border-zinc-700 rounded-xl pl-4 pr-12 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-colors"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">
+                  <Phone className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-black font-black py-4 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-cyan-500/20"
+            >
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </form>
+        </div>
 
-        <p className="text-sm text-gray-500 mt-6">
-          Para cambiar tu contraseña, cierra sesión y en la pantalla de login usa &quot;Olvidé mi contraseña&quot;.
-        </p>
+        {/* Tarjeta: Seguridad */}
+        <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950 p-6 md:p-8">
+          <h2 className="text-lg font-bold text-white mb-4">Seguridad</h2>
+          {!showPasswordForm ? (
+            <button
+              type="button"
+              onClick={() => setShowPasswordForm(true)}
+              className="w-full py-3 px-4 rounded-xl border border-zinc-700 text-zinc-300 hover:border-cyan-500/50 hover:text-cyan-400 hover:bg-cyan-500/5 transition-colors font-medium"
+            >
+              Cambiar contraseña
+            </button>
+          ) : (
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Nueva contraseña</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  minLength={6}
+                  className="w-full bg-zinc-900/80 border border-zinc-700 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-2">Confirmar contraseña</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repite la contraseña"
+                  minLength={6}
+                  className="w-full bg-zinc-900/80 border border-zinc-700 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordForm(false)
+                    setNewPassword('')
+                    setConfirmPassword('')
+                  }}
+                  className="flex-1 py-3 rounded-xl border border-zinc-700 text-zinc-400 hover:bg-zinc-800/80 transition-colors font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPassword || newPassword.length < 6 || newPassword !== confirmPassword}
+                  className="flex-1 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold disabled:opacity-50 transition-colors"
+                >
+                  {savingPassword ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       </main>
     </div>
   )

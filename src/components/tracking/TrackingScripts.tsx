@@ -10,8 +10,8 @@ const DISABLED = process.env.NEXT_PUBLIC_META_PIXEL_DISABLED === 'true'
 
 declare global {
   interface Window {
-    fbq: (...args: unknown[]) => void
-    _fbq: unknown
+    fbq: any
+    _fbq: any
   }
 }
 

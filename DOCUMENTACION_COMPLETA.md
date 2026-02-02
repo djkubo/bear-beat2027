@@ -257,12 +257,17 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 
 - **Solo logueado.** Redirect a `/login?redirect=/dashboard` si no hay sesión.
 - **Datos:** perfil de `users` (o datos de auth), compras con `pack` y credenciales FTP.
-- **Tabs:** "Web" y "FTP" para alternar instrucciones.
-- **Credenciales FTP:** host = `{ftp_username}.your-storagebox.de` si username contiene `-sub`, si no `NEXT_PUBLIC_FTP_HOST` o fallback; usuario y contraseña de la compra. Botones "Copiar" por campo.
-- **Texto:** "Descarga por navegador", "Ve las previews", "FTP para descarga masiva", etc.
-- **Enlaces:** "⬇️ Descargar Videos" → `/contenido`, "Mi cuenta" → `/mi-cuenta`.
-- **Historial de descargas:** placeholder (sin tabla de descargas por ahora).
-- **Lista de beneficios/pasos** con iconos (Descargar, Ver previews, FTP, Soporte).
+
+### 7.1 Usuario CON compra – Grid 3 vías
+- **Hero:** "¡Hola, [nombre]! Tu [pack] está listo para descarga."
+- **Grid de 3 tarjetas:** (1) Biblioteca Online → IR A LA BIBLIOTECA → `/contenido`; (2) Google Drive → ABRIR CARPETA DRIVE ↗ → `GOOGLE_DRIVE_FOLDER_URL`; (3) Acceso FTP Directo → VER DATOS Y GUÍAS.
+- **Guía de Descarga Paso a Paso (acordeón):** Detalles FTP (Host, Puerto, Usuario, Contraseña + pestañas FileZilla / Air Explorer), Detalles Google Drive, Detalles Web.
+- **Actividad Reciente:** tabla placeholder (Fecha, Acción, Detalle).
+
+### 7.2 Usuario SIN compra (Upsell)
+- **Hero:** "Tu cuenta está creada. Activa tu acceso para empezar a descargar."
+- **CTA:** "Desbloquea el Pack Enero 2026" → `/checkout?pack=enero-2026`.
+- **Vista previa bloqueada:** 3 tarjetas (Biblioteca Online, Google Drive, Acceso FTP) con overlay y candado.
 
 ---
 
@@ -397,10 +402,13 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 | POST | `/api/admin/sync-videos-ftp` | Admin | Sincroniza catálogo desde FTP (Hetzner) a tabla `videos`. Usa `FTP_HOST`, `FTP_USER`, `FTP_PASSWORD` del servidor. Carpeta base: `Videos Enero 2026` (o `FTP_BASE_PATH`). |
 | POST | `/api/push/subscribe` | Sesión | Suscripción push. |
 | POST | `/api/push/send` | Admin | Enviar notificación push. |
-| POST | `/api/chat` | No | Chat widget. |
+| POST | `/api/chat` | No | Chat widget (web). |
+| POST | `/api/chat/webhook` | No | RAG chatbot para ManyChat (External Request). Body: `message`, `userId`. Devuelve formato ManyChat v2. |
+| POST | `/api/auth/create-user` | No | Crea usuario Auth con `email_confirm: true`. Body: `email`, `password`, `name?`, `phone?`. Usado por complete-purchase. |
+| POST | `/api/claim-account` | No | Reclamar cuenta: establece contraseña y `email_confirm: true`. Body: `email`, `password`. |
 | GET | `/auth/callback` | No | Callback OAuth (Google); `exchangeCodeForSession`, redirect a `next` o `/dashboard`. |
 
-(Otras rutas listadas en PRODUCCION.md: facebook, manychat, send-sms, send-whatsapp, verify-phone, files, setup-database, admin/ftp-pool.)
+(Otras rutas: facebook, manychat, manychat/webhook, manychat/init, send-sms, send-whatsapp, verify-phone, files, demo-url, cdn-base, setup-database, admin/ftp-pool.)
 
 ---
 
@@ -412,9 +420,10 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 - **users:** id, email, name, phone, country_code, role, created_at, updated_at, campos UTM y dispositivo.
 - **packs:** id, slug, name, description, price_mxn, price_usd, release_month, total_videos, total_size_gb, status, featured, etc.
 - **genres:** id, name, slug, video_count.
-- **videos:** id, pack_id, genre_id, title, artist, duration, resolution, file_size, file_path, thumbnail_url, preview_url.
-- **purchases:** id, user_id, pack_id, amount_paid, currency, payment_provider, payment_id, ftp_username, ftp_password, purchased_at.
+- **videos:** id, pack_id, genre_id, title, artist, duration, resolution, file_size, file_path, thumbnail_url, preview_url, key, bpm.
+- **purchases:** id, user_id, pack_id, amount_paid, currency, payment_provider, payment_id, ftp_username, ftp_password, purchased_at, utm_source, utm_medium, utm_campaign, traffic_source.
 - **pending_purchases:** id, stripe_session_id, user_id, pack_id, status, customer_email, customer_name, customer_phone, completed_at, expires_at, etc.
+- **documents:** id, content, metadata (jsonb), embedding (vector 3072), created_at. Base de conocimientos RAG (pgvector). RPC: `match_documents(query_embedding, match_threshold, match_count)`.
 
 ### Funciones
 - **is_admin():** comprueba si el usuario tiene `role = 'admin'`.
@@ -443,6 +452,12 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 ### Consola y tracking (opcionales)
 - `NEXT_PUBLIC_META_PIXEL_DISABLED=true`: desactiva el pixel de Meta (evita "unavailable due to traffic permission settings").
 - `NEXT_PUBLIC_MANYCHAT_PAGE_ID`: si no está definida, el widget de ManyChat no se carga (evita "Page Id is required").
+- `FB_ACCESS_TOKEN` o `FACEBOOK_CAPI_ACCESS_TOKEN`: Conversions API (CAPI) para eventos servidor (Purchase, etc.).
+
+### Chatbot RAG (ManyChat)
+- `OPENAI_API_KEY`: obligatoria para embeddings y chat.
+- `OPENAI_CHAT_MODEL`: opcional; por defecto `gpt-4o`. Para futuro: `gpt-5.2`.
+- `SUPABASE_SERVICE_ROLE_KEY`: para `match_documents` y script sync-knowledge.
 
 ### Otras
 - Meta Pixel, ManyChat, Twilio, Resend, Push (VAPID), Render API key, etc. (ver `.env.example` y PRODUCCION.md).
@@ -531,4 +546,41 @@ Documentación nivel detallado de todas las secciones, botones, textos, APIs y f
 
 ---
 
-*Documentación generada para Bear Beat 2027. Para detalles de despliegue y checklist ver PRODUCCION.md. Tras cualquier cambio: subir a producción (git push) y actualizar esta doc y la afectada.*
+---
+
+## 20. DOCUMENTACIÓN RECIENTE (RAG, AUTH, URLs, 3 VÍAS, ATRIBUCIÓN)
+
+### 20.1 Chatbot RAG (ManyChat)
+- **Base de conocimientos:** tabla `documents` (pgvector 3072), RPC `match_documents`. Migración: `supabase/migrations/20260130200000_vector_knowledge.sql`.
+- **Script de ingesta:** `scripts/sync-knowledge.ts` — páginas estáticas (términos, privacidad, reembolsos), catálogo videos, reglas de negocio; embeddings con `text-embedding-3-large`. Uso: `npx tsx scripts/sync-knowledge.ts`. Env: `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+- **Webhook RAG:** POST `/api/chat/webhook` — Body: `message`, `userId`. Proceso: embedding → match_documents(5) → System Prompt con contexto → OpenAI (OPENAI_CHAT_MODEL o gpt-4o). Respuesta: formato ManyChat v2 `{ version: "v2", content: { messages: [...] } }`.
+
+### 20.2 Auth: email_confirm (evitar bloqueo de login)
+- **Webhook Stripe:** En `checkout.session.completed` y `payment_intent.succeeded`, si hay email: crear o confirmar usuario Auth con `email_confirm: true` (createUser o updateUserById). Inserta/actualiza tabla `users`.
+- **Registro:** POST `/api/auth/create-user` crea usuario con `email_confirm: true` (usado por complete-purchase en lugar de signUp cliente).
+- **Reclamar cuenta:** POST `/api/claim-account` — Body: `email`, `password`. updateUserById(id, { password, email_confirm: true }).
+- **Complete-purchase:** Si login falla con "Email not confirmed", se muestra opción "Reenviar correo de confirmación" y "Establecer contraseña (reclamar cuenta)".
+
+### 20.3 URLs públicas (evitar 0.0.0.0:10000 / Mixed Content)
+- **getPublicAppOrigin(request):** `src/lib/utils.ts` — devuelve URL base pública (NEXT_PUBLIC_APP_URL si no local, o Host del request). Nunca usar `req.nextUrl.origin` en producción para redirects si puede ser 0.0.0.0.
+- **demo-url:** Fallback a proxy `/api/demo/...` usa `getPublicAppOrigin(req)` para el redirect; si no hay base válida devuelve 503.
+- **verify-phone:** Al llamar a `/api/send-sms`, la base URL se obtiene de forma segura (NEXT_PUBLIC_APP_URL no local o req.nextUrl.origin).
+
+### 20.4 3 vías de descarga (Dashboard y Complete-purchase)
+- **Grid de 3 tarjetas:** (1) Biblioteca Online — IR A LA BIBLIOTECA → `/contenido`; (2) Google Drive — ABRIR CARPETA DRIVE ↗ → `GOOGLE_DRIVE_FOLDER_URL`; (3) Acceso FTP Directo — VER DATOS Y GUÍAS.
+- **Guía de Descarga Paso a Paso (acordeón):** Detalles FTP (credenciales + pestañas FileZilla / Air Explorer), Detalles Google Drive, Detalles Web.
+- **Link Google Drive:** `https://drive.google.com/drive/folders/1jGj20PjgnsbWN1Zbs7sV37zxOUaQxlrd?usp=share_link`.
+
+### 20.5 Atribución (First-Touch, purchases)
+- **Cookie:** `bearbeat_attribution` (30 días), First-Touch. `src/lib/attribution.ts`, `AttributionTracker.tsx`.
+- **Pagos:** create-payment-intent y create-checkout leen la cookie y añaden utm_source, utm_medium, utm_campaign, ref a metadata de Stripe. complete-purchase/activate guarda en `purchases` (utm_source, utm_medium, utm_campaign, traffic_source).
+- **Migración:** `supabase/migrations/20260130000000_add_purchases_attribution.sql`. Admin: tarjeta "Fuentes de Tráfico" y columna fuente en Últimas Compras.
+
+### 20.6 Tracking (CAPI, ManyChat, Meta Pixel)
+- **TrackingScripts:** `src/components/tracking/TrackingScripts.tsx` — Facebook Pixel + ManyChat widget; PageView en cada ruta.
+- **fpixel-server:** `sendServerEvent('Purchase', ...)` en webhook Stripe (checkout.session.completed y payment_intent.succeeded) con eventId para deduplicación.
+- **complete-purchase:** trackPaymentSuccess con orderId (stripe_session_id o paymentIntentId).
+
+---
+
+*Documentación generada para Bear Beat 2027. Para detalles de despliegue y checklist ver PRODUCCION.md. Índice completo: docs/INDICE_COMPLETO.md. Tras cualquier cambio: subir a producción (git push) y actualizar esta doc y la afectada.*
