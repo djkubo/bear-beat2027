@@ -2,6 +2,8 @@
 
 Para que los demos apunten a `https://tu-zona.b-cdn.net` y no den 503 en Next.js.
 
+**Documento maestro de integración (demos, portadas, descargas, FTP):** [BUNNY_HETZNER_INTEGRACION.md](./BUNNY_HETZNER_INTEGRACION.md).
+
 ---
 
 ## Qué hace Bunny (instrucción oficial)

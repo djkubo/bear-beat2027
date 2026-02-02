@@ -29,8 +29,9 @@
 
 | Documento | Descripción |
 |-----------|-------------|
-| [BUNNY_PULL_ZONE_SETUP.md](./BUNNY_PULL_ZONE_SETUP.md) | Configuración Bunny CDN (pull zone, thumbnails, descargas). |
-| [HETZNER_FTP_REAL.md](./HETZNER_FTP_REAL.md) | FTP real con Hetzner Storage Box. |
+| [BUNNY_HETZNER_INTEGRACION.md](./BUNNY_HETZNER_INTEGRACION.md) | **Maestro:** Demos, portadas, descargas, descargas por carpeta, FTP – variables, estructura en Bunny/Hetzner, comprobaciones para que no haya fallos. |
+| [BUNNY_PULL_ZONE_SETUP.md](./BUNNY_PULL_ZONE_SETUP.md) | Configuración Bunny CDN (pull zone, demos). |
+| [HETZNER_FTP_REAL.md](./HETZNER_FTP_REAL.md) | FTP real con Hetzner Storage Box (subcuentas por compra). |
 | [VIDEOS_HETZNER.md](./VIDEOS_HETZNER.md) | Videos y estructura en Hetzner. |
 | [CONFIGURAR_RENDER_MCP_EN_CURSOR.md](./CONFIGURAR_RENDER_MCP_EN_CURSOR.md) | Configurar Render desde Cursor (MCP). |
 

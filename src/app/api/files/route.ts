@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { generateSignedUrl, generateStreamUrl, listFiles } from '@/lib/storage/bunny'
 
+// Mismo prefijo que /api/download para que listado y descarga usen la misma carpeta en Bunny
+const BUNNY_PACK_PATH_PREFIX = process.env.BUNNY_PACK_PATH_PREFIX || 'packs/enero-2026'
+
+/**
+ * Carpeta en Bunny Storage para el pack. Debe coincidir con BUNNY_PACK_PATH_PREFIX
+ * para que listado y descarga apunten al mismo contenido.
+ */
+function getPackFolderPath(packId: string | null): string {
+  if (!packId || packId === '1') return BUNNY_PACK_PATH_PREFIX
+  return `packs/${packId}`
+}
+
 // ==========================================
 // API DE ARCHIVOS - URLs firmadas y listado
 // ==========================================
@@ -18,7 +30,7 @@ export async function GET(req: NextRequest) {
 
     // Si es solo demo, devolver estructura sin verificación
     if (demoOnly) {
-      const demoFiles = await listFiles('demos')
+      const demoFiles = await listFiles('demos').catch(() => [])
       return NextResponse.json({
         success: true,
         files: demoFiles.map(f => ({
@@ -61,11 +73,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Listar archivos del pack
-    const folderPath = packId ? `packs/${packId}` : 'packs'
-    const files = await listFiles(folderPath)
+    // Listar archivos del pack (misma carpeta que usa /api/download)
+    const folderPath = getPackFolderPath(packId)
+    const files = await listFiles(folderPath).catch((err) => {
+      console.error('Bunny listFiles error:', err)
+      return []
+    })
 
-    // Transformar a estructura de árbol
+    // Árbol con rutas relativas al pack para que download?file=X funcione
     const fileTree = buildFileTree(files, folderPath)
 
     return NextResponse.json({
@@ -130,9 +145,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Generar URL firmada para descarga
+    // Ruta en Bunny: si el cliente envía ruta relativa (Genre/video.mp4), usar prefijo del pack
+    const fullPath = filePath.startsWith('packs/') ? filePath : `${BUNNY_PACK_PATH_PREFIX}/${filePath.replace(/^\//, '')}`
     const signedUrl = generateSignedUrl(
-      filePath,
+      fullPath,
       3600, // 1 hora
       process.env.NEXT_PUBLIC_APP_URL // Solo desde nuestro dominio
     )
@@ -176,14 +192,24 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
+/**
+ * Construye árbol con rutas relativas al pack para que /api/download?file=Genre/video.mp4 funcione.
+ * Bunny devuelve Path (carpeta padre) y ObjectName; la ruta relativa es la que usamos en download.
+ */
 function buildFileTree(files: any[], basePath: string): any[] {
-  return files.map(f => ({
-    id: f.Guid,
-    name: f.ObjectName,
-    type: f.IsDirectory ? 'folder' : getFileType(f.ObjectName),
-    size: f.Length,
-    sizeFormatted: formatBytes(f.Length),
-    path: `${basePath}/${f.ObjectName}`,
-    downloadUrl: f.IsDirectory ? undefined : `${basePath}/${f.ObjectName}`
-  }))
+  const base = basePath.replace(/\/$/, '')
+  const baseEscaped = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return files.map(f => {
+    const fullPath = `${(f.Path || base).replace(/\/$/, '')}/${f.ObjectName}`.replace(/\/+/g, '/')
+    const relativePath = fullPath.replace(new RegExp(`^${baseEscaped}/?`), '') || f.ObjectName
+    return {
+      id: f.Guid,
+      name: f.ObjectName,
+      type: f.IsDirectory ? 'folder' : getFileType(f.ObjectName),
+      size: f.Length,
+      sizeFormatted: formatBytes(f.Length),
+      path: relativePath,
+      downloadUrl: f.IsDirectory ? undefined : relativePath
+    }
+  })
 }
