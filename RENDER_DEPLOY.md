@@ -36,16 +36,23 @@ En **Environment** del servicio, asegúrate de tener al menos:
 
 Copia el resto de variables desde tu `.env.local` (Stripe webhook, Resend, ManyChat, etc.).
 
-### Si usas Docker (build falla con "URL and Key are required")
+### Si usas Docker (build: NEXT_PUBLIC_* deben estar en el build)
 
-Las variables **NEXT_PUBLIC_*** deben estar disponibles **durante el build**. En Render:
+Las variables **NEXT_PUBLIC_*** se insertan en el bundle en **tiempo de build**. El Dockerfile declara ARG/ENV para:
+
+- **Supabase:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- **Stripe:** `NEXT_PUBLIC_STRIPE_PUBLIC_KEY`
+- **PayPal:** `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `NEXT_PUBLIC_PAYPAL_USE_SANDBOX`
+- **App:** `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_APP_NAME`
+
+En Render:
 
 1. Ve a tu servicio → **Environment**
-2. Añade o edita **NEXT_PUBLIC_SUPABASE_URL** y **NEXT_PUBLIC_SUPABASE_ANON_KEY**
-3. En cada una, activa el scope **Build** (además de Runtime) para que Docker las reciba al hacer `npm run build`
-4. Guarda y haz **Manual Deploy** de nuevo
+2. Asegúrate de que todas esas variables existan y tengan valor.
+3. Si Render permite scope **Build** + Runtime, actívalo para las NEXT_PUBLIC_* para que Docker las reciba al hacer `npm run build`.
+4. Guarda y haz **Manual Deploy** (o redeploy) para que el build use las variables.
 
-Sin esto, el prerender de `/login` y otras páginas falla porque el cliente Supabase no tiene URL/key en el build.
+Sin ellas en el build, en checkout verás "Stripe no está configurado" / "PayPal no está configurado" aunque estén en Environment, porque el cliente las necesita en el bundle.
 
 ---
 
