@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { createClient } from '@/lib/supabase/client'
@@ -12,8 +12,9 @@ import Image from 'next/image'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Check, TrendingUp, Eye, EyeOff } from 'lucide-react'
+import { Check, TrendingUp, Eye, EyeOff, MessageSquare, Pencil } from 'lucide-react'
 import { CountryCode } from 'libphonenumber-js'
+import { parsePhoneNumber } from 'libphonenumber-js'
 
 // ==========================================
 // REGISTER PAGE – Dark Mode Premium (alineado a Login y Home)
@@ -62,6 +63,18 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [otpHasError, setOtpHasError] = useState(false)
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  // Formatear teléfono para mostrar (ej: +52 55 1234 5678)
+  const displayPhone = (() => {
+    try {
+      const p = parsePhoneNumber(phone, country)
+      return p ? p.formatInternational() : phone
+    } catch {
+      return phone
+    }
+  })()
 
   useEffect(() => {
     if (countdown > 0) {
@@ -106,9 +119,48 @@ export default function RegisterPage() {
     }
   }
 
+  const setOtpDigit = useCallback((index: number, digit: string) => {
+    setOtpHasError(false)
+    setFormError(null)
+    setVerificationCode((prev) => {
+      const next = prev.split('')
+      next[index] = digit
+      const joined = next.join('').slice(0, 6)
+      return joined
+    })
+    if (digit && index < 5) otpRefs.current[index + 1]?.focus()
+  }, [])
+
+  const handleOtpKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'Backspace') {
+      if (verificationCode[index]) {
+        setVerificationCode((prev) => prev.slice(0, index) + prev.slice(index + 1))
+        setOtpHasError(false)
+      } else if (index > 0) {
+        otpRefs.current[index - 1]?.focus()
+        setVerificationCode((prev) => prev.slice(0, index - 1))
+        setOtpHasError(false)
+      }
+    }
+    if (e.key === 'ArrowLeft' && index > 0) otpRefs.current[index - 1]?.focus()
+    if (e.key === 'ArrowRight' && index < 5) otpRefs.current[index + 1]?.focus()
+  }, [verificationCode])
+
+  const handleOtpPaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    if (!pasted) return
+    setOtpHasError(false)
+    setFormError(null)
+    setVerificationCode(pasted)
+    const nextIndex = Math.min(pasted.length, 5)
+    otpRefs.current[nextIndex]?.focus()
+  }, [])
+
   const onStep2 = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError(null)
+    setOtpHasError(false)
     setLoading(true)
     try {
       const res = await fetch('/api/verify-phone', {
@@ -145,6 +197,7 @@ export default function RegisterPage() {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error al crear cuenta'
       setFormError(msg)
+      setOtpHasError(true)
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -398,14 +451,34 @@ export default function RegisterPage() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <div className="text-center mb-8">
-                    <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">
-                      Verifica tu teléfono
-                    </h1>
-                    <p className="text-sm text-gray-500">
-                      Enviamos un código de 6 dígitos a{' '}
-                      <span className="text-bear-blue font-medium">{phone}</span>
-                    </p>
+                  {/* Header del paso OTP – Dark Mode Premium */}
+                  <div className="mb-8">
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bear-blue/10 text-bear-blue">
+                        <MessageSquare className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <h1 className="text-2xl sm:text-3xl font-black text-white">
+                          Verifica tu teléfono
+                        </h1>
+                        <p className="text-sm text-gray-500 mt-0.5">
+                          Enviamos un código de 6 dígitos a:
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                        {displayPhone}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { setStep('info'); setFormError(null); setOtpHasError(false); setVerificationCode(''); }}
+                        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-white transition-colors"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Cambiar
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex gap-2 mb-6">
@@ -415,21 +488,32 @@ export default function RegisterPage() {
 
                   <div className="rounded-2xl border border-zinc-800 bg-black/40 p-6 sm:p-8">
                     <form onSubmit={onStep2} className="space-y-6">
-                      <div>
-                        <label htmlFor="reg-code" className="block text-sm font-medium text-gray-400 mb-2 text-center">
-                          Código de verificación
-                        </label>
-                        <input
-                          id="reg-code"
-                          type="text"
-                          inputMode="numeric"
-                          value={verificationCode}
-                          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-4 text-center text-2xl font-mono tracking-[0.4em] text-white outline-none transition-colors focus:border-bear-blue focus:ring-2 focus:ring-bear-blue/20"
-                          placeholder="000000"
-                          maxLength={6}
-                          autoFocus
-                        />
+                      {/* OTP: 6 inputs separados */}
+                      <div className="flex justify-center gap-2 sm:gap-3">
+                        {[0, 1, 2, 3, 4, 5].map((index) => (
+                          <input
+                            key={index}
+                            ref={(el) => { otpRefs.current[index] = el }}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            autoComplete="one-time-code"
+                            autoFocus={index === 0}
+                            value={verificationCode[index] ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value.replace(/\D/g, '').slice(0, 1)
+                              setOtpDigit(index, v)
+                            }}
+                            onKeyDown={(e) => handleOtpKeyDown(e, index)}
+                            onPaste={handleOtpPaste}
+                            className={`h-12 w-10 sm:w-12 rounded-xl border bg-black text-center text-xl font-bold text-white outline-none transition-all focus:ring-2 focus:ring-bear-blue/30 ${
+                              otpHasError
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30'
+                                : 'border-zinc-700 focus:border-bear-blue'
+                            }`}
+                            aria-label={`Dígito ${index + 1}`}
+                          />
+                        ))}
                       </div>
 
                       {sentCode && (
@@ -440,9 +524,13 @@ export default function RegisterPage() {
                       )}
 
                       {formError && (
-                        <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3"
+                        >
                           <p className="text-sm text-red-400">{formError}</p>
-                        </div>
+                        </motion.div>
                       )}
 
                       <button
@@ -456,29 +544,32 @@ export default function RegisterPage() {
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                             </svg>
-                            Creando cuenta...
+                            Validando...
                           </span>
                         ) : (
-                          'CREAR CUENTA Y ACCEDER →'
+                          'VALIDAR Y ACCEDER →'
                         )}
                       </button>
 
-                      <div className="flex flex-col items-center gap-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => setStep('info')}
-                          className="text-sm text-gray-500 hover:text-white transition-colors"
-                        >
-                          ← Cambiar número
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleResendCode}
-                          disabled={countdown > 0 || loading}
-                          className={`text-sm font-medium ${countdown > 0 ? 'text-gray-500 cursor-not-allowed' : 'text-bear-blue hover:underline'}`}
-                        >
-                          {countdown > 0 ? `Reenviar código en ${countdown}s` : 'Reenviar código'}
-                        </button>
+                      {/* Footer: Reenviar código */}
+                      <div className="pt-2 text-center space-y-1">
+                        <p className="text-sm text-gray-500">¿No recibiste el código?</p>
+                        <div className="flex flex-col items-center gap-1">
+                          {countdown > 0 ? (
+                            <span className="text-sm text-gray-500">
+                              Reenviar en {countdown}s
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleResendCode}
+                              disabled={loading}
+                              className="text-sm font-medium text-bear-blue hover:text-white hover:underline transition-colors disabled:opacity-50"
+                            >
+                              Reenviar código
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </form>
                   </div>

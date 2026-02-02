@@ -2,22 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import Image from 'next/image'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { trackPageView } from '@/lib/tracking'
-import { getMessengerUrl } from '@/config/contact'
+import { Globe, Rocket, Copy, Eye, EyeOff, Check, Download, Link2, Move } from 'lucide-react'
 
-// ==========================================
-// DASHBOARD - Panel Premium con Instrucciones
-// Diseño consistente con el embudo
-// ==========================================
+const DASHBOARD_BG = '#0a0a0a'
+const CARD_BG = '#121212'
+const BORDER = '#27272a'
 
 interface Purchase {
   id: number
   pack_id: number
-  amount_paid: number
-  currency: string
   ftp_username?: string
   ftp_password?: string
   purchased_at: string
@@ -28,19 +25,22 @@ interface UserProfile {
   id: string
   email: string
   name: string
-  phone?: string
 }
 
 export default function DashboardPage() {
+  const searchParams = useSearchParams()
+  const tabFromUrl = searchParams.get('tab') === 'ftp' ? 'ftp' : 'web'
   const [user, setUser] = useState<UserProfile | null>(null)
   const [purchases, setPurchases] = useState<Purchase[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'web' | 'ftp'>(tabFromUrl)
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'web' | 'ftp'>('web')
-  const [ftpReady, setFtpReady] = useState(false)
-  
   const supabase = createClient()
+
+  useEffect(() => {
+    setActiveTab(tabFromUrl)
+  }, [tabFromUrl])
 
   useEffect(() => {
     trackPageView('dashboard')
@@ -54,33 +54,21 @@ export default function DashboardPage() {
         window.location.href = '/login?redirect=/dashboard'
         return
       }
-
-      // Obtener perfil del usuario
-      const { data: profile, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .single()
-
-      // Si no existe en la tabla users, crear con datos de auth
-      if (profileError || !profile) {
-        const newProfile = {
-          id: authUser.id,
-          email: authUser.email || '',
-          name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Usuario',
-        }
-        setUser(newProfile as UserProfile)
+      const { data: profile } = await supabase.from('users').select('*').eq('id', authUser.id).single()
+      if (profile) {
+        setUser(profile as UserProfile)
       } else {
-        setUser(profile)
+        setUser({
+          id: authUser.id,
+          email: authUser.email ?? '',
+          name: authUser.user_metadata?.name ?? authUser.email?.split('@')[0] ?? 'Usuario',
+        })
       }
-
-      // Obtener compras con nombre del pack (credenciales FTP reales vienen en cada compra)
       const { data: purchasesData } = await supabase
         .from('purchases')
         .select('*, pack:packs(name, slug)')
         .eq('user_id', authUser.id)
         .order('purchased_at', { ascending: false })
-
       if (purchasesData) setPurchases(purchasesData)
     } catch (error) {
       console.error('Error:', error)
@@ -89,28 +77,32 @@ export default function DashboardPage() {
     }
   }
 
-  const copy = (text: string, field: string) => {
+  const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text)
     setCopied(field)
     setTimeout(() => setCopied(null), 2000)
   }
 
-  // Credenciales FTP desde la compra (reales si está configurado Hetzner Robot API)
-  const purchaseWithFtp = purchases.find(p => p.ftp_username && p.ftp_password)
+  const purchaseWithFtp = purchases.find((p) => p.ftp_username && p.ftp_password)
   const ftpHost = purchaseWithFtp?.ftp_username?.includes('-sub')
     ? `${purchaseWithFtp.ftp_username}.your-storagebox.de`
     : (typeof process.env.NEXT_PUBLIC_FTP_HOST === 'string' ? process.env.NEXT_PUBLIC_FTP_HOST : 'ftp.bearbeat.mx')
-  const ftp = purchaseWithFtp ? {
-    host: ftpHost,
-    port: '21',
-    user: purchaseWithFtp.ftp_username,
-    pass: purchaseWithFtp.ftp_password
-  } : null
+  const ftp = purchaseWithFtp
+    ? {
+        host: ftpHost,
+        port: '21',
+        user: purchaseWithFtp.ftp_username,
+        pass: purchaseWithFtp.ftp_password,
+      }
+    : null
+
+  const packName = purchases[0]?.pack?.name ?? (purchases[0] as any)?.packs?.name ?? 'Pack Enero 2026'
+  const firstName = user?.name?.split(' ')[0] || 'DJ'
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-bear-black flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-bear-blue/30 border-t-bear-blue rounded-full animate-spin" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-10 h-10 border-2 border-[#08E1F7]/30 border-t-[#08E1F7] rounded-full animate-spin" />
       </div>
     )
   }
@@ -118,303 +110,232 @@ export default function DashboardPage() {
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-bear-black text-white">
-      {/* HEADER */}
-      <header className="py-4 px-4 border-b border-bear-blue/20">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png" alt="Bear Beat" width={40} height={40} />
-            <span className="font-bold text-bear-blue">BEAR BEAT</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/portal" className="text-sm text-gray-400 hover:text-bear-blue hidden md:inline">
-              Portal
-            </Link>
-            <Link href="/mi-cuenta" className="text-sm text-bear-blue hover:underline hidden md:inline">
-              Mi cuenta
-            </Link>
-            <span className="text-sm text-gray-400 hidden md:block">{user.email}</span>
-            <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/')} className="text-sm text-gray-500 hover:text-white">
-              Salir
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* A. Tarjeta de Bienvenida (Hero) */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl p-6 md:p-8 border"
+        style={{
+          background: `linear-gradient(180deg, ${CARD_BG} 0%, #0a0a0a 100%)`,
+          borderColor: BORDER,
+        }}
+      >
+        <h1 className="text-2xl md:text-3xl font-black text-white mb-2">
+          ¡Hola, {firstName}! 👋
+        </h1>
+        <p className="text-gray-400 text-base md:text-lg">
+          Tu {packName} está listo para descarga.
+        </p>
+      </motion.section>
 
-      {/* MIS COMPRAS - Qué pack compró */}
-      {purchases.length > 0 && (
-        <section className="py-6 px-4 border-b border-bear-blue/20">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-lg font-bold text-bear-blue mb-4">📦 Mis compras</h2>
-            <div className="space-y-3">
-              {purchases.map((p) => (
-                <div key={p.id} className="bg-white/5 rounded-xl p-4 flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="font-bold">{(p as any).pack?.name ?? (p as any).packs?.name ?? `Pack #${p.pack_id}`}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(p.purchased_at).toLocaleDateString('es-MX', { dateStyle: 'long' })} · {p.currency} ${p.amount_paid}
-                    </p>
-                  </div>
-                  {p.ftp_username && (
-                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">FTP activo</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* B. Selector de Método (Segmented Control) */}
+      <div
+        className="inline-flex p-1 rounded-xl border"
+        style={{ background: CARD_BG, borderColor: BORDER }}
+      >
+        <button
+          onClick={() => setActiveTab('web')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all ${
+            activeTab === 'web'
+              ? 'bg-[#08E1F7] text-black'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Globe className="h-5 w-5" />
+          Descarga Web
+        </button>
+        <button
+          onClick={() => setActiveTab('ftp')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all ${
+            activeTab === 'ftp'
+              ? 'bg-[#08E1F7] text-black'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Rocket className="h-5 w-5" />
+          Descarga FTP
+        </button>
+      </div>
 
-      {/* HERO DE ÉXITO */}
-      <section className="py-12 px-4 bg-gradient-to-b from-bear-blue/20 to-transparent">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-7xl mb-6">🎉</motion.div>
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl md:text-5xl font-black mb-4"
+      {/* C / D. Contenido según tab */}
+      <motion.div
+        key={activeTab}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        {activeTab === 'web' ? (
+          /* C. Vista Web */
+          <section
+            className="rounded-2xl p-6 md:p-8 border text-center"
+            style={{ background: CARD_BG, borderColor: BORDER }}
           >
-            ¡Bienvenido, {user.name?.split(' ')[0] || 'DJ'}!
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            transition={{ delay: 0.2 }}
-            className="text-xl text-gray-400"
-          >
-            Tu acceso está activo. Descarga tu contenido ahora mismo.
-          </motion.p>
-        </div>
-      </section>
-
-      {/* TABS DE DESCARGA */}
-      <main className="py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          
-          {/* SELECTOR DE MÉTODO */}
-          <div className="flex justify-center gap-4 mb-8">
-            <button
-              onClick={() => setActiveTab('web')}
-              className={`px-8 py-4 rounded-2xl font-bold text-lg transition-all ${
-                activeTab === 'web' 
-                  ? 'bg-bear-blue text-bear-black' 
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
-              }`}
-            >
-              🌐 Descarga Web
-            </button>
-            <button
-              onClick={() => setActiveTab('ftp')}
-              className={`px-8 py-4 rounded-2xl font-bold text-lg transition-all ${
-                activeTab === 'ftp' 
-                  ? 'bg-purple-500 text-white' 
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
-              }`}
-            >
-              📁 Descarga FTP
-            </button>
-          </div>
-
-          {/* CONTENIDO DEL TAB */}
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            {activeTab === 'web' ? (
-              /* DESCARGA WEB */
-              <div className="bg-white/5 border-2 border-bear-blue/30 rounded-3xl p-8">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 bg-bear-blue/20 rounded-2xl flex items-center justify-center">
-                    <span className="text-4xl">🌐</span>
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-black">Descarga por Navegador</h2>
-                    <p className="text-gray-400">Fácil, rápido, sin instalar nada</p>
-                  </div>
-                </div>
-
-                <div className="bg-bear-blue/10 border border-bear-blue/30 rounded-2xl p-6 mb-6">
-                  <h3 className="font-bold text-bear-blue mb-3">✅ Ideal para:</h3>
-                  <ul className="space-y-2 text-gray-300">
-                    <li>• Descargar videos específicos que necesitas</li>
-                    <li>• Ver previews antes de descargar</li>
-                    <li>• Acceso desde celular o tablet</li>
-                    <li>• Descargas individuales rápidas</li>
-                  </ul>
-                </div>
-
-                <div className="text-center">
-                  <h3 className="text-lg font-bold mb-4">3 simples pasos:</h3>
-                  <div className="grid md:grid-cols-3 gap-4 mb-8">
-                    {[
-                      { step: '1', icon: '📂', text: 'Navega por géneros' },
-                      { step: '2', icon: '👁️', text: 'Ve las previews' },
-                      { step: '3', icon: '⬇️', text: 'Descarga lo que quieras' },
-                    ].map((item) => (
-                      <div key={item.step} className="bg-white/5 rounded-xl p-4">
-                        <span className="text-3xl">{item.icon}</span>
-                        <p className="text-sm mt-2">{item.text}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Link href="/contenido">
-                    <button className="bg-bear-blue text-bear-black font-black text-xl px-12 py-5 rounded-xl hover:bg-bear-blue/90">
-                      IR AL EXPLORADOR DE VIDEOS →
-                    </button>
-                  </Link>
-                </div>
+            <div className="flex justify-center mb-6">
+              <div
+                className="w-20 h-20 rounded-2xl flex items-center justify-center"
+                style={{ background: 'rgba(8,225,247,0.1)', border: `1px solid rgba(8,225,247,0.3)` }}
+              >
+                <Globe className="h-10 w-10 text-[#08E1F7]" />
               </div>
-            ) : (
-              /* DESCARGA FTP */
-              <div className="bg-white/5 border-2 border-purple-500/30 rounded-3xl p-8">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center">
-                    <span className="text-4xl">📁</span>
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-black">Descarga Masiva por FTP</h2>
-                    <p className="text-gray-400">Descarga TODO de una vez con FileZilla</p>
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">
+              Explora y descarga videos individuales o por género
+            </h2>
+            <p className="text-gray-400 text-sm mb-8 max-w-md mx-auto">
+              Navega por la biblioteca desde el navegador, sin instalar nada.
+            </p>
+            <Link href="/contenido">
+              <button
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#08E1F7] text-black font-black text-lg px-8 py-4 rounded-xl hover:brightness-110 transition-all"
+              >
+                IR A LA BIBLIOTECA →
+              </button>
+            </Link>
+          </section>
+        ) : (
+          /* D. Vista FTP */
+          <section
+            className="rounded-2xl p-6 md:p-8 border space-y-6"
+            style={{ background: CARD_BG, borderColor: BORDER }}
+          >
+            <h2 className="text-lg font-bold text-white">Credenciales de Acceso FTP</h2>
+            {ftp ? (
+              <>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Host', value: ftp.host, key: 'host' },
+                    { label: 'Puerto', value: ftp.port, key: 'port' },
+                    { label: 'Usuario', value: ftp.user, key: 'user' },
+                  ].map(({ label, value, key }) => (
+                    <div
+                      key={key}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 border"
+                      style={{ background: DASHBOARD_BG, borderColor: BORDER }}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-0.5">{label}</p>
+                        <p className="font-mono text-sm text-white break-all">{value}</p>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(value, key)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-[#08E1F7] hover:bg-white/5 transition-colors"
+                      >
+                        {copied === key ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        {copied === key ? 'Copiado' : 'Copiar'}
+                      </button>
+                    </div>
+                  ))}
+                  <div
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 border"
+                    style={{ background: DASHBOARD_BG, borderColor: BORDER }}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-0.5">Contraseña</p>
+                      <p className="font-mono text-sm text-white">
+                        {showPassword ? ftp.pass : '••••••••'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? 'Ocultar' : 'Mostrar'}
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(ftp.pass ?? '', 'pass')}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-[#08E1F7] hover:bg-white/5 transition-colors"
+                      >
+                        {copied === 'pass' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        Copiar
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="bg-purple-500/10 border border-purple-500/30 rounded-2xl p-6 mb-6">
-                  <h3 className="font-bold text-purple-400 mb-3">🚀 Ideal para:</h3>
-                  <ul className="space-y-2 text-gray-300">
-                    <li>• Descargar todos los videos de una vez</li>
-                    <li>• Descargas más rápidas y estables</li>
-                    <li>• Reanudar descargas interrumpidas</li>
-                    <li>• Sincronizar carpetas completas</li>
+                <div className="pt-4 border-t" style={{ borderColor: BORDER }}>
+                  <h3 className="text-sm font-bold text-white mb-4">Instrucciones para FileZilla</h3>
+                  <ul className="space-y-4">
+                    {[
+                      { icon: Download, title: 'Descarga FileZilla', desc: 'Gratis en filezilla-project.org', link: 'https://filezilla-project.org' },
+                      { icon: Link2, title: 'Conecta', desc: 'Servidor, usuario, contraseña y puerto en la barra superior' },
+                      { icon: Move, title: 'Arrastra', desc: 'Arrastra carpetas del servidor a tu PC para descargar' },
+                    ].map((step, i) => {
+                      const s = step as { icon: typeof Download; title: string; desc: string; link?: string }
+                      return (
+                        <li key={i} className="flex gap-4">
+                          <span
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-black"
+                            style={{ background: '#08E1F7' }}
+                          >
+                            {i + 1}
+                          </span>
+                          <div>
+                            <p className="font-medium text-white text-sm">{s.title}</p>
+                            <p className="text-gray-500 text-xs">
+                              {s.desc}
+                              {s.link && (
+                                <>
+                                  {' '}
+                                  <a href={s.link} target="_blank" rel="noopener noreferrer" className="text-[#08E1F7] hover:underline">
+                                    Descargar →
+                                  </a>
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        </li>
+                      )
+                    })}
                   </ul>
                 </div>
-
-                {ftp ? (
-                  <>
-                    {/* CREDENCIALES REALES (desde la compra en Supabase) */}
-                    <div className="bg-black/50 rounded-2xl p-6 mb-6">
-                      <h3 className="font-bold text-sm text-purple-400 mb-4 flex items-center gap-2">
-                        🔐 TUS CLAVES DE DESCARGA FTP (PRIVADAS)
-                      </h3>
-                      
-                      <div className="space-y-3">
-                        {[
-                          { label: 'Servidor', value: ftp.host, key: 'host' },
-                          { label: 'Puerto', value: ftp.port, key: 'port' },
-                          { label: 'Usuario', value: ftp.user, key: 'user' },
-                        ].map((item) => (
-                          <div key={item.key} className="flex items-center justify-between bg-white/5 rounded-xl p-4">
-                            <div>
-                              <p className="text-xs text-gray-500">{item.label}</p>
-                              <p className="font-mono text-lg">{item.value}</p>
-                            </div>
-                            <button onClick={() => copy(item.value ?? '', item.key)} className="text-2xl hover:scale-110 transition-transform">
-                              {copied === item.key ? '✅' : '📋'}
-                            </button>
-                          </div>
-                        ))}
-                        
-                        {/* Contraseña especial */}
-                        <div className="flex items-center justify-between bg-white/5 rounded-xl p-4">
-                          <div>
-                            <p className="text-xs text-gray-500">Contraseña</p>
-                            <p className="font-mono text-lg">{showPassword ? ftp.pass : '••••••••••••'}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => setShowPassword(!showPassword)} className="text-2xl hover:scale-110">
-                              {showPassword ? '🙈' : '👁️'}
-                            </button>
-                            <button onClick={() => copy(ftp.pass ?? '', 'pass')} className="text-2xl hover:scale-110">
-                              {copied === 'pass' ? '✅' : '📋'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* INSTRUCCIONES PASO A PASO */}
-                    <div className="bg-white/5 rounded-2xl p-6">
-                      <h3 className="font-bold mb-4">📖 Cómo conectar con FileZilla:</h3>
-                      
-                      <div className="space-y-4">
-                        {[
-                          { num: '1', title: 'Descarga FileZilla (gratis)', desc: 'Ve a filezilla-project.org y descarga la versión para tu sistema', link: 'https://filezilla-project.org', linkText: 'Descargar FileZilla →' },
-                          { num: '2', title: 'Abre FileZilla', desc: 'Ejecuta el programa después de instalarlo' },
-                          { num: '3', title: 'Ingresa los datos', desc: 'En la barra superior, copia el servidor, usuario, contraseña y puerto' },
-                          { num: '4', title: 'Clic en "Conexión rápida"', desc: 'Se conectará al servidor y verás las carpetas' },
-                          { num: '5', title: 'Arrastra para descargar', desc: 'Arrastra las carpetas del lado derecho al izquierdo para descargar' },
-                        ].map((step) => (
-                          <div key={step.num} className="flex gap-4">
-                            <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center font-bold flex-shrink-0">
-                              {step.num}
-                            </div>
-                            <div>
-                              <p className="font-bold">{step.title}</p>
-                              <p className="text-sm text-gray-400">{step.desc}</p>
-                              {step.link && (
-                                <a href={step.link} target="_blank" className="text-purple-400 text-sm hover:underline">
-                                  {step.linkText}
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6">
-                    <p className="text-amber-200 font-bold mb-2">⏳ Tus claves de descarga FTP en proceso</p>
-                    <p className="text-sm text-gray-400">
-                      Tus credenciales FTP se generan al activar tu compra. Si acabas de pagar, espera unos minutos y recarga la página. Si ya pasó más tiempo, contacta soporte.
-                    </p>
-                  </div>
-                )}
+              </>
+            ) : (
+              <div
+                className="rounded-xl px-4 py-6 border text-center"
+                style={{ background: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.3)' }}
+              >
+                <p className="font-medium text-amber-200 mb-1">Tus credenciales FTP en proceso</p>
+                <p className="text-sm text-gray-400">
+                  Se generan al activar tu compra. Si acabas de pagar, espera unos minutos y recarga. Si ya pasó más tiempo, contacta soporte.
+                </p>
               </div>
             )}
-          </motion.div>
+          </section>
+        )}
+      </motion.div>
 
-          {/* HISTORIAL DE DESCARGAS (placeholder; sin tabla de descargas por ahora) */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mt-8 bg-white/5 border border-bear-blue/20 rounded-2xl p-6"
-          >
-            <h3 className="font-bold text-bear-blue mb-4">📥 Historial de descargas</h3>
-            <p className="text-gray-400 text-sm">
-              Aquí aparecerán tus descargas recientes cuando uses el explorador web o FTP. Por ahora no hay registros.
-            </p>
-          </motion.div>
-
-          {/* SOPORTE */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-8 bg-gradient-to-r from-bear-blue/10 to-cyan-500/10 border border-bear-blue/20 rounded-3xl p-6"
-          >
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <span className="text-5xl">💬</span>
-                <div>
-                  <h3 className="font-bold text-xl">¿Necesitas ayuda?</h3>
-                  <p className="text-gray-400">Te respondemos en menos de 5 minutos</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <a href={getMessengerUrl()} target="_blank" className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 flex items-center gap-2">
-                  💬 Messenger
-                </a>
-                <a href="https://wa.me/5215512345678?text=Hola%2C%20necesito%20ayuda%20con%20Bear%20Beat" target="_blank" className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700 flex items-center gap-2">
-                  📱 WhatsApp
-                </a>
-              </div>
-            </div>
-          </motion.div>
-
+      {/* E. Actividad Reciente */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="rounded-2xl border overflow-hidden"
+        style={{ background: CARD_BG, borderColor: BORDER }}
+      >
+        <h3 className="text-lg font-bold text-white px-6 py-4 border-b" style={{ borderColor: BORDER }}>
+          Actividad Reciente
+        </h3>
+        <div className="p-6">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b" style={{ borderColor: BORDER }}>
+                <th className="pb-3 font-medium">Fecha</th>
+                <th className="pb-3 font-medium">Acción</th>
+                <th className="pb-3 font-medium">Detalle</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colSpan={3} className="py-8 text-center text-gray-500">
+                  Aún no hay descargas registradas
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </main>
+      </motion.section>
     </div>
   )
 }

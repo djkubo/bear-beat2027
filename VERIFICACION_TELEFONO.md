@@ -208,6 +208,20 @@ Body: { phone: "+525512345678", code: "123456", action: "verify" }
 
 ### 5️⃣ Agregar Credenciales a `.env.local`
 
+**Opción A – Twilio Verify (recomendado para OTP en registro)**  
+Usa el Service SID de Twilio Verify (empieza por `VA`). Permite enviar OTP por SMS o WhatsApp con un solo servicio.
+
+```env
+TWILIO_ACCOUNT_SID=AC1234567890abcdef1234567890abcdef
+TWILIO_AUTH_TOKEN=tu_auth_token_aqui
+# Service SID de Verify (Console → Verify → Services). Ej: VA71b8f5db6c57dd1ab1eb3eb24422b9c4
+TWILIO_VERIFY_SERVICE_SID=VA71b8f5db6c57dd1ab1eb3eb24422b9c4
+```
+
+Para enviar por WhatsApp, en el body de `action: "send"` añade `channel: "whatsapp"`. El mismo servicio Verify puede tener canal SMS y WhatsApp configurado en Twilio.
+
+**Opción B – Fallback sin Verify (código en memoria + send-sms)**
+
 ```env
 TWILIO_ACCOUNT_SID=AC1234567890abcdef1234567890abcdef
 TWILIO_AUTH_TOKEN=tu_auth_token_aqui

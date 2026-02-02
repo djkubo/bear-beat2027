@@ -167,6 +167,18 @@ Resto según necesidad: ManyChat, Twilio, Resend, Meta Pixel, VAPID (push), etc.
 2. Elegir un deploy anterior estable → **Rollback** (o redeplegar desde un commit anterior).
 3. Si el problema es solo de variables, corregir env y redeploy sin rollback.
 
+### Variables en Render para verificación OTP (registro)
+
+Para que el registro con código por SMS funcione en producción, en **Render → tu servicio → Environment** añade:
+
+| Key | Valor (mismos que en tu .env.local) |
+|-----|------------------------------------|
+| `TWILIO_ACCOUNT_SID` | Tu Account SID (AC...) |
+| `TWILIO_AUTH_TOKEN` | Tu Auth Token (Live) |
+| `TWILIO_VERIFY_SERVICE_SID` | `VA71b8f5db6c57dd1ab1eb3eb24422b9c4` |
+
+Sin estas tres variables, en producción no se enviará el SMS de verificación y el registro quedará colgado en "Verifica tu teléfono".
+
 ### Verificación post-despliegue
 
 - [ ] `https://bear-beat2027.onrender.com` carga.
