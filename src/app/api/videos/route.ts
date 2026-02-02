@@ -138,11 +138,12 @@ async function getStatsAndPreview(
     .order('artist')
     .limit(6)
 
-  type PreviewRow = NonNullable<typeof previewRows>[number] & { genres: { name: string; slug: string } | null }
-  const previewVideos: VideoFile[] = (previewRows || []).map((row: PreviewRow) => {
+  // Supabase puede devolver genres como objeto o como array según la relación
+  const previewVideos: VideoFile[] = (previewRows || []).map((row: any) => {
+    const genreObj = Array.isArray(row.genres) ? row.genres[0] : row.genres
     const folderFromPath = row.file_path?.split('/')[0]
-    const genreName = row.genres?.name ?? folderFromPath ?? 'Sin género'
-    const genreSlug = (row.genres?.slug ?? genreName.toLowerCase().replace(/\s+/g, '-').replace(/ñ/g, 'n')) as string
+    const genreName = genreObj?.name ?? folderFromPath ?? 'Sin género'
+    const genreSlug = (genreObj?.slug ?? genreName.toLowerCase().replace(/\s+/g, '-').replace(/ñ/g, 'n')) as string
     const fileName = row.file_path?.split('/').pop() || row.title || `video-${row.id}`
     const relativePath = row.file_path || `${genreName}/${fileName}`
     const size = Number(row.file_size) || 0
