@@ -169,21 +169,35 @@ async function getStatsAndPreview(
     }
   })
 
-  // Nombres de géneros para el marquee (sin traer todos los videos)
+  // Conteos reales por género (para home y marquee)
+  const { data: genreStatsRows } = await supabase
+    .from('videos')
+    .select('genre_id, file_size')
+    .eq('pack_id', pack.id)
+  const byGenre: Record<string, { count: number; size: number }> = {}
+  for (const row of genreStatsRows || []) {
+    const id = String(row.genre_id || '')
+    if (!id) continue
+    if (!byGenre[id]) byGenre[id] = { count: 0, size: 0 }
+    byGenre[id].count += 1
+    byGenre[id].size += Number(row.file_size) || 0
+  }
   const genreIdsList = Array.from(genreIds)
   const { data: genreRows } = genreIdsList.length
-    ? await supabase.from('genres').select('id, name, slug').in('id', genreIdsList)
+    ? await supabase.from('genres').select('id, name, slug').in('id', genreIdsList).order('name')
     : { data: [] }
-  const estimatedPerGenre = genreIds.size > 0 ? Math.ceil(totalVideos / genreIds.size) : 0
-  const marqueeGenres: GenreFolder[] = (genreRows || []).map((g: { id: string; name: string; slug: string }) => ({
-    id: (g.slug || g.name.toLowerCase().replace(/\s+/g, '-')),
-    name: g.name,
-    type: 'folder' as const,
-    videoCount: estimatedPerGenre,
-    totalSize: 0,
-    totalSizeFormatted: '0 B',
-    videos: [],
-  }))
+  const marqueeGenres: GenreFolder[] = (genreRows || []).map((g: { id: string; name: string; slug: string }) => {
+    const stats = byGenre[String(g.id)] || { count: 0, size: 0 }
+    return {
+      id: (g.slug || g.name.toLowerCase().replace(/\s+/g, '-').replace(/ñ/g, 'n')),
+      name: g.name,
+      type: 'folder' as const,
+      videoCount: stats.count,
+      totalSize: stats.size,
+      totalSizeFormatted: formatBytes(stats.size),
+      videos: [],
+    }
+  })
   const previewGenres: GenreFolder[] = previewVideos.length
     ? [{
         id: 'preview',
@@ -256,6 +270,7 @@ export async function GET(req: NextRequest) {
     const baseUrl = getBaseUrlForThumbnails()
 
     if (statsOnly) {
+      // Estructura espejo: géneros = carpetas del servidor (sync FTP → DB). Todas las carpetas se listan aquí.
       const stats = await getStatsAndPreview(supabase, packId, hasAccess, baseUrl)
       const res = NextResponse.json({
         success: true,

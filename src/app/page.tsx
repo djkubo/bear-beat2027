@@ -147,19 +147,20 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl }: { video: 
       <motion.div
         initial={{ scale: 0.9 }}
         animate={{ scale: 1 }}
-        className="relative w-full max-w-4xl"
+        className="relative w-full max-w-4xl select-none"
         onClick={(e) => e.stopPropagation()}
-        onContextMenu={(e) => e.stopPropagation()}
+        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation() }}
       >
         {/* Cerrar */}
         <button onClick={onClose} className="absolute -top-12 right-0 text-white text-xl hover:text-bear-blue">
           ✕ Cerrar
         </button>
 
-        {/* Video con watermark (solo si no tiene acceso) - bloqueado clic derecho, arrastre, abrir en nueva ventana */}
+        {/* Video con watermark (solo si no tiene acceso) - no descarga, no clic derecho, no arrastre */}
         <div
-          className="relative aspect-video bg-black rounded-2xl overflow-hidden"
+          className="relative aspect-video bg-black rounded-2xl overflow-hidden select-none"
           onContextMenu={blockCopy}
+          onDragStart={(e) => e.preventDefault()}
         >
           {!hasAccess && (
             <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
@@ -184,7 +185,7 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl }: { video: 
             autoPlay
             playsInline
             draggable={false}
-            controlsList={hasAccess ? undefined : "nodownload nofullscreen noremoteplayback"}
+            controlsList={hasAccess ? undefined : "nodownload nofullscreen noremoteplayback noplaybackrate"}
             disablePictureInPicture={!hasAccess}
             disableRemotePlayback
             onContextMenu={blockCopy}
@@ -626,21 +627,41 @@ export default function HomePage() {
           ========================================== */}
       {!userState.hasAccess && (
         <>
-      {/* MARQUEE GÉNEROS - justo debajo del Hero */}
-      <section className="py-6 px-4 overflow-hidden">
-        <div className="overflow-hidden select-none">
-          <div className="flex w-max animate-marquee">
-            {[...genres, ...genres].map((genre) => (
-              <div
+      {/* CONTENIDO DEL PACK - Espejo de carpetas del servidor: todas las carpetas/géneros, demos visibles sin descarga */}
+      <section className="py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-xl md:text-2xl font-black text-bear-blue mb-2">
+            Contenido del pack
+          </h2>
+          <p className="text-gray-400 text-sm mb-6">
+            Estructura idéntica al servidor · {statsLoading ? '...' : totalVideos.toLocaleString()} videos en {statsLoading ? '...' : genreCount} carpetas · {statsLoading ? '...' : totalSizeFormatted}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {genres.filter((g) => g.id !== 'preview').map((genre) => (
+              <Link
                 key={`${genre.id}-${genre.name}`}
-                className="flex-shrink-0 mx-2 w-[140px] md:w-[160px] bg-bear-black border border-bear-blue/30 rounded-2xl p-4 text-center hover:border-bear-blue/60 transition-colors"
+                href="/contenido"
+                className="flex items-center justify-between gap-4 p-4 bg-white/5 border border-bear-blue/20 rounded-xl hover:border-bear-blue/50 hover:bg-white/10 transition-colors text-left"
               >
-                <span className="text-3xl mb-2 block">{GENRE_ICONS[genre.id] || GENRE_ICONS.default}</span>
-                <h3 className="font-black text-sm text-bear-blue">{genre.name}</h3>
-                <p className="text-xl font-black my-1">{genre.videoCount}</p>
-                <p className="text-[10px] text-gray-500">videos</p>
-              </div>
+                <div className="flex items-center gap-4 min-w-0">
+                  <span className="text-3xl shrink-0">{GENRE_ICONS[genre.id] || GENRE_ICONS.default}</span>
+                  <div className="min-w-0">
+                    <h3 className="font-black text-bear-blue truncate">{genre.name}</h3>
+                    <p className="text-sm text-gray-400">
+                      {genre.videoCount} videos · {genre.totalSizeFormatted}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-bear-blue text-xl shrink-0" aria-hidden>▶</span>
+              </Link>
             ))}
+          </div>
+          <div className="mt-6 text-center">
+            <Link href="/contenido">
+              <button className="bg-bear-blue text-bear-black font-black px-6 py-3 rounded-xl hover:opacity-90 transition">
+                Ver todo el contenido →
+              </button>
+            </Link>
           </div>
         </div>
       </section>

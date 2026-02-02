@@ -167,8 +167,9 @@ function ProtectedVideoPlayer({
 
   return (
     <div 
-      className="relative bg-black rounded-xl overflow-hidden aspect-video"
+      className="relative bg-black rounded-xl overflow-hidden aspect-video select-none"
       onContextMenu={handleContextMenu}
+      onDragStart={(e) => e.preventDefault()}
     >
       {/* Watermark */}
       <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
@@ -186,7 +187,11 @@ function ProtectedVideoPlayer({
           controls={false}
           controlsList="nodownload nofullscreen noremoteplayback"
           disablePictureInPicture
+          disableRemotePlayback
           playsInline
+          draggable={false}
+          onContextMenu={handleContextMenu}
+          onDragStart={(e) => e.preventDefault()}
           onEnded={() => setIsPlaying(false)}
         />
       ) : (

@@ -363,10 +363,11 @@ export default function ContenidoPage() {
                     <span>🎬</span> Preview Demo
                   </h3>
                   
-                  {/* VIDEO PLAYER CON WATERMARK - bloqueado clic derecho, arrastre, abrir en nueva ventana */}
+                  {/* Demo: no descarga, no clic derecho, no arrastre — espejo de carpetas del servidor */}
                   <div 
                     className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4 select-none"
                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); if (!hasAccess) setShowPaywall(true) }}
+                    onDragStart={(e) => e.preventDefault()}
                   >
                     {/* Portada: thumbnail o fondo con icono de play */}
                     <div className="absolute inset-0 z-0">
@@ -428,7 +429,8 @@ export default function ContenidoPage() {
                       autoPlay
                       muted
                       preload="metadata"
-                      onContextMenu={(e) => e.preventDefault()}
+                      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation() }}
+                      onDragStart={(e) => e.preventDefault()}
                       onError={() => setDemoError(true)}
                     />
                       )

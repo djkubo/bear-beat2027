@@ -59,6 +59,11 @@ Fecha: 2026-02-02.
 - **E2E:** purchase-flow acepta H1 dinámico (videos HD / BEAR BEAT). login-fix-admin: en producción espera 404 para /fix-admin?token=.... **critical-routes:** nuevo spec con rutas públicas (landing, contenido, checkout, complete-purchase, login, register, términos, privacidad, preview), portal/dashboard sin sesión → login, APIs /api/files y /api/download sin auth → 401, verify-payment sin session_id → 400.
 - **Activate idempotencia:** En `src/app/api/complete-purchase/activate/route.ts`: antes de insertar en `purchases` se comprueba si ya existe fila para `user_id + pack_id`; si existe se devuelve 200 con ftp_username/ftp_password. Si el insert falla por unique violation (código 23505) se hace select de la fila existente y se devuelve 200 con los mismos datos. Así, recargar /complete-purchase o llamar activate varias veces no duplica purchases ni devuelve 500.
 
+### Estructura espejo y protección de demos
+
+- **Espejo de carpetas del servidor:** La web refleja la estructura de carpetas del servidor (FTP/Hetzner). El sync FTP (`/api/admin/sync-videos-ftp`) actualiza la tabla `videos` y los géneros en la DB; la API `/api/videos` (con o sin `statsOnly=1`) devuelve todos los géneros/carpetas con conteos y videos. En el home, la sección "Contenido del pack" muestra todas las carpetas (géneros) con el texto "Estructura idéntica al servidor". Los demos se pueden ver en el home y en `/contenido`.
+- **Demos sin descarga ni clic derecho:** En todos los reproductores de demo (home modal, `/contenido`, `/preview`): `onContextMenu` con `preventDefault` + `stopPropagation`, `controlsList="nodownload nofullscreen noremoteplayback"`, `disablePictureInPicture`, `disableRemotePlayback`, `draggable={false}`, `onDragStart` preventDefault y `select-none` en el contenedor. Los usuarios con acceso siguen pudiendo descargar desde el botón explícito "Descargar".
+
 ---
 
 ## 4. Pruebas
