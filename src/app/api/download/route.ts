@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
 
     // Fallback: Bunny legacy (BUNNY_CDN_URL + BUNNY_TOKEN_KEY)
     if (USE_BUNNY_LEGACY) {
-      const bunnyPath = `${BUNNY_PACK_PREFIX || 'packs/enero-2026'}/${sanitizedPath}`
+      const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
       const signedUrl = generateSignedUrl(bunnyPath, 3600, process.env.NEXT_PUBLIC_APP_URL)
       try {
         await supabase.from('downloads').insert({

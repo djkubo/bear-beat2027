@@ -16,19 +16,18 @@ const BUNNY_STREAM_API_KEY = process.env.BUNNY_STREAM_API_KEY || ''
 const BUNNY_TOKEN_KEY = process.env.BUNNY_TOKEN_KEY || ''
 
 /**
- * Genera URL firmada que expira
- * Solo funciona por X tiempo y desde tu dominio
+ * Genera URL firmada que expira (BUNNY_CDN_URL + BUNNY_TOKEN_KEY).
+ * Path en hash = path normalizado (decodificado); URL usa path codificado para espacios/caracteres especiales.
  */
 export function generateSignedUrl(
-  filePath: string, 
+  filePath: string,
   expiresInSeconds: number = 3600,
   allowedReferrer?: string
 ): string {
   const expires = Math.floor(Date.now() / 1000) + expiresInSeconds
-  const pathForToken = `/${filePath}`
-  
-  // Crear hash de seguridad
-  const hashableBase = BUNNY_TOKEN_KEY + pathForToken + expires.toString()
+  const pathNormalized = '/' + (filePath || '').replace(/^\/+/, '').replace(/\.\./g, '')
+
+  const hashableBase = BUNNY_TOKEN_KEY + pathNormalized + expires.toString()
   const token = crypto
     .createHash('sha256')
     .update(hashableBase)
@@ -37,10 +36,10 @@ export function generateSignedUrl(
     .replace(/\//g, '_')
     .replace(/=/g, '')
 
-  // URL con token y expiración
-  let url = `${BUNNY_CDN_URL}${pathForToken}?token=${token}&expires=${expires}`
-  
-  // Si hay referrer permitido, agregarlo
+  const pathEncoded = '/' + pathNormalized.split('/').filter(Boolean).map(encodeURIComponent).join('/')
+  const base = (BUNNY_CDN_URL || '').replace(/\/$/, '')
+  let url = `${base}${pathEncoded}?token=${token}&expires=${expires}`
+
   if (allowedReferrer) {
     const refHash = crypto
       .createHash('sha256')

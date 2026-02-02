@@ -63,9 +63,9 @@ Si Token Authentication no está activada o la clave no coincide, las descargas 
 
 ### 2.4 Qué usa cada ruta
 
-- **Demos:** El front usa `src="/api/demo-url?path=Genre/Video.mp4"`. Esa ruta redirige (302) a URL firmada de Bunny CDN (BUNNY_PULL_ZONE + BUNNY_SECURITY_KEY) para que el video cargue rápido desde el CDN; si Bunny no está configurado, redirige a `/api/demo/...` (proxy FTP).
+- **Demos:** El front usa `src="/api/demo-url?path=Genre/Video.mp4"`. Esa ruta redirige (302) a URL firmada de Bunny CDN. Soporta: (1) BUNNY_PULL_ZONE + BUNNY_SECURITY_KEY, (2) legacy BUNNY_CDN_URL + BUNNY_TOKEN_KEY. Si Bunny no está configurado, redirige a `/api/demo/...` (proxy FTP).
 - **Portadas (carátulas):** `/api/videos` devuelve `thumbnailUrl` (CDN o `/api/thumbnail-from-video?path=...`). Para generar carátulas en masa desde un frame de cada video: `npm run db:generate-thumbnails` (requiere FTP Hetzner + Bunny Storage + ffmpeg; sube .jpg a Bunny y actualiza `thumbnail_url` en Supabase).
-- **Descarga:** GET `/api/download?file=Genre/video.mp4` → comprueba sesión y compra → redirige a URL firmada Bunny (BUNNY_PACK_PATH_PREFIX + file).
+- **Descarga:** GET `/api/download?file=Genre/video.mp4` → comprueba sesión y compra → redirige a URL firmada Bunny. Soporta (1) BUNNY_PULL_ZONE + BUNNY_SECURITY_KEY, (2) legacy BUNNY_CDN_URL + BUNNY_TOKEN_KEY. Prefijo: BUNNY_PACK_PATH_PREFIX si está definido, si no se usa la ruta tal cual.
 - **Listado:** GET `/api/files?pack=1` → comprueba sesión y compra → listFiles(BUNNY_PACK_PATH_PREFIX) → devuelve árbol con rutas relativas. POST `/api/files` con filePath relativo (ej. Genre/video.mp4) genera URL firmada con prefijo BUNNY_PACK_PATH_PREFIX.
 
 ---
