@@ -75,14 +75,7 @@ function CardPaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement
-        options={{
-          layout: 'tabs',
-          defaultCollapsed: false,
-          radios: true,
-          spacedAccordionItems: true,
-        }}
-      />
+      <PaymentElement options={{ layout: 'tabs' }} />
       <button
         type="submit"
         disabled={!stripe || !elements || loading}
@@ -469,7 +462,7 @@ export default function CheckoutPage() {
                               window.location.href = `${origin}/complete-purchase?session_id=PAYPAL_${data.orderID}&provider=paypal`
                             }}
                             onError={(err) => {
-                              const msg = err?.message || 'Error al procesar con PayPal. Intenta con tarjeta u otro método.'
+                              const msg = typeof err?.message === 'string' ? err.message : 'Error al procesar con PayPal. Intenta con tarjeta u otro método.'
                               toast.error(msg)
                               setError(msg)
                             }}

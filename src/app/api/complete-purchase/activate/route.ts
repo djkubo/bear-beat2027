@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
           { error: 'Pago no completado o sesión inválida' },
           { status: 400 }
         )
+      }
       packId = parseInt(pi.metadata?.pack_id || '1', 10)
       amountPaid = (pi.amount || 0) / 100
       currency = (pi.currency || 'mxn').toUpperCase()
@@ -91,6 +92,7 @@ export async function POST(req: NextRequest) {
           { error: 'Pago no completado o sesión inválida' },
           { status: 400 }
         )
+      }
       packId = parseInt(session.metadata?.pack_id || '1', 10)
       amountPaid = (session.amount_total || 0) / 100
       currency = (session.currency || 'MXN').toUpperCase()
@@ -208,7 +210,7 @@ export async function POST(req: NextRequest) {
       ftp_host: ftp_username.includes('-sub')
         ? `${ftp_username}.your-storagebox.de`
         : undefined,
-    })
+    });
   } catch (e: any) {
     console.error('Activate purchase error:', e)
     return NextResponse.json(
