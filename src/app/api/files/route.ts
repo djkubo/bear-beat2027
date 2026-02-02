@@ -51,7 +51,6 @@ export async function GET(req: NextRequest) {
         .select('id')
         .eq('user_id', user.id)
         .eq('pack_id', packId)
-        .eq('status', 'completed')
         .single()
 
       if (!purchase) {
@@ -121,7 +120,6 @@ export async function POST(req: NextRequest) {
         .select('id')
         .eq('user_id', user.id)
         .eq('pack_id', packId)
-        .eq('status', 'completed')
         .single()
 
       if (!purchase) {
