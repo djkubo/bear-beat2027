@@ -35,12 +35,14 @@ Los videos ya están en el servidor. El listado en la web sale de la tabla `vide
 
 ### Opción B – Correcta (ya implementada): una subcuenta por compra
 
-Hetzner permite subcuentas del Storage Box, solo lectura. Se gestionan con la Robot API:
+Hetzner permite subcuentas del Storage Box, solo lectura. Se gestionan con la **Robot API** (uso directo, sin SDK):
 
+- **Doc oficial:** https://robot.hetzner.com/doc/webservice/en.html#storage-box
+- **Listar subcuentas:** `GET https://robot-ws.your-server.de/storagebox/{storagebox-id}/subaccount`
 - **Crear subcuenta:** `POST https://robot-ws.your-server.de/storagebox/{storagebox-id}/subaccount` con `username`, `password`, `read_only=true`.
 - Cada subcuenta tiene su propio host: `u540473-sub1.your-storagebox.de`.
 
-La app ya hace esto al completar la compra (ver sección "Qué hace la app HOY" arriba).
+La app ya llama a esta API directamente desde `src/lib/hetzner-robot.ts` al completar la compra (ver sección "Qué hace la app HOY" arriba).
 
 ---
 
@@ -54,6 +56,18 @@ NEXT_PUBLIC_FTP_HOST=u540473.your-storagebox.de
 ```
 
 El Storage Box ID lo ves en Robot → Storage Box (número del box).
+
+---
+
+## API Robot (uso directo)
+
+La app **no usa SDK de terceros**: llama a la API REST de Hetzner directamente desde `src/lib/hetzner-robot.ts` con `fetch`, usando:
+
+- **Base URL:** `https://robot-ws.your-server.de`
+- **Autenticación:** HTTP Basic Auth con `HETZNER_ROBOT_USER` y `HETZNER_ROBOT_PASSWORD`
+- **Endpoints usados:** `GET /storagebox/{id}/subaccount` (listar), `POST /storagebox/{id}/subaccount` (crear)
+
+Documentación oficial: [robot.hetzner.com/doc/webservice](https://robot.hetzner.com/doc/webservice/en.html#storage-box).
 
 ---
 

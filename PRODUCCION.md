@@ -57,10 +57,12 @@
 | Método | Ruta | Uso |
 |--------|------|-----|
 | GET | `/api/videos` | Listado de videos (disco o Supabase) |
-| GET | `/api/download?file=...` | Descarga de video (con acceso) |
+| GET | `/api/download?file=...` | Descarga de video (con acceso); redirect a CDN firmado |
+| GET | `/api/demo-url?path=...` | Redirect a demo desde CDN (rápido) o proxy `/api/demo` |
 | GET | `/api/thumbnail/[...path]` | Miniatura de video |
-| GET | `/api/demo/[...path]` | Demo de video |
-| POST | `/api/create-checkout` | Crear sesión Stripe |
+| GET | `/api/demo/[...path]` | Demo de video (proxy FTP si no hay CDN) |
+| POST | `/api/create-payment-intent` | PaymentIntent para Tarjeta/OXXO/SPEI (body: packSlug, currency, email opcional) |
+| POST | `/api/create-checkout` | Crear sesión Stripe (body: packSlug, paymentMethod, currency, email opcional para OXXO/SPEI) |
 | GET | `/api/verify-payment?session_id=...` | Verificar pago Stripe |
 | POST | `/api/complete-purchase/activate` | Activar compra (Stripe + crear FTP Hetzner si aplica) |
 | POST | `/api/webhooks/stripe` | Webhook Stripe |

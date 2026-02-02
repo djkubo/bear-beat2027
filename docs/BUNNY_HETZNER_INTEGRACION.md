@@ -8,8 +8,8 @@ Documento de referencia para que **demos**, **portadas**, **descargas**, **desca
 
 | Funcionalidad | Dónde se usa | Depende de | Sin config → |
 |---------------|--------------|------------|--------------|
-| **Demos** (preview de videos) | Landing, /contenido, /preview | Bunny CDN (BUNNY_CDN_URL) o /api/demo (FTP/local) | Fallback a /api/demo; en prod sin FTP → 503 con mensaje claro |
-| **Portadas** (thumbnails) | Listado de videos | Bunny CDN + token, o /api/thumbnail-from-video, o placeholder | Placeholder SVG con artista/título |
+| **Demos** (preview de videos) | Landing, /contenido, /preview | `/api/demo-url` → CDN firmado (BUNNY_PULL_ZONE + SECURITY_KEY) o proxy /api/demo | Demos cargan más rápido desde CDN; sin Bunny → proxy FTP |
+| **Portadas** (thumbnails/carátulas) | Listado de videos | Bunny CDN, o /api/thumbnail-from-video (frame del video), o script `db:generate-thumbnails` | Placeholder SVG con artista/título |
 | **Descargas** (archivo suelto) | /contenido, /api/download | Bunny CDN + BUNNY_TOKEN_KEY, o disco local | 403/404 con mensaje |
 | **Descargas por carpeta** | /api/files (listado + POST URL firmada) | Bunny Storage (listFiles) + mismo path que download | Lista vacía si Storage no configurado; descarga usa mismo prefijo |
 | **FTP** (credenciales por compra) | /complete-purchase, /dashboard | Hetzner Robot API (subcuentas) | Credenciales generadas dj_xxx como fallback |
@@ -63,8 +63,8 @@ Si Token Authentication no está activada o la clave no coincide, las descargas 
 
 ### 2.4 Qué usa cada ruta
 
-- **Demos:** Front llama `/api/cdn-base` → obtiene BUNNY_CDN_URL → construye `baseUrl + "/" + path` (path del video). Si no hay baseUrl, usa `/api/demo/...` (proxy local o FTP).
-- **Portadas:** `/api/videos` devuelve `thumbnailUrl` construida con `/api/thumbnail-from-video?path=...` (producción) o `/api/placeholder/thumb`. thumbnail-from-video descarga un trozo del video desde Bunny (URL firmada), extrae frame con ffmpeg, sube a Storage y redirige; si falla, redirige al placeholder.
+- **Demos:** El front usa `src="/api/demo-url?path=Genre/Video.mp4"`. Esa ruta redirige (302) a URL firmada de Bunny CDN (BUNNY_PULL_ZONE + BUNNY_SECURITY_KEY) para que el video cargue rápido desde el CDN; si Bunny no está configurado, redirige a `/api/demo/...` (proxy FTP).
+- **Portadas (carátulas):** `/api/videos` devuelve `thumbnailUrl` (CDN o `/api/thumbnail-from-video?path=...`). Para generar carátulas en masa desde un frame de cada video: `npm run db:generate-thumbnails` (requiere FTP Hetzner + Bunny Storage + ffmpeg; sube .jpg a Bunny y actualiza `thumbnail_url` en Supabase).
 - **Descarga:** GET `/api/download?file=Genre/video.mp4` → comprueba sesión y compra → redirige a URL firmada Bunny (BUNNY_PACK_PATH_PREFIX + file).
 - **Listado:** GET `/api/files?pack=1` → comprueba sesión y compra → listFiles(BUNNY_PACK_PATH_PREFIX) → devuelve árbol con rutas relativas. POST `/api/files` con filePath relativo (ej. Genre/video.mp4) genera URL firmada con prefijo BUNNY_PACK_PATH_PREFIX.
 

@@ -13,6 +13,8 @@
     "db:admin-test": "node scripts/run-supabase-sql.js supabase/HACER_ADMIN_TEST_BEARBEAT.sql",
     "db:sync-videos": "node scripts/sync-videos-to-supabase.js",
     "db:sync-videos-ftp": "node scripts/sync-videos-from-ftp.js",
+    "db:create-genre-zips": "node scripts/create-genre-zips.js",
+    "db:generate-thumbnails": "node scripts/generate-thumbnails-from-videos.js",
     "db:update-videos-metadata": "node scripts/update-videos-metadata.js",
     "deploy:env": "node scripts/render-set-env.js",
     "supabase:set-auth-urls": "node scripts/supabase-set-auth-urls.js",

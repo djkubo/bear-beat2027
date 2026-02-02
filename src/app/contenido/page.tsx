@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
-import { getDemoCdnUrl } from '@/lib/utils'
+// Demo: /api/demo-url redirige a CDN firmado (rápido) o a proxy
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
-import { Folder, Music2, Search, Lock, ChevronRight, Check, Play, Download } from 'lucide-react'
+import { Folder, Music2, Search, Lock, ChevronRight, Check, Play, Download, Archive } from 'lucide-react'
+import { toast } from 'sonner'
 
 // ==========================================
 // CONTENIDO – Vitrina High-End (Dark Mode, estilo Finder/Rekordbox)
@@ -59,7 +60,6 @@ export default function ContenidoPage() {
   const [hasAccess, setHasAccess] = useState(false)
   const [posterError, setPosterError] = useState(false)
   const [demoError, setDemoError] = useState(false)
-  const [cdnBaseUrl, setCdnBaseUrl] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const expandedSectionRef = useRef<HTMLDivElement>(null)
   const inventory = useVideoInventory()
@@ -83,13 +83,6 @@ export default function ContenidoPage() {
     trackPageView('contenido')
     verificarAcceso()
     loadVideos()
-  }, [])
-
-  useEffect(() => {
-    fetch('/api/cdn-base')
-      .then((res) => res.json())
-      .then((data) => typeof data?.baseUrl === 'string' && data.baseUrl && setCdnBaseUrl(data.baseUrl))
-      .catch(() => {})
   }, [])
 
   const verificarAcceso = async () => {
@@ -156,6 +149,38 @@ export default function ContenidoPage() {
   const handlePreview = (video: Video) => {
     setSelectedVideo(video)
     trackCTAClick('preview', 'contenido', video.name)
+  }
+
+  const handleDownloadFolderZip = async (genre: Genre) => {
+    if (!hasAccess) {
+      setShowPaywall(true)
+      return
+    }
+    const zipName = `${genre.name}.zip`
+    try {
+      const res = await fetch(`/api/download?file=${encodeURIComponent(zipName)}`, { redirect: 'manual' })
+      if (res.status === 302) {
+        const location = res.headers.get('Location')
+        if (location) {
+          window.open(location, '_blank')
+          trackCTAClick('download_folder_zip', 'contenido', zipName)
+        } else {
+          toast.error('No se pudo iniciar la descarga.')
+        }
+      } else if (res.status === 404) {
+        const data = await res.json().catch(() => ({}))
+        if (data?.useFtp) {
+          toast.info('Para descargar la carpeta completa masivamente, por favor usa FTP desde el Dashboard.')
+        } else {
+          toast.error('ZIP no disponible. Usa FTP para descargar la carpeta completa.')
+        }
+      } else {
+        const data = await res.json().catch(() => ({}))
+        toast.error(data?.error || 'Error al descargar la carpeta.')
+      }
+    } catch {
+      toast.error('Error de conexión. Intenta de nuevo o usa FTP.')
+    }
   }
 
   if (loading) {
@@ -294,7 +319,24 @@ export default function ContenidoPage() {
                   {filteredGenres
                     .filter((g) => g.id === expandedGenre)
                     .map((genre) => (
-                      <div key={genre.id} className="max-h-[420px] overflow-y-auto">
+                      <div key={genre.id}>
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-white/10 bg-zinc-800/50">
+                          <h3 className="font-bold text-white">{genre.name}</h3>
+                          {hasAccess && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDownloadFolderZip(genre)
+                              }}
+                              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/20 text-cyan-400 font-bold text-sm hover:bg-cyan-500/30 transition border border-cyan-500/40"
+                            >
+                              <Archive className="h-4 w-4" />
+                              DESCARGAR CARPETA ZIP
+                            </button>
+                          )}
+                        </div>
+                        <div className="max-h-[420px] overflow-y-auto">
                         {genre.videos.map((video) => (
                           <div
                             key={video.id}
@@ -347,6 +389,7 @@ export default function ContenidoPage() {
                             </button>
                           </div>
                         ))}
+                        </div>
                       </div>
                     ))}
                 </motion.div>
@@ -382,8 +425,8 @@ export default function ContenidoPage() {
                         </div>
                       )}
                       {(() => {
-                        const demoUrl = getDemoCdnUrl(selectedVideo.path, cdnBaseUrl)
-                        if (demoError || !demoUrl) return null
+                        const demoUrl = `/api/demo-url?path=${encodeURIComponent(selectedVideo.path)}`
+                        if (demoError) return null
                         return (
                           <video
                             ref={videoRef}
@@ -397,7 +440,7 @@ export default function ContenidoPage() {
                             playsInline
                             draggable={false}
                             autoPlay
-                            preload="metadata"
+                            preload="auto"
                             onContextMenu={(e) => e.preventDefault()}
                             onError={() => setDemoError(true)}
                             onLoadedMetadata={(e) => {
@@ -490,8 +533,8 @@ export default function ContenidoPage() {
                           <p className="text-white/20 text-2xl font-black rotate-[-25deg]">BEAR BEAT</p>
                         </div>
                         {(() => {
-                          const demoUrl = getDemoCdnUrl(selectedVideo.path, cdnBaseUrl)
-                          if (demoError || !demoUrl) return null
+                          const demoUrl = `/api/demo-url?path=${encodeURIComponent(selectedVideo.path)}`
+                          if (demoError) return null
                           return (
                             <video
                               ref={videoRef}
@@ -505,7 +548,7 @@ export default function ContenidoPage() {
                               playsInline
                               draggable={false}
                               autoPlay
-                              preload="metadata"
+                              preload="auto"
                               onContextMenu={(e) => e.preventDefault()}
                               onError={() => setDemoError(true)}
                               onLoadedMetadata={(e) => {

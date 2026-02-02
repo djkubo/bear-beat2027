@@ -37,7 +37,12 @@ En [Stripe – Tarjetas de prueba](https://docs.stripe.com/testing#cards):
 - CVC: cualquier 3 dígitos (ej. 123)
 - Código postal: cualquiera (ej. 12345)
 
-### OXXO / SPEI (Stripe Checkout)
+### OXXO / SPEI (Stripe Checkout o Payment Element)
+
+OXXO y SPEI (transferencia) en Stripe **requieren un Customer** asociado al pago. La app lo resuelve así:
+
+- **Checkout (botones OXXO/SPEI):** En la página de checkout hay un campo **Email**. Es obligatorio para OXXO/SPEI (invitado o logueado). El backend busca o crea un Stripe Customer por ese email y lo asocia a la sesión.
+- **Tarjeta + pestañas OXXO/SPEI:** Si eliges "Tarjeta" y en el Payment Element cambias a OXXO o SPEI, el backend ya creó un PaymentIntent con Customer usando el email (del usuario logueado o el que escribiste en el campo). Si pagas como invitado, **escribe tu email antes de elegir Tarjeta** para que OXXO/SPEI en las pestañas funcionen.
 
 Si usas el flujo de redirección a Stripe Checkout para OXXO/SPEI, en modo test Stripe genera referencias/CLABE de prueba; no se realizan cobros reales.
 
@@ -83,7 +88,9 @@ La cuenta Personal tiene saldo Sandbox (ej. USD 5,000); no se cobra dinero real.
 - [ ] PayPal: `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` y `PAYPAL_USE_SANDBOX=true` (credenciales de app Sandbox)
 - [ ] (Opcional) `NEXT_PUBLIC_PAYPAL_USE_SANDBOX=true` para mostrar el indicador de PayPal sandbox en el checkout
 - [ ] En checkout ves el banner **"Modo pruebas"** cuando corresponde
+- [ ] **Email en checkout:** Para OXXO/SPEI (invitado o logueado) rellenar el campo "Tu email" antes de elegir OXXO o SPEI
 - [ ] Probar tarjeta con `4242 4242 4242 4242` y flujo completo hasta `/complete-purchase`
+- [ ] Probar OXXO/SPEI: escribir email → elegir OXXO o SPEI → completar flujo hasta `/complete-purchase`
 - [ ] Probar PayPal con una cuenta Sandbox y flujo hasta activación de compra
 
 Cuando quieras cobros reales: cambia Stripe a claves `pk_live_` / `sk_live_`, PayPal a app **Live** y quita o pon `PAYPAL_USE_SANDBOX=false` según corresponda.

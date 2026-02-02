@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
-import { getDemoCdnUrl } from '@/lib/utils'
+// Demo: /api/demo-url redirige a CDN firmado (rápido) o proxy
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
@@ -116,11 +116,11 @@ function ScarcityBar({ sold }: { sold: number }) {
   )
 }
 
-// Reproductor de demo inline — URL directa a Bunny CDN (BUNNY_CDN_URL o NEXT_PUBLIC_BUNNY_CDN_URL)
-function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl }: { video: Video; onClose: () => void; hasAccess?: boolean; cdnBaseUrl?: string | null }) {
+// Reproductor de demo: con acceso usa download; sin acceso usa /api/demo-url (CDN o proxy)
+function DemoPlayer({ video, onClose, hasAccess = false }: { video: Video; onClose: () => void; hasAccess?: boolean; cdnBaseUrl?: string | null }) {
   const [downloading, setDownloading] = useState(false)
   const [demoError, setDemoError] = useState(false)
-  const demoSrc = hasAccess ? `/api/download?file=${encodeURIComponent(video.path)}&stream=true` : getDemoCdnUrl(video.path, cdnBaseUrl)
+  const demoSrc = hasAccess ? `/api/download?file=${encodeURIComponent(video.path)}&stream=true` : `/api/demo-url?path=${encodeURIComponent(video.path)}`
   
   const handleDownload = async () => {
     setDownloading(true)
@@ -187,6 +187,7 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl }: { video: 
             controls
             autoPlay
             playsInline
+            preload="auto"
             draggable={false}
             controlsList={hasAccess ? undefined : "nodownload nofullscreen noremoteplayback noplaybackrate"}
             disablePictureInPicture={!hasAccess}

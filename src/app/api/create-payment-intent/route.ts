@@ -10,12 +10,27 @@ async function getPack(supabase: Awaited<ReturnType<typeof createServerClient>>,
 }
 
 /**
- * Crea un PaymentIntent para pago con tarjeta (Stripe Elements / Payment Element).
- * Solo para método "card". Devuelve clientSecret para el front.
+ * Busca un Stripe Customer por email o crea uno nuevo.
+ * OXXO/SPEI (customer_balance) requieren que el PaymentIntent tenga customer.
+ */
+async function getOrCreateStripeCustomer(email: string): Promise<string> {
+  const existing = await stripe.customers.list({ email, limit: 1 })
+  if (existing.data.length > 0) {
+    return existing.data[0].id
+  }
+  const customer = await stripe.customers.create({ email })
+  return customer.id
+}
+
+/**
+ * Crea un PaymentIntent para Stripe Elements (tarjeta, OXXO, SPEI en tabs).
+ * OXXO y SPEI (customer_balance) requieren customer; resolvemos por email (body o usuario logueado).
  */
 export async function POST(req: NextRequest) {
   try {
-    const { packSlug, currency = 'mxn' } = await req.json()
+    const body = await req.json()
+    const { packSlug, currency = 'mxn', email: bodyEmail } = body as { packSlug?: string; currency?: string; email?: string }
+
     if (!packSlug) {
       return NextResponse.json({ error: 'Pack slug required' }, { status: 400 })
     }
@@ -48,12 +63,23 @@ export async function POST(req: NextRequest) {
     const amountInCents = Math.round(amount * 100)
 
     let userId: string | null = null
+    let userEmail: string | null = null
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) userId = user.id
+      if (user) {
+        userId = user.id
+        userEmail = user.email ?? null
+      }
     } catch {}
 
-    const paymentIntent = await stripe.paymentIntents.create({
+    const email = (typeof bodyEmail === 'string' && bodyEmail.trim()) ? bodyEmail.trim() : userEmail
+
+    let customerId: string | undefined
+    if (email) {
+      customerId = await getOrCreateStripeCustomer(email)
+    }
+
+    const paymentIntentParams: Parameters<typeof stripe.paymentIntents.create>[0] = {
       amount: amountInCents,
       currency: currency === 'mxn' ? 'mxn' : 'usd',
       automatic_payment_methods: { enabled: true },
@@ -62,7 +88,12 @@ export async function POST(req: NextRequest) {
         pack_slug: pack.slug,
         ...(userId && { user_id: userId }),
       },
-    })
+    }
+    if (customerId) {
+      paymentIntentParams.customer = customerId
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams)
 
     return NextResponse.json({ clientSecret: paymentIntent.client_secret })
   } catch (error: any) {

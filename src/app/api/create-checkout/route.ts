@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerClient } from '@/lib/supabase/server'
 
+/** OXXO/SPEI (customer_balance) requieren customer en Stripe. Buscar o crear por email. */
+async function getOrCreateStripeCustomer(email: string): Promise<string> {
+  const existing = await stripe.customers.list({ email, limit: 1 })
+  if (existing.data.length > 0) return existing.data[0].id
+  const customer = await stripe.customers.create({ email })
+  return customer.id
+}
+
 // Fallback solo cuando no hay DB
 async function getPackWithVideoCount(supabase: Awaited<ReturnType<typeof createServerClient>>, packSlug: string) {
   const { data: packRow } = await supabase.from('packs').select('*').eq('slug', packSlug).eq('status', 'available').single()
@@ -15,14 +23,20 @@ async function getPackWithVideoCount(supabase: Awaited<ReturnType<typeof createS
 
 export async function POST(req: NextRequest) {
   try {
-    const { packSlug, paymentMethod, currency = 'mxn' } = await req.json()
-    
+    const body = await req.json()
+    const { packSlug, paymentMethod, currency = 'mxn', email: bodyEmail } = body as {
+      packSlug?: string
+      paymentMethod?: string
+      currency?: string
+      email?: string
+    }
+
     if (!packSlug) {
       return NextResponse.json({ error: 'Pack slug required' }, { status: 400 })
     }
-    
+
     const supabase = await createServerClient()
-    
+
     // Verificar si hay usuario logueado
     let loggedUser: { id: string; email: string; name?: string } | null = null
     try {
@@ -78,6 +92,16 @@ export async function POST(req: NextRequest) {
       paymentMethodTypes = ['paypal']
     }
     
+    // OXXO/SPEI (customer_balance) requieren customer; resolver si tenemos email (logueado o body)
+    const emailForCustomer =
+      typeof bodyEmail === 'string' && bodyEmail.trim()
+        ? bodyEmail.trim()
+        : loggedUser?.email ?? null
+    let stripeCustomerId: string | null = null
+    if (emailForCustomer && (paymentMethod === 'oxxo' || paymentMethod === 'spei')) {
+      stripeCustomerId = await getOrCreateStripeCustomer(emailForCustomer)
+    }
+
     // Configuración base de la sesión
     const sessionConfig: any = {
       mode: 'payment',
@@ -96,7 +120,7 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/complete-purchase?session_id={CHECKOUT_SESSION_ID}${loggedUser?.email ? `&email=${encodeURIComponent(loggedUser.email)}` : ''}`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/complete-purchase?session_id={CHECKOUT_SESSION_ID}${emailForCustomer ? `&email=${encodeURIComponent(emailForCustomer)}` : ''}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout?canceled=true&pack=${pack.slug}`,
       metadata: {
         pack_id: pack.id.toString(),
@@ -112,9 +136,10 @@ export async function POST(req: NextRequest) {
         enabled: true,
       },
     }
-    
-    // Si el usuario está logueado, pre-rellenar su email en Stripe
-    if (loggedUser?.email) {
+
+    if (stripeCustomerId) {
+      sessionConfig.customer = stripeCustomerId
+    } else if (loggedUser?.email) {
       sessionConfig.customer_email = loggedUser.email
     }
     

@@ -1,6 +1,8 @@
 /**
  * Hetzner Robot API – crear subcuenta en Storage Box (solo lectura para clientes).
- * Doc: https://robot.hetzner.com/doc/webservice/en.html
+ * Uso directo de la API oficial (sin SDK): https://robot.hetzner.com/doc/webservice/en.html
+ * Storage Box subaccounts: GET/POST https://robot-ws.your-server.de/storagebox/{id}/subaccount
+ * Doc oficial: https://robot.hetzner.com/doc/webservice/en.html#storage-box
  * Username formato: uXXXXX-subN (ej. u540473-sub1).
  */
 

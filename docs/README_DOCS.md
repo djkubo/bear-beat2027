@@ -37,6 +37,15 @@
 
 ---
 
+## Pagos (Stripe, PayPal, OXXO, SPEI)
+
+| Documento | Descripción |
+|-----------|-------------|
+| [PRUEBAS_STRIPE_Y_PAYPAL_SANDBOX.md](./PRUEBAS_STRIPE_Y_PAYPAL_SANDBOX.md) | Pruebas en sandbox: claves test, tarjetas de prueba, OXXO/SPEI (email obligatorio para invitados), PayPal Sandbox, checklist y activación en Render. |
+| [WEBHOOK_STRIPE_CONFIG.md](./WEBHOOK_STRIPE_CONFIG.md) | Configuración del webhook Stripe. |
+
+---
+
 ## Contenido y admin
 
 | Documento | Descripción |

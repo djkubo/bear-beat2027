@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { getSignedDownloadUrl, isBunnyDownloadConfigured } from '@/lib/bunny'
 import { generateSignedUrl } from '@/lib/storage/bunny'
 import fs from 'fs'
 import path from 'path'
 
 const VIDEOS_BASE_PATH = process.env.VIDEOS_PATH || path.join(process.cwd(), 'Videos Enero 2026')
 
-// Bunny: prefijo en Storage (ej. packs/enero-2026) — el file viene como Genre/filename.mp4
-const BUNNY_PACK_PREFIX = process.env.BUNNY_PACK_PATH_PREFIX || 'packs/enero-2026'
-const USE_BUNNY = !!(process.env.BUNNY_CDN_URL && process.env.BUNNY_TOKEN_KEY)
+// Prefijo opcional en Bunny (ej. packs/enero-2026). El file viene como Genre/filename.mp4 o Cumbia.zip
+const BUNNY_PACK_PREFIX = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || '').replace(/\/$/, '')
+const USE_BUNNY_LEGACY = !!(process.env.BUNNY_CDN_URL && process.env.BUNNY_TOKEN_KEY)
 
 /**
  * GET /api/download?file=genre/filename.mp4&stream=true
@@ -53,12 +54,32 @@ export async function GET(req: NextRequest) {
     }
     
     const sanitizedPath = filePath.replace(/\.\./g, '').replace(/^\//, '')
-    
-    // Producción: descarga vía Bunny CDN (URL firmada)
-    if (USE_BUNNY) {
-      const bunnyPath = `${BUNNY_PACK_PREFIX}/${sanitizedPath}`
-      const signedUrl = generateSignedUrl(bunnyPath, 3600, process.env.NEXT_PUBLIC_APP_URL)
-      // Registrar descarga para "Los más populares" y "Última descarga"
+    const isZipRequest = sanitizedPath.toLowerCase().endsWith('.zip')
+
+    // Producción: BunnyCDN con BUNNY_PULL_ZONE + BUNNY_SECURITY_KEY (Token Auth)
+    if (isBunnyDownloadConfigured()) {
+      const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
+      const signedUrl = getSignedDownloadUrl(bunnyPath, 3600)
+      if (!signedUrl) {
+        return NextResponse.json({ error: 'Bunny CDN no configurado' }, { status: 503 })
+      }
+      // Para ZIP: comprobar si existe en Bunny antes de redirigir (evitar 404 en nueva pestaña)
+      if (isZipRequest) {
+        try {
+          const headRes = await fetch(signedUrl, { method: 'HEAD', redirect: 'follow' })
+          if (!headRes.ok) {
+            return NextResponse.json(
+              { error: 'Archivo ZIP no encontrado en el CDN.', useFtp: true },
+              { status: 404 }
+            )
+          }
+        } catch {
+          return NextResponse.json(
+            { error: 'No se pudo verificar el archivo. Para descargar la carpeta completa, usa FTP.', useFtp: true },
+            { status: 404 }
+          )
+        }
+      }
       try {
         await supabase.from('downloads').insert({
           user_id: user.id,
@@ -69,7 +90,28 @@ export async function GET(req: NextRequest) {
       } catch {
         // ignorar si falla (tabla no existe o RLS)
       }
-      return NextResponse.redirect(signedUrl)
+      const res = NextResponse.redirect(signedUrl, 302)
+      res.headers.set('Cache-Control', 'private, max-age=3600')
+      return res
+    }
+
+    // Fallback: Bunny legacy (BUNNY_CDN_URL + BUNNY_TOKEN_KEY)
+    if (USE_BUNNY_LEGACY) {
+      const bunnyPath = `${BUNNY_PACK_PREFIX || 'packs/enero-2026'}/${sanitizedPath}`
+      const signedUrl = generateSignedUrl(bunnyPath, 3600, process.env.NEXT_PUBLIC_APP_URL)
+      try {
+        await supabase.from('downloads').insert({
+          user_id: user.id,
+          pack_id: purchases[0].pack_id,
+          file_path: sanitizedPath,
+          download_method: 'web',
+        })
+      } catch {
+        // ignorar
+      }
+      const resLegacy = NextResponse.redirect(signedUrl, 302)
+      resLegacy.headers.set('Cache-Control', 'private, max-age=3600')
+      return resLegacy
     }
     
     // Desarrollo: servir desde disco

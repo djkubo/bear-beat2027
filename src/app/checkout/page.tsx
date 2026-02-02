@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { trackCTAClick } from '@/lib/tracking'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
+import { createClient } from '@/lib/supabase/client'
 import { Check, Shield, Lock, CreditCard, Building2, Banknote, Wallet, ChevronRight } from 'lucide-react'
 import { getMessengerUrl } from '@/config/contact'
 import { loadStripe } from '@stripe/stripe-js'
@@ -169,6 +170,15 @@ export default function CheckoutPage() {
   const [reservationSeconds, setReservationSeconds] = useState(RESERVATION_MINUTES * 60)
   const [cardClientSecret, setCardClientSecret] = useState<string | null>(null)
   const [cardClientSecretLoading, setCardClientSecretLoading] = useState(false)
+  const [checkoutEmail, setCheckoutEmail] = useState<string | null>(null)
+
+  // Email para Stripe Customer (OXXO/SPEI requieren customer): usuario logueado o invitado
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setCheckoutEmail(user.email)
+    })
+  }, [])
 
   // HARDCODED FOR TESTING: forzar MX para ver OXXO/SPEI desde cualquier país (ej. USA)
   useEffect(() => {
@@ -195,7 +205,7 @@ export default function CheckoutPage() {
     return () => clearInterval(t)
   }, [step, reservationSeconds])
 
-  // Al elegir Tarjeta, obtener clientSecret para Stripe Elements
+  // Al elegir Tarjeta, obtener clientSecret para Stripe Elements (email para OXXO/SPEI en tabs)
   useEffect(() => {
     if (selectedMethod !== 'card') {
       setCardClientSecret(null)
@@ -203,10 +213,12 @@ export default function CheckoutPage() {
     }
     setError(null)
     setCardClientSecretLoading(true)
+    const body: { packSlug: string; currency: string; email?: string } = { packSlug, currency }
+    if (checkoutEmail) body.email = checkoutEmail
     fetch('/api/create-payment-intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ packSlug, currency }),
+      body: JSON.stringify(body),
     })
       .then((r) => r.json())
       .then((data) => {
@@ -215,7 +227,7 @@ export default function CheckoutPage() {
       })
       .catch(() => setError('Error de conexión. Intenta de nuevo.'))
       .finally(() => setCardClientSecretLoading(false))
-  }, [selectedMethod, packSlug, currency])
+  }, [selectedMethod, packSlug, currency, checkoutEmail])
 
   const price = currency === 'mxn' ? 350 : 19
   const currencyLabel = currency === 'mxn' ? 'MXN' : 'USD'
@@ -225,6 +237,11 @@ export default function CheckoutPage() {
 
   const handleOxxoSpeiPayment = async () => {
     if (selectedMethod !== 'oxxo' && selectedMethod !== 'spei') return
+    if (!checkoutEmail?.trim()) {
+      setError('Ingresa tu email para pagar con OXXO o SPEI.')
+      toast.error('Ingresa tu email arriba para continuar.')
+      return
+    }
     setStep('processing')
     setError(null)
     trackCTAClick('checkout_method', 'checkout', `${selectedMethod}-${packSlug}`)
@@ -232,7 +249,7 @@ export default function CheckoutPage() {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packSlug, paymentMethod: selectedMethod, currency }),
+        body: JSON.stringify({ packSlug, paymentMethod: selectedMethod, currency, email: checkoutEmail.trim() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al procesar')
@@ -435,6 +452,21 @@ export default function CheckoutPage() {
                       <span className="font-bold text-sm text-white">PayPal</span>
                       <span className="text-xs text-gray-500">Cuenta PayPal</span>
                     </button>
+                  </div>
+
+                  {/* Email para OXXO/SPEI (invitado o para comprobante): necesario para customer en Stripe */}
+                  <div className="mb-4">
+                    <label htmlFor="checkout-email" className="block text-sm font-medium text-gray-400 mb-1.5">
+                      Tu email {!checkoutEmail && <span className="text-amber-400">(necesario para OXXO/SPEI)</span>}
+                    </label>
+                    <input
+                      id="checkout-email"
+                      type="email"
+                      value={checkoutEmail ?? ''}
+                      onChange={(e) => setCheckoutEmail(e.target.value.trim() || null)}
+                      placeholder="tu@email.com"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
+                    />
                   </div>
 
                   {/* ESCENARIO A: Tarjeta – Stripe Elements + PaymentElement + botón custom */}

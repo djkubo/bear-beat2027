@@ -4,6 +4,17 @@ Guía paso a paso para documentar todo y desplegar a producción (Render).
 
 ---
 
+## 0. Cambios recientes (documentados en este deploy)
+
+| Área | Cambio |
+|------|--------|
+| **Stripe OXXO/SPEI** | OXXO y SPEI requieren `customer` en Stripe. Se añadió: (1) En `create-payment-intent`: recibir `email` (body o usuario logueado), buscar o crear Stripe Customer y asociarlo al PaymentIntent. (2) En `create-checkout`: mismo flujo para sesiones OXXO/SPEI; body acepta `email` para invitados. (3) En checkout: campo "Tu email" (obligatorio para OXXO/SPEI); se envía en ambas APIs. Ver [PRUEBAS_STRIPE_Y_PAYPAL_SANDBOX.md](./PRUEBAS_STRIPE_Y_PAYPAL_SANDBOX.md). |
+| **Demos más rápidos** | Nueva ruta `GET /api/demo-url?path=Genre/Video.mp4`: redirige a URL firmada de Bunny CDN (rápido) o a `/api/demo` (proxy). El front usa esta URL como `src` del `<video>`. `preload="auto"` en demos. |
+| **Descarga** | Redirects de `/api/download` a Bunny incluyen `Cache-Control: private, max-age=3600`. |
+| **Carátulas** | Script `npm run db:generate-thumbnails`: genera thumbnails desde un frame de cada video (FTP → ffmpeg → Bunny Storage), actualiza `thumbnail_url` en Supabase. Requiere FTP, Bunny Storage y ffmpeg. Ver [BUNNY_HETZNER_INTEGRACION.md](./BUNNY_HETZNER_INTEGRACION.md). |
+
+---
+
 ## 1. Documentación disponible
 
 Antes de desplegar, toda la documentación está en `/docs`:
