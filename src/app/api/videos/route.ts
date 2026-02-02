@@ -182,10 +182,8 @@ async function getStatsAndPreview(
     byGenre[id].count += 1
     byGenre[id].size += Number(row.file_size) || 0
   }
-  const genreIdsList = Array.from(genreIds)
-  const { data: genreRows } = genreIdsList.length
-    ? await supabase.from('genres').select('id, name, slug').in('id', genreIdsList).order('name')
-    : { data: [] }
+  // Mostrar TODOS los géneros de la DB (como en login: "Todos los géneros: Reggaeton, Cumbia...")
+  const { data: genreRows } = await supabase.from('genres').select('id, name, slug').order('name')
   const marqueeGenres: GenreFolder[] = (genreRows || []).map((g: { id: string; name: string; slug: string }) => {
     const stats = byGenre[String(g.id)] || { count: 0, size: 0 }
     return {
@@ -213,7 +211,7 @@ async function getStatsAndPreview(
   return {
     totalVideos,
     totalSize,
-    genreCount: genreIds.size,
+    genreCount: marqueeGenres.length,
     totalPurchases: totalPurchasesCount,
     previewGenres: [...marqueeGenres, ...previewGenres],
   }

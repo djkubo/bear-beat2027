@@ -9,7 +9,7 @@ import Image from 'next/image'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Download, Music2, RefreshCw, Monitor, Zap, Eye, EyeOff } from 'lucide-react'
+import { Download, Music2, Monitor, Zap, Eye, EyeOff } from 'lucide-react'
 
 // ==========================================
 // LOGIN PAGE – Premium & Professional (Dark Mode, coherente con Home)
@@ -26,7 +26,6 @@ type LoginFormData = z.infer<typeof loginSchema>
 const BENEFITS = [
   { icon: Download, text: 'Descarga ilimitada vía Web y FTP' },
   { icon: Music2, text: 'Todos los géneros: Reggaeton, Cumbia, Rock...' },
-  { icon: RefreshCw, text: 'Actualizaciones mensuales incluidas' },
   { icon: Monitor, text: 'Acceso desde cualquier dispositivo' },
   { icon: Zap, text: 'Soporte 24/7 por WhatsApp' },
 ]

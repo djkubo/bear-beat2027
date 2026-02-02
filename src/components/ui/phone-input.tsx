@@ -121,34 +121,34 @@ export function PhoneInput({
 
   return (
     <div className="flex gap-2">
-      {/* Selector de país */}
+      {/* Selector de país – Dark Mode coherente con formularios (zinc-800, bear-blue focus) */}
       <div className="relative">
         <select
           value={country}
           onChange={handleCountryChange}
-          className="appearance-none w-32 px-3 py-3 border-2 border-white/20 rounded-xl focus:ring-2 focus:ring-bear-blue focus:border-bear-blue text-base font-bold bg-white/10 text-white cursor-pointer focus:outline-none"
+          className="appearance-none w-32 px-3 py-3 border border-zinc-800 rounded-xl focus:ring-2 focus:ring-bear-blue/20 focus:border-bear-blue text-base font-medium bg-black text-white cursor-pointer focus:outline-none transition-colors"
         >
           {Object.keys(countryNames).map((code) => (
-            <option key={code} value={code} className="bg-bear-black text-white">
+            <option key={code} value={code} className="bg-zinc-900 text-white">
               {countryFlags[code]} {code}
             </option>
           ))}
         </select>
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 text-xs">
           ▼
         </div>
       </div>
 
       {/* Input de teléfono */}
       <div className="flex-1 relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold pointer-events-none">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium pointer-events-none text-sm">
           +{callingCode}
         </div>
         <input
           type="tel"
           value={phoneNumber}
           onChange={handlePhoneChange}
-          className={`w-full pl-16 pr-4 py-3 border-2 border-white/20 rounded-xl focus:ring-2 focus:ring-bear-blue focus:border-bear-blue text-lg bg-white/10 text-white placeholder-gray-500 focus:outline-none ${className}`}
+          className={`w-full pl-14 pr-4 py-3 border border-zinc-800 rounded-xl focus:ring-2 focus:ring-bear-blue/20 focus:border-bear-blue text-base bg-black text-white placeholder-gray-600 focus:outline-none transition-colors ${className}`}
           placeholder={placeholder}
         />
       </div>
