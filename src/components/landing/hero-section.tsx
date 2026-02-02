@@ -48,34 +48,34 @@ export function HeroSection({ pack }: HeroSectionProps) {
             <img 
               src="/logos/BBLOGOTIPOPOSITIVO_Mesa de trabajo 1.png" 
               alt="Bear Beat" 
-              className="h-24 sm:h-32 lg:h-40 w-auto"
+              className="h-20 sm:h-28 lg:h-40 w-auto"
             />
           </div>
 
-          {/* Main Heading - ULTRA CLARO */}
-          <h1 className="text-5xl sm:text-6xl lg:text-8xl font-extrabold tracking-tight leading-tight">
+          {/* Main Heading – responsive: 4xl móvil, 6xl desktop */}
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
             <span className="block mb-2">{totalVideos} Video Remixes</span>
             <span className="block bg-gradient-to-r from-bear-blue to-bear-blue/70 bg-clip-text text-transparent">
               Para DJs
             </span>
           </h1>
 
-          {/* Subtitle - MUY SIMPLE */}
-          <p className="text-2xl sm:text-3xl font-bold max-w-3xl mx-auto">
+          {/* Subtitle */}
+          <p className="text-xl md:text-2xl lg:text-3xl font-bold max-w-3xl mx-auto">
             Descarga todo por solo
-            <span className="block text-5xl text-bear-blue mt-3">$350 MXN</span>
+            <span className="block text-4xl md:text-5xl text-bear-blue mt-3">$350 MXN</span>
           </p>
           
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
             ✅ Pago único • ✅ Sin mensualidades • ✅ Acceso inmediato
           </p>
 
-          {/* CTA Buttons - MUY OBVIO */}
-          <div className="flex flex-col gap-4 justify-center items-center max-w-2xl mx-auto">
+          {/* CTA Buttons – apilados, ancho completo en móvil */}
+          <div className="flex flex-col gap-4 justify-center items-center max-w-2xl mx-auto w-full">
             <Link href="/checkout" className="w-full" onClick={() => trackCTAClick('COMPRAR AHORA', 'hero')}>
               <Button 
                 size="xl" 
-                className="btn-pulse w-full bg-bear-blue text-bear-black hover:bg-bear-blue/90 font-extrabold text-2xl py-8 shadow-2xl rounded-2xl"
+                className="btn-pulse w-full bg-bear-blue text-bear-black hover:bg-bear-blue/90 font-extrabold text-lg md:text-2xl py-6 md:py-8 shadow-2xl rounded-2xl"
               >
                 🛒 COMPRAR AHORA - $350 MXN
               </Button>

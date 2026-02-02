@@ -452,7 +452,7 @@ export default function HomeLanding() {
       )}
 
       {/* NAVBAR - UX clara: marca | acciones (CTA principal + secundaria) */}
-      <header className="sticky top-0 z-50 py-3 md:py-4 px-4 border-b border-white/10 bg-bear-black/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-50 py-3 md:py-4 px-4 md:px-6 border-b border-white/10 bg-zinc-950/95 backdrop-blur-md">
         <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
           {/* Marca */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
@@ -513,7 +513,7 @@ export default function HomeLanding() {
       </header>
 
       {/* HERO SECTION - DIFERENTE SEGÚN ESTADO */}
-      <section className="py-16 md:py-24 lg:py-28 px-4 relative overflow-hidden">
+      <section className="py-12 md:py-24 lg:py-28 px-4 md:px-6 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-bear-blue/10 rounded-full blur-[150px] pointer-events-none" />
         
         {userState.hasAccess ? (
@@ -613,7 +613,7 @@ export default function HomeLanding() {
       {!userState.hasAccess && (
         <>
       {/* PRUEBA SOCIAL – Datos duros: GB + Archivos (tangibilidad) */}
-      <section className="py-10 px-4 border-b border-white/5">
+      <section className="py-10 px-4 md:px-6 border-b border-white/5">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-xl md:text-2xl font-black text-bear-blue mb-2">
             Contenido del pack
@@ -623,7 +623,7 @@ export default function HomeLanding() {
             <span className="text-gray-400 self-center">·</span>
             <span className="text-2xl md:text-3xl font-black text-bear-blue">{statsLoading ? '...' : totalVideos.toLocaleString()} archivos</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {genres.filter((g) => g.id !== 'preview').map((genre) => (
               <Link
                 key={`${genre.id}-${genre.name}`}
@@ -651,7 +651,7 @@ export default function HomeLanding() {
       </section>
 
       {/* STATS BAR – Tangibilidad: archivos, géneros, GB */}
-      <section className="py-8 px-4 bg-white/[0.03] border-y border-white/5">
+      <section className="py-8 px-4 md:px-6 bg-white/[0.03] border-y border-white/5">
         <div className="max-w-5xl mx-auto grid grid-cols-3 gap-4 text-center">
           <div>
             <div className="text-2xl md:text-4xl font-black text-bear-blue tabular-nums">
@@ -675,7 +675,7 @@ export default function HomeLanding() {
       </section>
 
       {/* LOS 10 MÁS POPULARES – Carrusel con demos (prueba social) */}
-      <section className="py-10 px-4 border-b border-white/5">
+      <section className="py-10 px-4 md:px-6 border-b border-white/5">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-xl md:text-2xl font-black mb-2 text-bear-blue">
             Los 10 más populares
