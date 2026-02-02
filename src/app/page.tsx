@@ -91,18 +91,21 @@ function CountdownTimer({ endDate }: { endDate: Date }) {
   )
 }
 
-function ScarcityBar({ sold, total }: { sold: number; total: number }) {
-  const safeTotal = Math.max(1, total)
-  const soldCap = Math.min(sold, safeTotal)
-  const percentage = total <= 0 ? 0 : (soldCap / safeTotal) * 100
+/** Escasez: barra casi llena (85–99%) para urgencia. "Oferta limitada" / "% cupos vendidos". */
+const CUPOS_MES = 100
+function ScarcityBar({ sold }: { sold: number }) {
+  const percentage = Math.min(99, Math.max(85, Math.round((sold / CUPOS_MES) * 100)))
+  const copy = percentage >= 90
+    ? '⚠️ Oferta limitada a las próximas 50 licencias a este precio'
+    : `${percentage}% de los cupos de este mes vendidos`
   return (
     <div className="w-full">
       <div className="flex justify-between text-sm mb-2">
-        <span className="font-bold text-red-500">⚠️ {Math.max(0, total - sold)} lugares disponibles</span>
-        <span className="text-gray-400">{sold.toLocaleString()}/{total.toLocaleString()} vendidos</span>
+        <span className="font-bold text-red-400">{copy}</span>
+        <span className="text-gray-400">{sold.toLocaleString()} licencias reservadas</span>
       </div>
-      <div className="h-4 bg-gray-800 rounded-full overflow-hidden">
-        <motion.div 
+      <div className="h-3 md:h-4 bg-gray-800/80 rounded-full overflow-hidden border border-red-500/30">
+        <motion.div
           className="h-full bg-gradient-to-r from-red-500 to-red-600"
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
@@ -411,7 +414,7 @@ export default function HomePage() {
   const statsLoading = !statsTimedOut && ((loading && !packInfo) || inventory.loading)
 
   return (
-    <div className={`min-h-screen bg-bear-black text-white ${!userState.hasAccess ? 'pb-20 md:pb-0' : ''}`}>
+    <div className={`min-h-screen bg-bear-black text-white antialiased ${!userState.hasAccess ? 'pb-20 md:pb-0' : ''}`}>
       {/* BANNER SUPERIOR - DIFERENTE SEGÚN ESTADO */}
       {userState.hasAccess ? (
         // ==========================================
@@ -580,37 +583,24 @@ export default function HomePage() {
           </div>
         ) : (
           // ==========================================
-          // HERO PARA NUEVOS USUARIOS
+          // HERO PARA NUEVOS USUARIOS – Gancho + dolor/solución + CTA alto contraste
           // ==========================================
           <div className="max-w-5xl mx-auto text-center relative z-10">
-            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-4 bg-gradient-to-r from-white via-gray-200 to-bear-blue/90 bg-clip-text text-transparent">
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-4 bg-gradient-to-r from-white via-cyan-200 to-bear-blue bg-clip-text text-transparent">
               {statsLoading ? '...' : totalVideos.toLocaleString()} videos HD para DJs. Un pago. Descarga hoy.
             </motion.h1>
 
-            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg md:text-xl text-gray-300 mb-6 max-w-2xl mx-auto">
-              El mismo tipo de contenido que usan los DJs Pro. Organizado por género (BPM + Key incluidos). Listo para usar.
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+              Deja de perder horas ripeando de YouTube en mala calidad. Contenido HD organizado por género, con BPM y Key. Como el que usan los DJs pro.
             </motion.p>
 
-            {/* 3 bullets antes del CTA */}
-            <motion.ul initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="list-none space-y-2 mb-6 text-left max-w-md mx-auto">
-              <li className="flex items-center gap-2 text-gray-200">
-                <span className="text-bear-blue">✓</span> {statsLoading ? '...' : totalVideos.toLocaleString()} remixes HD
-              </li>
-              <li className="flex items-center gap-2 text-gray-200">
-                <span className="text-bear-blue">✓</span> Descarga Web + FTP
-              </li>
-              <li className="flex items-center gap-2 text-gray-200">
-                <span className="text-bear-blue">✓</span> Pago único $350 MXN
-              </li>
-            </motion.ul>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-              <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('hero')}>
-                <button className="bg-bear-blue text-bear-black font-black text-xl md:text-3xl px-12 py-6 md:py-8 rounded-3xl shadow-2xl shadow-bear-blue/30 hover:scale-105 transition-all">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex flex-col items-center gap-4">
+              <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('hero')} className="w-full sm:w-auto">
+                <button className="w-full min-h-[52px] sm:min-h-[60px] bg-bear-blue text-bear-black font-black text-xl md:text-3xl px-10 py-5 md:py-7 rounded-2xl shadow-[0_0_30px_rgba(8,225,247,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all border-2 border-bear-blue">
                   QUIERO ACCESO AHORA →
                 </button>
               </Link>
-              <p className="text-sm text-gray-500 mt-4">Pago seguro (Stripe) · Garantía 30 días</p>
+              <p className="text-sm text-gray-400">🔒 Acceso inmediato · Garantía de 30 días</p>
             </motion.div>
           </div>
         )}
@@ -621,15 +611,20 @@ export default function HomePage() {
           ========================================== */}
       {!userState.hasAccess && (
         <>
-      {/* CONTENIDO DEL PACK - Espejo de carpetas del servidor: todas las carpetas/géneros, demos visibles sin descarga */}
-      <section className="py-8 px-4">
+      {/* PRUEBA SOCIAL – Datos duros: GB + Archivos (tangibilidad) */}
+      <section className="py-10 px-4 border-b border-white/5">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-xl md:text-2xl font-black text-bear-blue mb-2">
             Contenido del pack
           </h2>
-          <p className="text-gray-400 text-sm mb-6">
-            Estructura idéntica al servidor · {statsLoading ? '...' : totalVideos.toLocaleString()} videos en {statsLoading ? '...' : genreCount} carpetas · {statsLoading ? '...' : totalSizeFormatted}
+          <p className="text-gray-400 text-sm mb-4">
+            Estructura idéntica al servidor. Todo listo para descargar.
           </p>
+          <div className="flex flex-wrap gap-4 mb-6 p-4 rounded-xl bg-white/5 border border-bear-blue/20">
+            <span className="text-2xl md:text-3xl font-black text-bear-blue">{statsLoading ? '...' : totalSizeFormatted}</span>
+            <span className="text-gray-400 self-center">·</span>
+            <span className="text-2xl md:text-3xl font-black text-bear-blue">{statsLoading ? '...' : totalVideos.toLocaleString()} archivos</span>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {genres.filter((g) => g.id !== 'preview').map((genre) => (
               <Link
@@ -657,35 +652,35 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* STATS BAR - DATOS REALES */}
-      <section className="py-8 px-4 bg-bear-blue/10 border-y border-bear-blue/30">
+      {/* STATS BAR – Tangibilidad: archivos, géneros, GB */}
+      <section className="py-8 px-4 bg-white/[0.03] border-y border-white/5">
         <div className="max-w-5xl mx-auto grid grid-cols-3 gap-4 text-center">
           <div>
-            <div className="text-2xl md:text-4xl font-black text-bear-blue">
+            <div className="text-2xl md:text-4xl font-black text-bear-blue tabular-nums">
               {statsLoading ? '...' : totalVideos.toLocaleString()}
             </div>
-            <div className="text-xs md:text-sm text-gray-400">Video Remixes</div>
+            <div className="text-xs md:text-sm text-gray-400">Archivos</div>
           </div>
           <div>
-            <div className="text-2xl md:text-4xl font-black text-bear-blue">
+            <div className="text-2xl md:text-4xl font-black text-bear-blue tabular-nums">
               {statsLoading ? '...' : genreCount}
             </div>
             <div className="text-xs md:text-sm text-gray-400">Géneros</div>
           </div>
           <div>
-            <div className="text-2xl md:text-4xl font-black text-bear-blue">
+            <div className="text-2xl md:text-4xl font-black text-bear-blue tabular-nums">
               {statsLoading ? '...' : totalSizeFormatted}
             </div>
-            <div className="text-xs md:text-sm text-gray-400">De Contenido</div>
+            <div className="text-xs md:text-sm text-gray-400">De contenido</div>
           </div>
         </div>
       </section>
 
-      {/* LOS 10 VIDEOS MÁS POPULARES - Carrusel con flechas (estilo VideoRemixesPack) */}
-      <section className="py-10 px-4 border-b border-bear-blue/20">
+      {/* LOS 10 MÁS POPULARES – Carrusel con demos (prueba social) */}
+      <section className="py-10 px-4 border-b border-white/5">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-xl md:text-2xl font-black mb-2 text-bear-blue">
-            Los 10 videos más populares
+            Los 10 más populares
           </h2>
           <p className="text-gray-400 text-sm mb-6">
             Los más descargados por la comunidad. Haz clic para ver demo.
@@ -739,12 +734,10 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ==========================================
-          ¿ES BEAR BEAT PARA TI? – 2 columnas tipo card, iconos grandes
-          ========================================== */}
-      <section className="py-12 px-4 bg-black/40 border-y border-white/10">
+      {/* FILTRO DE CUALIFICACIÓN – “¿Es para ti?” Dos columnas checkmarks vs X */}
+      <section className="py-12 px-4 bg-white/[0.03] border-y border-white/5">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl md:text-4xl font-black text-center mb-8">
+          <h2 className="text-2xl md:text-4xl font-black text-center mb-8 text-white">
             ¿Es Bear Beat para ti?
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
@@ -786,7 +779,7 @@ export default function HomePage() {
                 </li>
                 <li className="flex gap-3">
                   <span className="text-red-400 shrink-0 text-xl" aria-hidden>❌</span>
-                  <span><strong className="text-white">Buscas &quot;gratis&quot;:</strong> La calidad, los servidores rápidos y el soporte tienen un costo. Esto es una inversión para tu negocio, no un gasto.</span>
+                  <span><strong className="text-white">Buscas &quot;gratis&quot;:</strong> La calidad y el soporte tienen un costo. Esto es una inversión para tu negocio, no un gasto.</span>
                 </li>
               </ul>
             </div>
@@ -794,13 +787,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* PAIN POINTS */}
-      <section className="py-16 px-4">
+      {/* PAIN POINTS – ¿Te identificas? */}
+      <section className="py-16 px-4 border-t border-white/5">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl md:text-4xl font-black text-center mb-12">
-            😤 ¿Te identificas con esto?
+          <h2 className="text-2xl md:text-4xl font-black text-center mb-12 text-white">
+            ¿Te identificas con esto?
           </h2>
-          <div className="space-y-6">
+          <div className="space-y-4">
             {[
               { icon: '😩', text: 'Pasas HORAS buscando videos en YouTube y bajándolos en mala calidad' },
               { icon: '💸', text: 'Pagas múltiples suscripciones que juntas cuestan más de $500/mes' },
@@ -808,98 +801,95 @@ export default function HomePage() {
               { icon: '🤯', text: 'Tu competencia tiene videos que tú no encuentras en ningún lado' },
               { icon: '⏰', text: 'No tienes tiempo para editar y crear tus propios remixes' },
             ].map((pain, i) => (
-              <motion.div 
+              <motion.div
                 key={i}
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="flex items-center gap-4 bg-red-500/10 border border-red-500/30 rounded-xl p-4"
+                className="flex items-center gap-4 bg-white/5 border border-red-500/20 rounded-xl p-4 md:p-5 hover:border-red-500/40 transition-colors"
               >
-                <span className="text-3xl">{pain.icon}</span>
-                <p className="text-lg">{pain.text}</p>
+                <span className="text-2xl md:text-3xl shrink-0">{pain.icon}</span>
+                <p className="text-base md:text-lg text-gray-300">{pain.text}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* SOLUTION */}
-      <section className="py-16 px-4 bg-gradient-to-b from-bear-blue/10 to-transparent">
+      {/* SOLUCIÓN – Adiós frustración (iconografía limpia) */}
+      <section className="py-16 px-4 bg-gradient-to-b from-bear-blue/5 to-transparent border-y border-white/5">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl md:text-4xl font-black mb-8">
-            ✅ Con Bear Beat todo eso se acaba
+          <h2 className="text-2xl md:text-4xl font-black mb-8 text-white">
+            Con Bear Beat todo eso se acaba
           </h2>
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid sm:grid-cols-2 gap-4 md:gap-6">
             {[
               { icon: '⚡', title: 'Descarga instantánea', desc: `${statsLoading ? '...' : totalVideos.toLocaleString()} videos listos en minutos` },
-              { icon: '🎯', title: 'Organizados por género', desc: `${statsLoading ? '...' : genreCount} categorías para encontrar rápido` },
-              { icon: '💎', title: 'Calidad profesional', desc: 'HD/4K sin marcas de agua' },
-              { icon: '🔄', title: 'Descarga ilimitada', desc: 'Web + FTP para descarga masiva' },
+              { icon: '🎯', title: 'Organizados por género', desc: `${statsLoading ? '...' : genreCount} categorías, BPM + Key` },
+              { icon: '💎', title: 'Sin marcas de agua', desc: 'HD/4K calidad profesional' },
+              { icon: '🔄', title: 'Web + FTP', desc: 'Descarga masiva cuando quieras' },
             ].map((benefit, i) => (
-              <div key={i} className="bg-green-500/10 border border-green-500/30 rounded-xl p-6 text-left">
-                <span className="text-3xl mb-3 block">{benefit.icon}</span>
-                <h3 className="font-bold text-lg mb-2">{benefit.title}</h3>
-                <p className="text-gray-400">{benefit.desc}</p>
+              <div key={i} className="bg-white/5 border border-bear-blue/20 rounded-xl p-5 md:p-6 text-left hover:border-bear-blue/40 transition-colors">
+                <span className="text-2xl md:text-3xl mb-2 block">{benefit.icon}</span>
+                <h3 className="font-bold text-lg mb-1 text-bear-blue">{benefit.title}</h3>
+                <p className="text-gray-400 text-sm">{benefit.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* PRICE REVEAL */}
+      {/* OFERTA IRRESISTIBLE – Price anchoring: $12,680 tachado vs $350 + garantía */}
       <section className="py-16 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-2xl md:text-4xl font-black mb-6">
-            💰 ¿Cuánto cuesta normalmente esto?
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-2xl md:text-4xl font-black mb-8 text-white">
+            ¿Cuánto cuesta normalmente esto?
           </h2>
-          
-          <div className="space-y-2 mb-6 text-left max-w-md mx-auto">
-            {[
-              { item: `${statsLoading ? '...' : totalVideos.toLocaleString()} videos a $10 c/u`, price: `$${((statsLoading ? 0 : totalVideos) * 10).toLocaleString()}` },
-              { item: 'Suscripción pools (anual)', price: '$2,400' },
-              { item: '40 hrs buscando/descargando', price: '$4,000' },
-            ].map((row, i) => (
-              <div key={i} className="flex justify-between items-center text-sm text-gray-400">
-                <span>{row.item}</span>
-                <span className="font-bold text-red-400/80 line-through">{row.price}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-gray-500 text-sm mb-8">
-            Valor total: <span className="line-through">${statsLoading ? '...' : (totalVideos * 10 + 2400 + 4000).toLocaleString()}+ MXN</span>
-          </p>
-          
-          {/* Tarjeta ganadora: $350 con borde brillante y glow */}
-          <div className="relative rounded-3xl p-8 md:p-10 bg-gradient-to-b from-bear-blue/15 to-bear-blue/5 border-2 border-bear-blue/80 shadow-[0_0_40px_rgba(8,225,247,0.25)] ring-2 ring-bear-blue/40 ring-offset-4 ring-offset-bear-black mb-8">
-            <p className="text-gray-400 text-sm uppercase tracking-wider mb-2">Tu precio hoy</p>
-            <div className="text-5xl md:text-7xl font-black text-bear-blue mb-2 drop-shadow-[0_0_20px_rgba(8,225,247,0.5)]">$350</div>
-            <p className="text-gray-300 mb-4">MXN • Pago único • Acceso de por vida</p>
-            <p className="text-sm text-green-400 font-semibold">🛡️ Garantía 30 días: si no te gusta, te devolvemos todo.</p>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 mb-6 text-left">
+            <div className="flex justify-between items-center py-2 border-b border-white/10">
+              <span className="text-gray-400">Precio normal (valor real)</span>
+              <span className="text-xl font-black text-red-400/90 line-through">$12,680 MXN</span>
+            </div>
+            <div className="flex justify-between items-center py-4">
+              <span className="text-bear-blue font-bold">Tu precio hoy</span>
+              <span className="text-4xl md:text-5xl font-black text-bear-blue">$350 MXN</span>
+            </div>
           </div>
 
-          <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('price')}>
-            <button className="bg-bear-blue text-bear-black font-black text-xl md:text-2xl px-12 py-6 rounded-2xl shadow-2xl shadow-bear-blue/30 hover:scale-105 transition-all">
+          <div className="relative rounded-3xl p-8 md:p-10 bg-gradient-to-b from-bear-blue/15 to-bear-blue/5 border-2 border-bear-blue/80 shadow-[0_0_40px_rgba(8,225,247,0.2)] ring-2 ring-bear-blue/40 ring-offset-4 ring-offset-bear-black mb-8">
+            <p className="text-gray-400 text-sm uppercase tracking-wider mb-2">Pago único · Acceso de por vida</p>
+            <div className="text-5xl md:text-7xl font-black text-bear-blue mb-3 drop-shadow-[0_0_20px_rgba(8,225,247,0.4)]">$350</div>
+            <p className="text-gray-300 mb-4">MXN</p>
+            <div className="flex items-center justify-center gap-2 text-green-400 font-semibold">
+              <span className="text-2xl" aria-hidden>🛡️</span>
+              <span>Garantía de 30 días: si no te gusta, te devolvemos todo.</span>
+            </div>
+          </div>
+
+          <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('price')} className="block w-full sm:inline-block">
+            <button className="w-full min-h-[52px] sm:min-h-[56px] bg-bear-blue text-bear-black font-black text-xl md:text-2xl px-10 py-5 rounded-2xl shadow-[0_0_30px_rgba(8,225,247,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all border-2 border-bear-blue">
               QUIERO MI ACCESO AHORA →
             </button>
           </Link>
         </div>
       </section>
 
-      {/* SCARCITY - datos en tiempo real: vendidos = compras reales, total = videos del pack */}
-      {!statsLoading && totalVideos > 0 && (
+      {/* ESCASEZ – Barra casi llena (85–99%), “próximas 50 licencias” / “% cupos vendidos” */}
+      {!statsLoading && (
         <section className="py-8 px-4 bg-red-500/10 border-y border-red-500/30">
           <div className="max-w-xl mx-auto">
-            <ScarcityBar sold={totalPurchases} total={totalVideos} />
+            <ScarcityBar sold={totalPurchases} />
           </div>
         </section>
       )}
 
-      {/* GUARANTEE */}
+      {/* GARANTÍA – Escudo dorado/seguro */}
       <section className="py-16 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="bg-green-500/10 border-2 border-green-500/50 rounded-3xl p-8">
-            <span className="text-6xl mb-4 block">🛡️</span>
-            <h2 className="text-2xl md:text-3xl font-black mb-4">Garantía de 30 Días</h2>
+          <div className="bg-white/5 border-2 border-green-500/50 rounded-3xl p-8 md:p-10">
+            <span className="text-5xl md:text-6xl mb-4 block" aria-hidden>🛡️</span>
+            <h2 className="text-2xl md:text-3xl font-black mb-4 text-white">Garantía de 30 Días</h2>
             <p className="text-gray-400 text-lg">
               Si no estás 100% satisfecho, te devolvemos tu dinero. Sin preguntas, sin complicaciones.
             </p>
@@ -907,23 +897,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
-      <section className="py-16 px-4 bg-white/5">
+      {/* TESTIMONIALS – Prueba social */}
+      <section className="py-16 px-4 bg-white/[0.03] border-y border-white/5">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl md:text-4xl font-black text-center mb-12">
-            ⭐ Lo que dicen los DJs
+          <h2 className="text-2xl md:text-4xl font-black text-center mb-12 text-white">
+            Lo que dicen los DJs
           </h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-4 md:gap-6">
             {[
               { name: 'DJ Carlos', city: 'CDMX', text: 'Pensé que era demasiado bueno. Pagué y en 5 minutos ya estaba descargando por FTP. ¡Increíble!' },
               { name: 'DJ María', city: 'Monterrey', text: 'Tengo 3 suscripciones de video pools. Con Bear Beat me ahorro $400/mes y tengo mejor contenido.' },
               { name: 'DJ Roberto', city: 'Guadalajara', text: 'El FTP es una maravilla. Dejé descargando todo la noche y al día siguiente tenía todo listo.' },
             ].map((t, i) => (
-              <div key={i} className="bg-bear-black border border-bear-blue/30 rounded-2xl p-6">
+              <div key={i} className="bg-white/5 border border-bear-blue/20 rounded-2xl p-6 hover:border-bear-blue/40 transition-colors">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-bear-blue/20 rounded-full flex items-center justify-center font-bold">{t.name[3]}</div>
+                  <div className="w-12 h-12 bg-bear-blue/20 rounded-full flex items-center justify-center font-bold text-bear-blue">{t.name[3]}</div>
                   <div>
-                    <p className="font-bold">{t.name}</p>
+                    <p className="font-bold text-white">{t.name}</p>
                     <p className="text-xs text-gray-500">{t.city}</p>
                   </div>
                 </div>
@@ -935,25 +925,25 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section className="py-20 px-4 bg-gradient-to-b from-transparent to-bear-blue/20">
+      {/* CIERRE LÓGICO – Tabla comparativa + CTA final */}
+      <section className="py-20 px-4 bg-gradient-to-b from-transparent to-bear-blue/10 border-t border-white/5">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-black mb-6">
-            🎯 Decisión Simple
+          <h2 className="text-3xl md:text-5xl font-black mb-8 text-white">
+            Decisión simple
           </h2>
-          <div className="grid md:grid-cols-2 gap-6 mb-10">
-            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-red-400 mb-4">❌ Sin Bear Beat</h3>
-              <ul className="text-left text-gray-400 space-y-2 text-sm">
+          <div className="grid md:grid-cols-2 gap-4 md:gap-6 mb-10">
+            <div className="bg-red-500/10 border-2 border-red-500/40 rounded-2xl p-6 text-left">
+              <h3 className="text-xl font-bold text-red-400 mb-4">Sin Bear Beat</h3>
+              <ul className="text-gray-400 space-y-2 text-sm">
                 <li>• Seguir buscando videos por horas</li>
                 <li>• Pagar múltiples suscripciones</li>
                 <li>• Quedarte atrás de la competencia</li>
                 <li>• Videos de mala calidad</li>
               </ul>
             </div>
-            <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-green-400 mb-4">✅ Con Bear Beat</h3>
-              <ul className="text-left text-gray-400 space-y-2 text-sm">
+            <div className="bg-green-500/10 border-2 border-green-500/40 rounded-2xl p-6 text-left">
+              <h3 className="text-xl font-bold text-green-400 mb-4">Con Bear Beat</h3>
+              <ul className="text-gray-400 space-y-2 text-sm">
                 <li>• {statsLoading ? '...' : totalVideos.toLocaleString()} videos descargados hoy</li>
                 <li>• Un solo pago de $350</li>
                 <li>• Arsenal profesional completo</li>
@@ -961,13 +951,13 @@ export default function HomePage() {
               </ul>
             </div>
           </div>
-          
-          <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('final')}>
-            <button className="bg-bear-blue text-bear-black font-black text-xl md:text-3xl px-12 py-8 rounded-2xl shadow-2xl hover:scale-105 transition-all animate-pulse">
+
+          <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('final')} className="block w-full sm:inline-block">
+            <button className="w-full min-h-[56px] md:min-h-[64px] bg-bear-blue text-bear-black font-black text-xl md:text-3xl px-10 py-6 rounded-2xl shadow-[0_0_30px_rgba(8,225,247,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all border-2 border-bear-blue">
               SÍ, QUIERO MIS {statsLoading ? '...' : totalVideos.toLocaleString()} VIDEOS →
             </button>
           </Link>
-          <p className="text-sm text-gray-500 mt-4">
+          <p className="text-sm text-gray-400 mt-4">
             🔒 Pago seguro · ⚡ Acceso inmediato · 🛡️ Garantía 30 días
           </p>
         </div>
@@ -993,11 +983,11 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* Sticky CTA móvil: precio siempre visible */}
+      {/* Sticky CTA móvil – thumb-friendly (min 48px touch target) */}
       {!userState.hasAccess && (
         <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-bear-blue border-t-2 border-bear-black p-3 safe-area-pb">
           <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('sticky_mobile')} className="block w-full">
-            <button className="w-full bg-bear-black text-bear-blue font-black text-lg py-4 rounded-xl">
+            <button className="w-full min-h-[52px] bg-bear-black text-bear-blue font-black text-lg py-4 rounded-xl active:scale-[0.98] transition-transform">
               Comprar ahora · $350 MXN
             </button>
           </Link>
