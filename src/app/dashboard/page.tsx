@@ -218,7 +218,7 @@ export default function DashboardPage() {
                         <p className="font-mono text-sm text-white break-all">{value}</p>
                       </div>
                       <button
-                        onClick={() => copyToClipboard(value, key)}
+                        onClick={() => copyToClipboard(value ?? '', key)}
                         className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-[#08E1F7] hover:bg-white/5 transition-colors"
                       >
                         {copied === key ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
