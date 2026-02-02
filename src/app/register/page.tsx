@@ -194,7 +194,7 @@ export default function RegisterPage() {
         })
       }
       toast.success('¡Cuenta creada! Revisa tu email para verificar.')
-      router.push('/verify-email')
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error al crear cuenta'
       setFormError(msg)
