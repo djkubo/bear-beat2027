@@ -32,7 +32,7 @@ type RegisterFormData = z.infer<typeof registerSchema>
 const BENEFITS = [
   'Acceso a demos exclusivos',
   'Precios de miembro',
-  'Soporte prioritario por WhatsApp',
+  'Soporte vía Chat',
 ]
 
 export default function RegisterPage() {

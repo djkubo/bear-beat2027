@@ -29,7 +29,7 @@ export function PricingSection({ pack }: PricingSectionProps) {
     'Acceso FTP (FileZilla, Air Explorer)',
     'Acceso web (navegador)',
     'Redescargas ilimitadas',
-    'Soporte 24/7 por WhatsApp',
+    'Te respondemos en minutos vía Chat',
   ]
 
   return (

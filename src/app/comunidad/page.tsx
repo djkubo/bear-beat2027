@@ -141,7 +141,7 @@ export default function ComunidadPage() {
         </section>
 
         <p className="text-sm text-gray-500 mt-8">
-          Los bonos disponibles se comparten por el grupo VIP o por correo. Si no ves un enlace aún, escríbenos por WhatsApp.
+          Los bonos disponibles se comparten por el grupo VIP o por correo. Si no ves un enlace aún, abre el chat de soporte (esquina inferior derecha).
         </p>
       </main>
     </div>

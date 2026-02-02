@@ -62,8 +62,8 @@ export default function Error({
         {/* Soporte */}
         <p className="text-sm text-gray-500 mt-8">
           ¿El problema persiste?{' '}
-          <a href={getMessengerUrl()} className="text-bear-blue hover:underline">
-            Contáctanos
+          <a href={getMessengerUrl()} target="_blank" rel="noopener noreferrer" className="text-bear-blue hover:underline inline-flex items-center gap-1">
+            <span aria-hidden>💬</span> Ayuda en línea
           </a>
         </p>
       </div>

@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: false,
       error: error.message || 'Internal server error',
-      response: '😅 Ups, tuve un problema técnico. Por favor intenta de nuevo o escríbenos por WhatsApp al +52 XXX XXX XXXX',
+      response: '😅 Ups, tuve un problema técnico. Por favor intenta de nuevo o usa el chat de soporte en la web.',
     }, { status: 500 })
   }
 }

@@ -263,7 +263,7 @@ function DashboardActive({
               >
                 <p className="font-medium text-amber-200 mb-1">Tus credenciales FTP en proceso</p>
                 <p className="text-sm text-gray-400">
-                  Se generan al activar tu compra. Si acabas de pagar, espera unos minutos y recarga. Si ya pasó más tiempo, contacta soporte.
+                  Se generan al activar tu compra. Si acabas de pagar, espera unos minutos y recarga. Si ya pasó más tiempo, usa el chat de soporte (esquina inferior derecha). Te respondemos en minutos vía Chat.
                 </p>
               </div>
             )}

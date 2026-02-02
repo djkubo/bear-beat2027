@@ -27,7 +27,7 @@ const BENEFITS = [
   { icon: Download, text: 'Descarga ilimitada vía Web y FTP' },
   { icon: Music2, text: 'Todos los géneros: Reggaeton, Cumbia, Rock...' },
   { icon: Monitor, text: 'Acceso desde cualquier dispositivo' },
-  { icon: Zap, text: 'Soporte 24/7 por WhatsApp' },
+  { icon: Zap, text: 'Te respondemos en minutos vía Chat' },
 ]
 
 export default function LoginPage() {

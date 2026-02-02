@@ -579,8 +579,8 @@ export default function CheckoutPage() {
         </p>
         <p className="mt-1">
           ¿Problemas?{' '}
-          <a href="mailto:soporte@bearbeat.com" className="text-bear-blue hover:underline">
-            soporte@bearbeat.com
+          <a href={getMessengerUrl()} target="_blank" rel="noopener noreferrer" className="text-bear-blue hover:underline inline-flex items-center gap-1">
+            <span aria-hidden>💬</span> Ayuda en línea
           </a>
         </p>
       </footer>

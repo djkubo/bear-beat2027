@@ -168,7 +168,7 @@ export default function MiCuentaPage() {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+52 55 1234 5678"
+              placeholder="Ej: 55 1234 5678"
               className="w-full bg-white/5 border-2 border-bear-blue/30 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-bear-blue"
             />
           </div>

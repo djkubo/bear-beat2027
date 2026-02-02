@@ -18,6 +18,7 @@ import {
   trackLogin,
   setUserTrackingInfo,
 } from '@/lib/tracking'
+import { getMessengerUrl } from '@/config/contact'
 
 // ==========================================
 // EMBUDO - COMPLETAR COMPRA (POST-PAGO)
@@ -892,10 +893,12 @@ export default function CompletePurchasePage() {
                   Volver al inicio
                 </Link>
                 <a 
-                  href="mailto:soporte@bearbeat.com"
-                  className="block w-full bg-white/10 text-white font-bold py-3 rounded-xl text-center"
+                  href={getMessengerUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full bg-white/10 text-white font-bold py-3 rounded-xl text-center inline-flex items-center justify-center gap-2"
                 >
-                  Contactar soporte
+                  <span aria-hidden>💬</span> Ayuda en línea
                 </a>
               </div>
             </motion.div>
@@ -906,7 +909,7 @@ export default function CompletePurchasePage() {
 
       {/* Footer */}
       <footer className="py-6 px-4 border-t border-white/10 text-center text-sm text-gray-500">
-        <p>¿Problemas? <a href="mailto:soporte@bearbeat.com" className="text-bear-blue hover:underline">soporte@bearbeat.com</a></p>
+        <p>¿Problemas? <a href={getMessengerUrl()} target="_blank" rel="noopener noreferrer" className="text-bear-blue hover:underline inline-flex items-center gap-1"><span aria-hidden>💬</span> Ayuda en línea</a></p>
       </footer>
     </div>
   )

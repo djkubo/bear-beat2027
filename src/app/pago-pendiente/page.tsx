@@ -245,10 +245,12 @@ export default function PagoPendientePage() {
           <div className="mt-8 text-center">
             <p className="text-gray-500 text-sm mb-2">¿Problemas con tu pago?</p>
             <a 
-              href="mailto:soporte@bearbeat.com"
-              className="text-bear-blue hover:underline text-sm"
+              href={getMessengerUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-bear-blue hover:underline text-sm inline-flex items-center gap-1"
             >
-              Contactar soporte
+              <span aria-hidden>💬</span> Ayuda en línea
             </a>
           </div>
         </div>

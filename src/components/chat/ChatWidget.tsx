@@ -82,7 +82,7 @@ export function ChatWidget() {
       
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: '😅 Ups, tuve un problema. Por favor intenta de nuevo o escríbenos por WhatsApp.',
+        content: '😅 Ups, tuve un problema. Por favor intenta de nuevo o abre el chat de soporte en la esquina.',
         sender: 'bot',
         timestamp: new Date(),
       }

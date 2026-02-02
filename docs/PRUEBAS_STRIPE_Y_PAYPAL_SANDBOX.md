@@ -77,3 +77,57 @@ En [developer.paypal.com](https://developer.paypal.com) → **Sandbox** → **Ac
 - [ ] Probar PayPal con una cuenta Sandbox y flujo hasta activación de compra
 
 Cuando quieras cobros reales: cambia Stripe a claves `pk_live_` / `sk_live_`, PayPal a app **Live** y quita o pon `PAYPAL_USE_SANDBOX=false` según corresponda.
+
+---
+
+## 4. Qué activar en Stripe (Dashboard)
+
+Para que las pruebas funcionen en producción (Render) o local:
+
+1. **Modo Test:** En [dashboard.stripe.com](https://dashboard.stripe.com) activa el **interruptor "Test mode"** (arriba a la derecha). Debe estar en **Test** (no Live).
+2. **API Keys:** En **Developers → API Keys** copia:
+   - **Publishable key** (`pk_test_...`) → `NEXT_PUBLIC_STRIPE_PUBLIC_KEY`
+   - **Secret key** (`sk_test_...`) → `STRIPE_SECRET_KEY`
+3. **Webhook (OXXO/SPEI y eventos):** En **Developers → Webhooks** (en modo Test):
+   - Añade endpoint: `https://bear-beat2027.onrender.com/api/webhooks/stripe`
+   - Eventos: `checkout.session.completed` (y los que use tu app).
+   - Copia el **Signing secret** (`whsec_...`) → `STRIPE_WEBHOOK_SECRET`.
+
+No hace falta “activar” sandbox aparte: con claves `pk_test_` / `sk_test_` Stripe ya opera en modo test.
+
+---
+
+## 5. Qué activar en PayPal (Developer Dashboard)
+
+Para pruebas con PayPal Sandbox:
+
+1. **Cuenta Developer:** Entra en [developer.paypal.com](https://developer.paypal.com) e inicia sesión.
+2. **Apps & Credentials:** En **Sandbox** (pestaña Sandbox, no Live), crea una app o usa la predeterminada.
+3. **Client ID y Secret:** Copia **Client ID** y **Secret** de esa app Sandbox.
+   - Client ID → `NEXT_PUBLIC_PAYPAL_CLIENT_ID`
+   - Secret → `PAYPAL_CLIENT_SECRET`
+4. **Modo Sandbox en la app:** En tu servidor/Render define:
+   - `PAYPAL_USE_SANDBOX=true`
+   - `NEXT_PUBLIC_PAYPAL_USE_SANDBOX=true` (para que el checkout muestre el banner de pruebas).
+5. **Cuentas de prueba:** En **Sandbox → Accounts** usa una cuenta **Personal** (comprador) para simular el pago en el flujo de PayPal. No se cobra dinero real.
+
+No hay que “activar” sandbox en la web de PayPal: basta con usar la app **Sandbox** y las variables anteriores.
+
+---
+
+## 6. Activación en producción (Render)
+
+Para que las pruebas corran en **bear-beat2027.onrender.com**:
+
+1. **Stripe (test):** En Render → Environment, pon las claves **de test** de Stripe (`pk_test_...`, `sk_test_...`, `whsec_...` del webhook en modo Test).
+2. **PayPal (sandbox):** En Render → Environment añade:
+   - `NEXT_PUBLIC_PAYPAL_CLIENT_ID` = Client ID de la app Sandbox.
+   - `PAYPAL_CLIENT_SECRET` = Secret de la app Sandbox.
+   - `PAYPAL_USE_SANDBOX=true`
+   - `NEXT_PUBLIC_PAYPAL_USE_SANDBOX=true`
+3. **Subir variables:** Desde tu máquina, con las mismas claves en `.env.local`, ejecuta:  
+   `npm run deploy:env`  
+   para sincronizar las variables con Render.
+4. **Redeploy:** Si cambias env en Render, haz un redeploy para que el build use las nuevas variables.
+
+Tras el deploy, en `/checkout` deberías ver el banner **"Modo pruebas"** y poder probar con tarjeta `4242 4242 4242 4242` y con PayPal (cuenta Sandbox).
