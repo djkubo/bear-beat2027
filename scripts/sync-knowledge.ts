@@ -14,7 +14,7 @@ const EMBEDDING_MODEL = 'text-embedding-3-large'
 const EMBEDDING_DIMENSIONS = 3072
 
 // ----- Páginas estáticas (texto crudo extraído de /terminos, /privacidad, /reembolsos) -----
-const STATIC_PAGES: { content: string; metadata: Record<string, string } }[] = [
+const STATIC_PAGES: { content: string; metadata: Record<string, string> }[] = [
   {
     metadata: { source: 'terminos', page: '/terminos' },
     content: `Términos de Servicio - Bear Beat. Aceptación: Al usar Bear Beat aceptas estos términos. Descripción: Bear Beat proporciona packs de video remixes para DJs. Incluye descarga digital HD/4K, acceso web y/o FTP, soporte técnico, actualizaciones. Licencia: Personal e intransferible. Puedes usar videos en presentaciones como DJ, almacenar en dispositivos personales, uso indefinido. No permitido: redistribuir, revender, compartir archivos públicamente. Pagos: Stripe. Aceptamos tarjeta, OXXO (México), SPEI (México). Precios en MXN o USD. Reembolsos: Garantía 30 días. Consulta política de reembolsos. Privacidad: Ver política de privacidad. Contacto: soporte en la web o Messenger/Instagram.`,
