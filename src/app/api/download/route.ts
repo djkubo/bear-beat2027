@@ -7,9 +7,12 @@ import path from 'path'
 
 const VIDEOS_BASE_PATH = process.env.VIDEOS_PATH || path.join(process.cwd(), 'Videos Enero 2026')
 
-// Prefijo opcional en Bunny (ej. packs/enero-2026). El file viene como Genre/filename.mp4 o Cumbia.zip
+// Prefijo opcional en Bunny (ej. packs/enero-2026). El file viene como Genre/filename.mp4 o Banda.zip (raíz o dentro del prefijo).
 const BUNNY_PACK_PREFIX = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || '').replace(/\/$/, '')
 const USE_BUNNY_LEGACY = !!(process.env.BUNNY_CDN_URL && process.env.BUNNY_TOKEN_KEY)
+
+const EXPIRY_VIDEO = 3600 // 1 h
+const EXPIRY_ZIP = 10800 // 3 h (los ZIP tardan más en bajar)
 
 /**
  * GET /api/download?file=genre/filename.mp4 | Banda.zip
@@ -53,12 +56,14 @@ export async function GET(req: NextRequest) {
       }, { status: 403 })
     }
 
-    const sanitizedPath = filePath.replace(/\.\./g, '').replace(/^\//, '')
+    const sanitizedPath = filePath.replace(/\.\./g, '').replace(/^\//, '').trim()
+    const isZip = sanitizedPath.toLowerCase().endsWith('.zip')
+    const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
 
     // Producción: BunnyCDN Token Auth → 307 redirect a URL firmada (sin fs ni fetch desde servidor)
     if (isBunnyDownloadConfigured()) {
       const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
-      const signedUrl = getSignedDownloadUrl(bunnyPath, 3600)
+      const signedUrl = getSignedDownloadUrl(bunnyPath, expiresIn)
       if (!signedUrl) {
         return NextResponse.json({ error: 'Bunny CDN no configurado' }, { status: 503 })
       }
@@ -80,7 +85,7 @@ export async function GET(req: NextRequest) {
     // Fallback: Bunny legacy (BUNNY_CDN_URL + BUNNY_TOKEN_KEY)
     if (USE_BUNNY_LEGACY) {
       const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
-      const signedUrl = generateSignedUrl(bunnyPath, 3600, process.env.NEXT_PUBLIC_APP_URL)
+      const signedUrl = generateSignedUrl(bunnyPath, expiresIn, process.env.NEXT_PUBLIC_APP_URL)
       try {
         await supabase.from('downloads').insert({
           user_id: user.id,

@@ -84,9 +84,9 @@ export function getPublicAppOrigin(request?: { headers?: Headers; nextUrl?: { or
 }
 
 /**
- * URL de demo: Bunny CDN (prioridad) o fallback a /api/demo (proxy Next.js).
- * Usa, en orden: baseUrl (desde /api/cdn-base → BUNNY_CDN_URL), o NEXT_PUBLIC_BUNNY_CDN_URL.
- * Si no hay CDN configurado, devuelve /api/demo/... (ruta relativa; el navegador usa el mismo dominio).
+ * URL de demo: CDN primero (baseUrl), si no → API local con ruta relativa.
+ * Con baseUrl (CDN): no se elimina ningún prefijo del path (ej. "Videos Enero 2026") para que coincida con la estructura del CDN.
+ * Sin baseUrl: se normaliza el path para /api/demo/... (compatible con redirección a Bunny desde la API).
  */
 export function getDemoCdnUrl(path: string, baseUrl?: string | null): string {
   const base =
@@ -94,8 +94,12 @@ export function getDemoCdnUrl(path: string, baseUrl?: string | null): string {
     (typeof process.env.NEXT_PUBLIC_BUNNY_CDN_URL === 'string' && process.env.NEXT_PUBLIC_BUNNY_CDN_URL
       ? process.env.NEXT_PUBLIC_BUNNY_CDN_URL.replace(/\/$/, '')
       : '')
-  const pathNorm = path.replace(/^Videos Enero 2026\/?/i, '').trim()
-  const pathEncoded = pathNorm.split('/').map((seg) => encodeURIComponent(seg)).join('/')
-  if (base) return `${base}/${pathEncoded}`
+  // Con CDN: conservar prefijos (ej. "Videos Enero 2026"). Sin CDN: quitar ese prefijo para la API.
+  const pathNorm = base
+    ? path.replace(/^\/+|\/+$/g, '').replace(/\.\./g, '').trim()
+    : (path.replace(/^Videos Enero 2026\/?/i, '').trim() || path.replace(/^\/+|\/+$/g, '').trim())
+  const pathEncoded = pathNorm.split('/').filter(Boolean).map((seg) => encodeURIComponent(seg)).join('/')
+  if (base && pathEncoded) return `${base}/${pathEncoded}`
+  if (base) return base
   return pathEncoded ? `/api/demo/${pathEncoded}` : ''
 }

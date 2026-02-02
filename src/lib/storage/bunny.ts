@@ -37,7 +37,7 @@ export function generateSignedUrl(
     .replace(/=/g, '')
 
   const pathEncoded = '/' + pathNormalized.split('/').filter(Boolean).map(encodeURIComponent).join('/')
-  const base = (BUNNY_CDN_URL || '').replace(/\/$/, '')
+  const base = (BUNNY_CDN_URL || '').trim().replace(/\/+$/, '')
   let url = `${base}${pathEncoded}?token=${token}&expires=${expires}`
 
   if (allowedReferrer) {

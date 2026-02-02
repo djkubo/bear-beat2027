@@ -6,7 +6,8 @@
 
 import crypto from 'crypto'
 
-const BUNNY_PULL_ZONE = (process.env.BUNNY_PULL_ZONE || '').replace(/^https?:\/\//, '').replace(/\/$/, '')
+// Sin barra final para evitar dobles slashes al concatenar pathEncoded (que empieza con /)
+const BUNNY_PULL_ZONE = (process.env.BUNNY_PULL_ZONE || '').replace(/^https?:\/\//, '').replace(/\/+$/, '').trim()
 const BUNNY_SECURITY_KEY = process.env.BUNNY_SECURITY_KEY || ''
 
 export function isBunnyDownloadConfigured(): boolean {
@@ -37,7 +38,7 @@ export function getSignedDownloadUrl(
     .replace(/\//g, '_')
     .replace(/=/g, '')
 
-  const base = BUNNY_PULL_ZONE.startsWith('http') ? BUNNY_PULL_ZONE : `https://${BUNNY_PULL_ZONE}`
+  const base = BUNNY_PULL_ZONE.startsWith('http') ? BUNNY_PULL_ZONE.replace(/\/+$/, '') : `https://${BUNNY_PULL_ZONE}`
   const pathEncoded = '/' + pathNormalized.split('/').filter(Boolean).map(encodeURIComponent).join('/')
   return `${base}${pathEncoded}?token=${token}&expires=${expires}`
 }
