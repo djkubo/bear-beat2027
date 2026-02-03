@@ -5,6 +5,7 @@ import {
   initializeBearBeatCustomFields,
   getPageTags,
   getPageCustomFields,
+  verifyConnection,
   BEAR_BEAT_TAGS,
   BEAR_BEAT_FIELDS,
 } from '@/lib/manychat'
@@ -26,27 +27,28 @@ export async function POST(req: NextRequest) {
     console.log('ManyChat Key Presente:', !!process.env.MANYCHAT_API_KEY)
     const body = await req.json().catch(() => ({}))
     const action = body.action || 'all'
-    
+
+    if (['all', 'tags', 'fields'].includes(action)) {
+      await verifyConnection()
+    }
+
     let result: any = {}
-    
+
     switch (action) {
       case 'all':
-        // Inicializar TODO
         result = await initializeManyChat()
         break
-        
+
       case 'tags':
-        // Solo tags
         result.tags = await initializeBearBeatTags()
         result.existingTags = await getPageTags()
         break
-        
+
       case 'fields':
-        // Solo custom fields
         result.customFields = await initializeBearBeatCustomFields()
         result.existingFields = await getPageCustomFields()
         break
-        
+
       case 'status':
         // Solo obtener estado actual
         result.existingTags = await getPageTags()
@@ -90,6 +92,7 @@ export async function POST(req: NextRequest) {
  */
 export async function GET() {
   try {
+    await verifyConnection()
     const existingTags = await getPageTags()
     const existingFields = await getPageCustomFields()
     

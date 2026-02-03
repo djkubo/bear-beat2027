@@ -157,6 +157,7 @@ export async function POST(req: NextRequest) {
       
       // ==========================================
       // SINCRONIZAR CON MANYCHAT (si hay email/phone)
+      // Validación: upsertSubscriber con email del cliente + tag PAYMENT_SUCCESS
       // ==========================================
       const customerEmail = session.customer_details?.email
       const customerPhone = session.customer_details?.phone
@@ -164,7 +165,6 @@ export async function POST(req: NextRequest) {
       
       if (customerEmail || customerPhone) {
         try {
-          // Crear/actualizar suscriptor en ManyChat
           const nameParts = (customerName || '').split(' ')
           const subscriber = await upsertSubscriber({
             email: customerEmail,
@@ -175,7 +175,6 @@ export async function POST(req: NextRequest) {
           })
           
           if (subscriber) {
-            // Agregar tags de pago exitoso
             await addMultipleTags(subscriber.id, [
               BEAR_BEAT_TAGS.PAYMENT_SUCCESS,
               BEAR_BEAT_TAGS.PAYMENT_INTENT,

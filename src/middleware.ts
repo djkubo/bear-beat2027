@@ -11,10 +11,24 @@ function looksLikeBypassCookie(value: string | undefined): boolean {
   return !isNaN(expiry) && expiry > 0
 }
 
+const BB_MC_ID_COOKIE = 'bb_mc_id'
+const MC_ID_MAX_AGE_DAYS = 30
+
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({
     request: { headers: request.headers },
   })
+
+  const mcId = request.nextUrl.searchParams.get('mc_id')
+  if (mcId) {
+    const isProd = process.env.NODE_ENV === 'production'
+    response.cookies.set(BB_MC_ID_COOKIE, mcId, {
+      maxAge: MC_ID_MAX_AGE_DAYS * 24 * 60 * 60,
+      path: '/',
+      sameSite: 'lax',
+      ...(isProd && { secure: true }),
+    })
+  }
 
   const pathname = request.nextUrl.pathname
 

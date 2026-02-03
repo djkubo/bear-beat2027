@@ -4,6 +4,9 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, MessageSquare, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
+
+const STORAGE_DISMISSED_PREFIX = 'bb_announcement_dismissed_';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,12 +16,43 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const announcementIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isOpen]);
+
+  // Anuncios globales proactivos: si hay uno activo y no lo cerró antes, abrir chat y mostrarlo
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from('global_announcements')
+      .select('id, message')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data: announcement, error }) => {
+        if (error || !announcement) return;
+        const dismissed = typeof window !== 'undefined' && localStorage.getItem(STORAGE_DISMISSED_PREFIX + announcement.id);
+        if (dismissed) return;
+        announcementIdRef.current = announcement.id;
+        setMessages(prev => [{ role: 'assistant', content: `📢 ${announcement.message}` }, ...prev]);
+        setIsOpen(true);
+      });
+  }, []);
+
+  // Al cerrar el chat, marcar anuncio como visto para no volver a abrirlo
+  useEffect(() => {
+    if (!isOpen && announcementIdRef.current !== null) {
+      try {
+        localStorage.setItem(STORAGE_DISMISSED_PREFIX + announcementIdRef.current, '1');
+      } catch (_) {}
+      announcementIdRef.current = null;
+    }
+  }, [isOpen]);
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -51,10 +85,10 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="fixed left-4 right-4 bottom-20 z-50 flex flex-col items-end max-w-[100vw] pointer-events-none [&>*]:pointer-events-auto">
-      {/* VENTANA DEL CHAT – ancho calc(100vw-32px) centrado con left/right-4, sin desborde */}
+    <div className="fixed left-4 bottom-20 z-50 flex flex-col items-start max-w-[100vw] pointer-events-none [&>*]:pointer-events-auto">
+      {/* VENTANA DEL CHAT – ancho seguro móvil, anti-zoom input 16px */}
       {isOpen && (
-        <div className="mb-3 w-full max-w-[350px] md:max-w-[400px] h-[500px] max-h-[70vh] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden ml-auto">
+        <div className="mb-3 w-[calc(100vw-32px)] max-w-[380px] h-[500px] max-h-[70vh] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           
           {/* HEADER */}
           <div className="p-4 bg-zinc-900 border-b border-zinc-800 flex justify-between items-center">
@@ -93,7 +127,7 @@ export default function ChatWidget() {
           {/* INPUT */}
           <div className="p-3 bg-zinc-900 border-t border-zinc-800 flex gap-2">
             <input
-              className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+              className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2 text-base text-white focus:outline-none focus:border-cyan-500"
               placeholder="Escribe aquí..."
               value={input}
               onChange={(e) => setInput(e.target.value)}

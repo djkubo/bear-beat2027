@@ -418,6 +418,40 @@ export async function sendFlow(subscriberId: string, flowNamespace: string): Pro
 }
 
 // ==========================================
+// VERIFICAR CONEXIÓN (API KEY)
+// ==========================================
+
+const CONNECTION_ERROR_MSG = 'ERROR CRÍTICO: No se pudo conectar a ManyChat. Verifica la API KEY.'
+
+/**
+ * Verifica que la API Key de ManyChat sea válida haciendo una llamada simple (getTags).
+ * Si falla por 401/403 o error de API, lanza con mensaje claro.
+ * Usar al inicio del endpoint POST /api/manychat/init para evitar "falso positivo" de "ya existían".
+ */
+export async function verifyConnection(): Promise<void> {
+  if (!MANYCHAT_API_KEY?.trim()) {
+    throw new Error(CONNECTION_ERROR_MSG)
+  }
+  try {
+    const response = await fetch(
+      `${MANYCHAT_API_URL}/fb/page/getTags`,
+      { method: 'GET', headers: getHeaders() }
+    )
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(CONNECTION_ERROR_MSG)
+    }
+    const result: ManyChatResponse<ManyChatTag[]> = await response.json()
+    if (result.status !== 'success') {
+      throw new Error(result.error?.message || CONNECTION_ERROR_MSG)
+    }
+  } catch (err: any) {
+    if (err.message === CONNECTION_ERROR_MSG) throw err
+    console.error('ManyChat verifyConnection error:', err)
+    throw new Error(CONNECTION_ERROR_MSG)
+  }
+}
+
+// ==========================================
 // OBTENER INFO DE LA PÁGINA
 // ==========================================
 
@@ -503,72 +537,87 @@ export async function getPageFlows(): Promise<any[]> {
 // CREAR TAGS Y CUSTOM FIELDS
 // ==========================================
 
+export type CreateTagResult = ManyChatTag | { exists: true }
+export type CreateCustomFieldResult = ManyChatCustomField | { exists: true }
+
 /**
- * Crear un tag en ManyChat
+ * Crear un tag en ManyChat.
+ * - Éxito: devuelve el tag creado.
+ * - "Tag already exists": devuelve { exists: true }.
+ * - Auth/red/otro error: lanza excepción (no devuelve null).
  */
-export async function createTag(tagName: string): Promise<ManyChatTag | null> {
-  try {
-    const response = await fetch(
-      `${MANYCHAT_API_URL}/fb/page/createTag`,
-      {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ name: tagName }),
-      }
-    )
-    
-    const result: ManyChatResponse<ManyChatTag> = await response.json()
-    
-    if (result.status === 'success' && result.data) {
-      console.log(`ManyChat: Tag "${tagName}" created with ID: ${result.data.id}`)
-      return result.data
+export async function createTag(tagName: string): Promise<CreateTagResult> {
+  const response = await fetch(
+    `${MANYCHAT_API_URL}/fb/page/createTag`,
+    {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ name: tagName }),
     }
-    
-    // Si ya existe, no es error
-    console.log(`ManyChat: Tag "${tagName}" may already exist`)
-    return null
-  } catch (error) {
-    console.error('ManyChat createTag error:', error)
-    return null
+  )
+
+  const result: ManyChatResponse<ManyChatTag> = await response.json()
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error(CONNECTION_ERROR_MSG)
   }
+
+  if (result.status === 'success' && result.data) {
+    console.log(`ManyChat: Tag "${tagName}" created with ID: ${result.data.id}`)
+    return result.data
+  }
+
+  const msg = (result.error?.message || '').toLowerCase()
+  if (msg.includes('already') || msg.includes('exist') || msg.includes('duplicate')) {
+    console.log(`ManyChat: Tag "${tagName}" already exists`)
+    return { exists: true }
+  }
+
+  throw new Error(result.error?.message || CONNECTION_ERROR_MSG)
 }
 
 /**
- * Crear un custom field en ManyChat
+ * Crear un custom field en ManyChat.
+ * - Éxito: devuelve el field creado.
+ * - "Field already exists": devuelve { exists: true }.
+ * - Auth/red/otro error: lanza excepción (no devuelve null).
  */
 export async function createCustomField(
   fieldName: string,
   fieldType: 'text' | 'number' | 'date' | 'datetime' | 'boolean' = 'text',
   description?: string
-): Promise<ManyChatCustomField | null> {
-  try {
-    const response = await fetch(
-      `${MANYCHAT_API_URL}/fb/page/createCustomField`,
-      {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({
-          name: fieldName,
-          type: fieldType,
-          description: description || `Bear Beat field: ${fieldName}`,
-        }),
-      }
-    )
-    
-    const result: ManyChatResponse<ManyChatCustomField> = await response.json()
-    
-    if (result.status === 'success' && result.data) {
-      console.log(`ManyChat: Custom field "${fieldName}" created with ID: ${result.data.id}`)
-      return result.data
+): Promise<CreateCustomFieldResult> {
+  const response = await fetch(
+    `${MANYCHAT_API_URL}/fb/page/createCustomField`,
+    {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        name: fieldName,
+        type: fieldType,
+        description: description || `Bear Beat field: ${fieldName}`,
+      }),
     }
-    
-    // Si ya existe, no es error
-    console.log(`ManyChat: Custom field "${fieldName}" may already exist`)
-    return null
-  } catch (error) {
-    console.error('ManyChat createCustomField error:', error)
-    return null
+  )
+
+  const result: ManyChatResponse<ManyChatCustomField> = await response.json()
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error(CONNECTION_ERROR_MSG)
   }
+
+  if (result.status === 'success' && result.data) {
+    console.log(`ManyChat: Custom field "${fieldName}" created with ID: ${result.data.id}`)
+    return result.data
+  }
+
+  const msg = (result.error?.message || '').toLowerCase()
+  if (msg.includes('already') || msg.includes('exist') || msg.includes('duplicate')) {
+    console.log(`ManyChat: Custom field "${fieldName}" already exists`)
+    return { exists: true }
+  }
+
+  throw new Error(result.error?.message || CONNECTION_ERROR_MSG)
 }
 
 /**
@@ -586,12 +635,11 @@ export async function initializeBearBeatTags(): Promise<{
   
   for (const tagName of allTags) {
     const result = await createTag(tagName)
-    if (result) {
+    if (result && typeof result === 'object' && 'exists' in result) {
+      failed.push(tagName) // ya existía
+    } else if (result && typeof result === 'object' && 'id' in result) {
       created.push(tagName)
-    } else {
-      failed.push(tagName)
     }
-    // Pequeña pausa para no saturar la API
     await new Promise(resolve => setTimeout(resolve, 200))
   }
   
@@ -629,12 +677,11 @@ export async function initializeBearBeatCustomFields(): Promise<{
   
   for (const field of fieldsToCreate) {
     const result = await createCustomField(field.name, field.type, field.description)
-    if (result) {
+    if (result && typeof result === 'object' && 'exists' in result) {
+      failed.push(field.name) // ya existía
+    } else if (result && typeof result === 'object' && 'id' in result) {
       created.push(field.name)
-    } else {
-      failed.push(field.name)
     }
-    // Pequeña pausa para no saturar la API
     await new Promise(resolve => setTimeout(resolve, 200))
   }
   
@@ -652,7 +699,8 @@ export async function initializeManyChat(): Promise<{
   existingFields: ManyChatCustomField[]
 }> {
   console.log('=== ManyChat: Starting full initialization ===')
-  
+  await verifyConnection()
+
   // 1. Crear todos los tags
   const tags = await initializeBearBeatTags()
   
