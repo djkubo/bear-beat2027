@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
 import { downloadFile } from '@/lib/download'
+import { registerServiceWorker, requestNotificationPermission, subscribeToPush, isPushSupported } from '@/lib/push-notifications'
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
@@ -141,6 +142,8 @@ export default function HomeLanding() {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedGenre, setExpandedGenre] = useState<string | null>(null)
   const [userState, setUserState] = useState<UserState>({ isLoggedIn: false, hasAccess: false })
+  const [showPushModal, setShowPushModal] = useState(false)
+  const [pushSubscribing, setPushSubscribing] = useState(false)
   const [demoError, setDemoError] = useState(false)
   const [cdnBaseUrl, setCdnBaseUrl] = useState<string | null>(null)
   const [thumbErrors, setThumbErrors] = useState<Set<string>>(new Set())
@@ -253,8 +256,75 @@ export default function HomeLanding() {
     }
   }, [expandedGenre])
 
+  // Modo Bestia: pedir notificaciones push a usuarios sin acceso (una vez por sesión)
+  useEffect(() => {
+    if (loading || userState.hasAccess || !isPushSupported()) return
+    const key = 'bb_push_prompt_shown'
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(key)) return
+    const t = setTimeout(() => setShowPushModal(true), 2500)
+    return () => clearTimeout(t)
+  }, [loading, userState.hasAccess])
+
+  const handleAcceptPush = async () => {
+    setPushSubscribing(true)
+    try {
+      await registerServiceWorker()
+      const permission = await requestNotificationPermission()
+      if (permission === 'granted') {
+        await subscribeToPush()
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('bb_push_prompt_shown', '1')
+        setShowPushModal(false)
+      } else {
+        setShowPushModal(false)
+      }
+    } catch (_) {
+      setShowPushModal(false)
+    }
+    setPushSubscribing(false)
+  }
+
   return (
     <div className={`min-h-screen bg-[#050505] text-white overflow-x-hidden ${!userState.hasAccess ? 'pb-24 md:pb-0' : ''}`}>
+
+      {/* Modal push: Activa alertas para Packs Gratis y Descuentos Flash (solo si !hasAccess) */}
+      <AnimatePresence>
+        {showPushModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            onClick={() => setShowPushModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-zinc-900 border-2 border-bear-blue/50 rounded-2xl p-6 max-w-md w-full shadow-[0_0_40px_rgba(8,225,247,0.2)]"
+            >
+              <p className="text-2xl mb-2">📣</p>
+              <h3 className="text-xl font-black text-white mb-2">Activa alertas para recibir Packs Gratis y Descuentos Flash</h3>
+              <p className="text-zinc-400 text-sm mb-6">Te avisamos cuando haya ofertas exclusivas y contenido nuevo. Sin spam.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleAcceptPush}
+                  disabled={pushSubscribing}
+                  className="flex-1 bg-bear-blue text-bear-black font-black py-3 rounded-xl hover:brightness-110 transition disabled:opacity-60"
+                >
+                  {pushSubscribing ? 'Activando…' : 'Activar alertas'}
+                </button>
+                <button
+                  onClick={() => { setShowPushModal(false); if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('bb_push_prompt_shown', '1') }}
+                  className="px-4 py-3 text-zinc-400 hover:text-white text-sm font-medium"
+                >
+                  Ahora no
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* NAVBAR */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-md">

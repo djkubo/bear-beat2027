@@ -59,22 +59,35 @@ export async function POST(req: NextRequest) {
     }
     
     let pack: any = null
-    try {
-      pack = await getPackWithVideoCount(supabase, packSlug)
-      if (!pack) {
-        pack = {
-          id: 1,
-          slug: packSlug,
-          name: 'Pack Enero 2026',
-          total_videos: 0,
-          price_mxn: 350,
-          price_usd: 19,
-          status: 'available',
-        }
+    const isDownsell99 = packSlug === 'pack-prueba-99' || packSlug === 'prueba-99'
+    if (isDownsell99) {
+      pack = {
+        id: 0,
+        slug: 'pack-prueba-99',
+        name: 'Pack de Prueba (50 Videos)',
+        total_videos: 50,
+        price_mxn: 99,
+        price_usd: 6,
+        status: 'available',
       }
-    } catch (e) {
-      console.log('DB not available, using fallback pack')
-      pack = { id: 1, slug: packSlug, name: 'Pack Enero 2026', total_videos: 0, price_mxn: 350, price_usd: 19, status: 'available' }
+    } else {
+      try {
+        pack = await getPackWithVideoCount(supabase, packSlug)
+        if (!pack) {
+          pack = {
+            id: 1,
+            slug: packSlug,
+            name: 'Pack Enero 2026',
+            total_videos: 0,
+            price_mxn: 350,
+            price_usd: 19,
+            status: 'available',
+          }
+        }
+      } catch (e) {
+        console.log('DB not available, using fallback pack')
+        pack = { id: 1, slug: packSlug, name: 'Pack Enero 2026', total_videos: 0, price_mxn: 350, price_usd: 19, status: 'available' }
+      }
     }
     
     // Precio según moneda

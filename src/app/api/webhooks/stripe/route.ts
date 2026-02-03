@@ -10,6 +10,8 @@ import {
   isHetznerFtpConfigured,
 } from '@/lib/hetzner-robot'
 import { isFtpConfigured } from '@/lib/ftp-stream'
+import { sendWelcomeEmail, sendPaymentFailedRecoveryEmail } from '@/lib/brevo-email'
+import { sendBrevoSms } from '@/lib/brevo-sms'
 
 function generateRandomPassword(): string {
   const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -67,6 +69,61 @@ export async function POST(req: NextRequest) {
       )
     } catch (e) {
       console.warn('CAPI Purchase failed (non-critical):', e)
+    }
+  }
+
+  // payment_intent.payment_failed – recuperación: email/SMS con link para reintentar
+  if (event.type === 'payment_intent.payment_failed') {
+    const pi = event.data.object as {
+      id: string
+      receipt_email?: string
+      metadata?: { customer_email?: string; customer_phone?: string; customer_name?: string; pack_slug?: string }
+    }
+    let customerEmail = (pi.receipt_email || pi.metadata?.customer_email || '').trim()
+    let customerPhone = (pi.metadata?.customer_phone || '').trim()
+    let customerName = (pi.metadata?.customer_name || '').trim()
+    let packSlug = pi.metadata?.pack_slug || 'enero-2026'
+    if (!customerEmail && pi.id) {
+      try {
+        const sessions = await stripe.checkout.sessions.list({ payment_intent: pi.id, limit: 1 })
+        const session = sessions.data[0]
+        if (session?.customer_details?.email) {
+          customerEmail = session.customer_details.email
+          customerPhone = (session.customer_details.phone || '').trim()
+          customerName = (session.customer_details.name || '').trim()
+          packSlug = (session.metadata?.pack_slug as string) || packSlug
+        }
+      } catch (_) {}
+    }
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || 'https://bear-beat2027.onrender.com'
+    const recoveryLink = `${baseUrl}/checkout?pack=${encodeURIComponent(packSlug)}`
+
+    if (customerEmail && customerEmail.includes('@')) {
+      try {
+        const emailResult = await sendPaymentFailedRecoveryEmail({
+          to: customerEmail,
+          name: customerName || undefined,
+          recoveryUrl: recoveryLink,
+        })
+        if (emailResult.success) {
+          console.log('Email de recuperación (pago fallido) enviado a', customerEmail)
+        } else {
+          console.warn('Email recuperación no enviado:', emailResult.error)
+        }
+      } catch (e) {
+        console.warn('sendPaymentFailedRecoveryEmail (non-critical):', e)
+      }
+    }
+
+    if (customerPhone && customerPhone.length >= 10) {
+      try {
+        await sendBrevoSms(
+          customerPhone,
+          `BearBeat: Tu pago falló, pero te guardé los videos 10 mins más. Intenta con otra tarjeta aquí: ${recoveryLink}`,
+          undefined,
+          { tag: 'payment_failed' }
+        )
+      } catch (_) {}
     }
   }
 
@@ -238,6 +295,32 @@ export async function POST(req: NextRequest) {
                 name: customerName || null,
               })
               if (!existingPending) console.log('Usuario Auth creado (email confirmado):', customerEmail)
+              // Email de bienvenida con credenciales INMEDIATAMENTE (no esperar al frontend)
+              try {
+                const emailResult = await sendWelcomeEmail({
+                  to: customerEmail,
+                  name: customerName || undefined,
+                  password: tempPassword,
+                })
+                if (emailResult.success) {
+                  console.log('Email de bienvenida enviado a', customerEmail)
+                } else {
+                  console.warn('Email de bienvenida no enviado:', emailResult.error)
+                }
+              } catch (e) {
+                console.warn('sendWelcomeEmail (non-critical):', e)
+              }
+              // SMS de respaldo con credenciales (opcional, si hay teléfono y Brevo SMS configurado)
+              if (customerPhone && typeof customerPhone === 'string' && customerPhone.trim()) {
+                try {
+                  await sendBrevoSms(
+                    customerPhone.trim(),
+                    `Bear Beat: Tu acceso está listo. Revisa tu correo (${customerEmail}) para usuario y contraseña.`,
+                    undefined,
+                    { tag: 'welcome' }
+                  )
+                } catch (_) {}
+              }
             } else if (createErr?.message?.includes('already') || createErr?.message?.includes('registered')) {
               const { data: list } = await (admin.auth as any).admin.listUsers({ page: 1, perPage: 1000 })
               const authUser = list?.users?.find((u: { email?: string }) => u.email === customerEmail)

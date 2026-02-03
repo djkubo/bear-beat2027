@@ -62,8 +62,10 @@ export default function CompletePurchasePage() {
   const [claimLoading, setClaimLoading] = useState(false)
   const [guideOpenDone, setGuideOpenDone] = useState<'ftp' | 'drive' | 'web' | null>(null)
   const [ftpClientTabDone, setFtpClientTabDone] = useState<'filezilla' | 'airexplorer'>('filezilla')
+  const [pollingElapsed, setPollingElapsed] = useState(0)
   const confettiFired = useRef(false)
   const checkEmailTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Confeti al entrar en estado "done" (una sola vez)
   useEffect(() => {
@@ -107,10 +109,14 @@ export default function CompletePurchasePage() {
     }
   }, [emailFromUrl])
 
-  // Limpiar debounce al desmontar
+  // Limpiar debounce y polling al desmontar
   useEffect(() => {
     return () => {
       if (checkEmailTimeoutRef.current) clearTimeout(checkEmailTimeoutRef.current)
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
     }
   }, [])
 
@@ -124,72 +130,83 @@ export default function CompletePurchasePage() {
     loadPurchaseData()
   }, [sessionId, paymentIntentId, provider])
 
+  const getVerifyUrl = () =>
+    paymentIntentId
+      ? `/api/verify-payment?payment_intent=${encodeURIComponent(paymentIntentId)}`
+      : provider === 'paypal' && sessionId
+        ? `/api/verify-payment?session_id=${encodeURIComponent(sessionId)}&provider=paypal`
+        : `/api/verify-payment?session_id=${encodeURIComponent(sessionId!)}`
+
+  const processVerifySuccess = async (stripeData: any, currentUser: { id: string; email?: string; user_metadata?: { name?: string } } | null) => {
+    const purchaseInfo = {
+      stripe_session_id: sessionId || paymentIntentId,
+      pack_id: stripeData.packId || 1,
+      pack: stripeData.pack || { name: 'Pack Enero 2026' },
+      amount_paid: stripeData.amount,
+      currency: stripeData.currency?.toUpperCase() || 'MXN',
+      payment_provider: provider === 'paypal' ? 'paypal' : 'stripe',
+      stripe_payment_intent: stripeData.paymentIntent,
+      customer_email: stripeData.customerEmail,
+      customer_name: stripeData.customerName,
+      original_user_id: stripeData.userId,
+    }
+    setPurchaseData(purchaseInfo)
+    const effectiveUserId = currentUser?.id || stripeData.userId
+    if (effectiveUserId) {
+      setEmail(currentUser?.email || stripeData.customerEmail || '')
+      setName(currentUser?.user_metadata?.name || stripeData.customerName || '')
+      setState('success')
+      setTimeout(async () => {
+        setState('activating')
+        await activatePurchaseForLoggedUser(effectiveUserId, purchaseInfo)
+      }, 2000)
+      return
+    }
+    if (stripeData.customerEmail) {
+      setEmail(stripeData.customerEmail)
+      setEmailFromPayment(true)
+      await checkExistingAccount(stripeData.customerEmail)
+    }
+    if (stripeData.customerName) setName(stripeData.customerName)
+    if (stripeData.customerPhone) setPhone(stripeData.customerPhone)
+    setState('success')
+    setTimeout(() => setState('form'), 2500)
+  }
+
+  const startPurchasePolling = () => {
+    if (pollingIntervalRef.current) return
+    const verifyUrl = getVerifyUrl()
+    const doPoll = async () => {
+      setPollingElapsed((prev) => prev + 2)
+      try {
+        const res = await fetch(verifyUrl)
+        const data = await res.json()
+        if (res.ok && data.success) {
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current)
+            pollingIntervalRef.current = null
+          }
+          const { data: { user } } = await supabase.auth.getUser()
+          await processVerifySuccess(data, user)
+        }
+      } catch (_) {}
+    }
+    doPoll()
+    pollingIntervalRef.current = setInterval(doPoll, 2000)
+  }
+
   const loadPurchaseData = async () => {
     try {
-      // PRIMERO: Verificar si el usuario ya está logueado
       const { data: { user: currentUser } } = await supabase.auth.getUser()
-      
-      // Verificar pago (Stripe Checkout, Stripe PaymentIntent o PayPal)
-      const verifyUrl = paymentIntentId
-        ? `/api/verify-payment?payment_intent=${encodeURIComponent(paymentIntentId)}`
-        : provider === 'paypal' && sessionId
-          ? `/api/verify-payment?session_id=${encodeURIComponent(sessionId)}&provider=paypal`
-          : `/api/verify-payment?session_id=${encodeURIComponent(sessionId!)}`
+      const verifyUrl = getVerifyUrl()
       const stripeRes = await fetch(verifyUrl)
       const stripeData = await stripeRes.json()
-      
+
       if (stripeRes.ok && stripeData.success) {
-        const purchaseInfo = {
-          stripe_session_id: sessionId || paymentIntentId,
-          pack_id: stripeData.packId || 1,
-          pack: stripeData.pack || { name: 'Pack Enero 2026' },
-          amount_paid: stripeData.amount,
-          currency: stripeData.currency?.toUpperCase() || 'MXN',
-          payment_provider: provider === 'paypal' ? 'paypal' : 'stripe',
-          stripe_payment_intent: stripeData.paymentIntent,
-          customer_email: stripeData.customerEmail,
-          customer_name: stripeData.customerName,
-          // User ID del usuario que estaba logueado al pagar
-          original_user_id: stripeData.userId,
-        }
-        
-        setPurchaseData(purchaseInfo)
-        
-        // Determinar el usuario: actual logueado O el que estaba logueado al pagar
-        const effectiveUserId = currentUser?.id || stripeData.userId
-        
-        // SI HAY UN USUARIO (logueado ahora O guardado en el pago), ACTIVAR AUTOMÁTICAMENTE
-        if (effectiveUserId) {
-          console.log('Usuario encontrado, activando compra automáticamente...', effectiveUserId)
-          setEmail(currentUser?.email || stripeData.customerEmail || '')
-          setName(currentUser?.user_metadata?.name || stripeData.customerName || '')
-          
-          setState('success')
-          
-          // Activar directamente después de mostrar éxito
-          setTimeout(async () => {
-            setState('activating')
-            await activatePurchaseForLoggedUser(effectiveUserId, purchaseInfo)
-          }, 2000)
-          return
-        }
-        
-        // Si no está logueado, mostrar formulario (email del pago = readOnly)
-        if (stripeData.customerEmail) {
-          setEmail(stripeData.customerEmail)
-          setEmailFromPayment(true)
-          await checkExistingAccount(stripeData.customerEmail)
-        }
-        if (stripeData.customerName) setName(stripeData.customerName)
-        if (stripeData.customerPhone) setPhone(stripeData.customerPhone)
-        
-        setState('success')
-        
-        // Después de mostrar éxito, ir al formulario
-        setTimeout(() => setState('form'), 2500)
+        await processVerifySuccess(stripeData, currentUser)
         return
       }
-      
+
       // Fallback: si verify falló (webhook tardó o pago aún procesando), buscar en pending_purchases
       let pendingData: any = null
       let pendingError: boolean = true
@@ -235,20 +252,19 @@ export default function CompletePurchasePage() {
         console.log('DB not available, continuing with Stripe data')
       }
 
-      if (!stripeRes.ok) {
+            if (!stripeRes.ok) {
         const msg = String(stripeData?.error || stripeData?.status || '')
-        if (msg.includes('Payment not completed') || msg.includes('unpaid')) {
-          setError('Tu pago está en procesamiento. Si acabas de pagar (tarjeta/OXXO/SPEI), espera 1–2 minutos y haz clic en Reintentar. No cierres esta página.')
-          setState('processing')
-        } else if (msg.toLowerCase().includes('card') || msg.includes('402')) {
+        if (msg.toLowerCase().includes('card') || msg.includes('402')) {
           setError('Tu tarjeta no pasó. No te preocupes: intenta de nuevo con OXXO o transferencia SPEI (desde la página de pago).')
           setState('error')
         } else {
-          setError('No pudimos verificar tu pago. Si ya pagaste, espera 1–2 minutos y haz clic en Reintentar. Si no, vuelve al checkout.')
-          setState('processing')
+          setError(null)
+          setState('loading')
+          setPollingElapsed(0)
+          startPurchasePolling()
         }
       }
-      
+
     } catch (err) {
       console.error('Error loading purchase:', err)
       setError('No pudimos cargar tu compra. Si acabas de pagar, espera 1 minuto y recarga la página. Si sigue igual, escribe a soporte con tu email de pago.')
@@ -611,7 +627,7 @@ export default function CompletePurchasePage() {
       <main className="py-8 px-4">
         <div className="max-w-xl mx-auto">
           
-          {/* ==================== LOADING ==================== */}
+          {/* ==================== LOADING (polling: cada 2s; tras 10s mensaje de calma) ==================== */}
           {state === 'loading' && (
             <motion.div 
               initial={{ opacity: 0 }}
@@ -619,8 +635,18 @@ export default function CompletePurchasePage() {
               className="text-center py-20"
             >
               <div className="w-16 h-16 border-4 border-bear-blue border-t-transparent rounded-full animate-spin mx-auto mb-6" />
-              <h2 className="text-xl font-bold mb-2">Verificando tu pago...</h2>
-              <p className="text-gray-400">Esto solo toma unos segundos</p>
+              {pollingElapsed >= 10 ? (
+                <>
+                  <h2 className="text-xl font-bold mb-2">Tu pago entró correctamente</h2>
+                  <p className="text-gray-400 mb-2">Estamos generando tus credenciales...</p>
+                  <p className="text-sm text-bear-blue">No cierres esta página. En unos segundos verás el botón para descargar.</p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-xl font-bold mb-2">Verificando tu pago...</h2>
+                  <p className="text-gray-400">Esto solo toma unos segundos</p>
+                </>
+              )}
             </motion.div>
           )}
 
