@@ -55,3 +55,22 @@ Si un cliente pagó (Stripe muestra “Pago efectuado con éxito”) pero no se 
    - La app consulta Stripe, crea o localiza al usuario por email y activa la compra (acceso al pack y credenciales FTP si aplica).
 
 Así puedes dar acceso manualmente sin reembolsar ni volver a cobrar.
+
+---
+
+## Cómo nos aseguramos de que no vuelva a fallar
+
+1. **Reintentos del webhook**  
+   Si la auto-activación falla (insert en `purchases`, usuario no encontrado, etc.), el webhook devuelve **500**. Stripe reintenta el evento varias veces. En cada reintento la app vuelve a intentar activar (idempotencia: si ya existe la compra no se duplica).
+
+2. **Pendientes en base de datos**  
+   Antes de activar, siempre se crea (o ya existe) una fila en `pending_purchases` con el pago. Si el webhook falla, esa fila queda en “Pendientes de completar” y puedes actuar desde el panel.
+
+3. **Panel Admin → Reintentar todos**  
+   En **Compras pendientes** (`/admin/pending`), si hay filas pendientes, aparece el botón **“Reintentar todos (N)”**. Al pulsarlo se llama a la misma lógica de activación para cada una. Úsalo si el webhook falló y Stripe ya no reintenta (p. ej. tras un fallo prolongado).
+
+4. **Activar por ID de Stripe**  
+   Si el pago no llegó ni a `pending_purchases` (webhook nunca ejecutado), pega el **Session ID** (`cs_...`) o **Payment Intent** (`pi_...`) en “Activar por ID de Stripe”. La app obtiene los datos desde Stripe (para `pi_` también busca la sesión de Checkout para el email) y activa la compra.
+
+5. **Revisar pendientes**  
+   Revisa de vez en cuando **Admin → Compras pendientes**. Si hay filas en “Pendientes de completar”, activa una por una o usa “Reintentar todos”.

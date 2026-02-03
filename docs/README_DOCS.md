@@ -27,6 +27,7 @@
 | Documento | Descripción |
 |-----------|-------------|
 | [DEPLOY_PRODUCCION.md](./DEPLOY_PRODUCCION.md) | **Guía de despliegue:** pasos para llevar el código a producción (Render), verificación post-deploy y rollback. |
+| [VERIFICACION_RENDER_Y_SUPABASE.md](./VERIFICACION_RENDER_Y_SUPABASE.md) | **Verificación única:** claves correctas en Render (REQUIRED_KEYS, PROJECT_RENDER_KEYS) y Supabase (Auth URLs, tablas, migraciones, orden SQL). |
 | [AUDITORIA_PRODUCCION_Y_RUNBOOK.md](./AUDITORIA_PRODUCCION_Y_RUNBOOK.md) | Auditoría de producción, matriz de bugs, cambios implementados, checklist de variables, runbook (deploy, monitoreo, rollback). |
 | [CHECKLIST_SUPABASE_PRODUCCION.md](./CHECKLIST_SUPABASE_PRODUCCION.md) | Checklist Supabase para producción (RLS, backups, webhooks). |
 | [CHECKLIST_PARA_VENDER.md](./CHECKLIST_PARA_VENDER.md) | Checklist comercial para vender con el embudo. |
@@ -37,6 +38,7 @@
 
 | Documento | Descripción |
 |-----------|-------------|
+| [DONDE_SACAR_CLAVES_ENV.md](./DONDE_SACAR_CLAVES_ENV.md) | **Manual de claves:** lista de todas las variables de .env.local, obligatorias y opcionales, con enlaces y pasos para obtener cada una (Supabase, Stripe, PayPal, Bunny, Twilio, etc.). |
 | [BUNNY_HETZNER_INTEGRACION.md](./BUNNY_HETZNER_INTEGRACION.md) | **Maestro:** Demos, portadas, descargas, descargas por carpeta, FTP – variables, estructura en Bunny/Hetzner, comprobaciones para que no haya fallos. |
 | [BUNNY_PULL_ZONE_SETUP.md](./BUNNY_PULL_ZONE_SETUP.md) | Configuración Bunny CDN (pull zone, demos). |
 | [HETZNER_FTP_REAL.md](./HETZNER_FTP_REAL.md) | FTP real con Hetzner Storage Box (subcuentas por compra). |

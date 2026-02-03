@@ -81,7 +81,85 @@ async function setEnvVar(serviceId, key, value) {
   return res.json()
 }
 
-// Solo para comprobar que existan en Render; la subida usa TODAS las vars de .env.local
+// Lista canónica de variables que el proyecto usa (nombres exactos como en el código).
+// Solo se suben a Render las keys que estén aquí; evita subir claves obsoletas o con typo.
+const PROJECT_RENDER_KEYS = [
+  'NODE_ENV',
+  'NEXT_PUBLIC_APP_URL',
+  'NEXT_PUBLIC_APP_NAME',
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'DATABASE_URL',
+  'NEXT_PUBLIC_STRIPE_PUBLIC_KEY',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'NEXT_PUBLIC_PAYPAL_CLIENT_ID',
+  'PAYPAL_CLIENT_ID',
+  'PAYPAL_CLIENT_SECRET',
+  'PAYPAL_USE_SANDBOX',
+  'NEXT_PUBLIC_PAYPAL_USE_SANDBOX',
+  'FIX_ADMIN_SECRET',
+  'NEXT_PUBLIC_VAPID_PUBLIC_KEY',
+  'VAPID_PRIVATE_KEY',
+  'VAPID_EMAIL',
+  'NEXT_PUBLIC_ADMIN_EMAIL',
+  'NEXT_PUBLIC_META_PIXEL_ID',
+  'NEXT_PUBLIC_FB_PIXEL_ID',
+  'NEXT_PUBLIC_META_PIXEL_DISABLED',
+  'NEXT_PUBLIC_META_PIXEL_ENABLED',
+  'FACEBOOK_CAPI_ACCESS_TOKEN',
+  'FB_ACCESS_TOKEN',
+  'NEXT_PUBLIC_WHATSAPP_NUMBER',
+  'NEXT_PUBLIC_MANYCHAT_PAGE_ID',
+  'NEXT_PUBLIC_MANYCHAT_ID',
+  'MANYCHAT_API_KEY',
+  'NEXT_PUBLIC_CLARITY_PROJECT_ID',
+  'TWILIO_ACCOUNT_SID',
+  'TWILIO_AUTH_TOKEN',
+  'TWILIO_VERIFY_SERVICE_SID',
+  'TWILIO_PHONE_NUMBER',
+  'TWILIO_WHATSAPP_NUMBER',
+  'DEV_OTP_BYPASS_CODE',
+  'RESEND_API_KEY',
+  'BUNNY_API_KEY',
+  'BUNNY_STORAGE_ZONE',
+  'BUNNY_STORAGE_PASSWORD',
+  'BUNNY_CDN_URL',
+  'NEXT_PUBLIC_BUNNY_CDN_URL',
+  'BUNNY_TOKEN_KEY',
+  'BUNNY_PACK_PATH_PREFIX',
+  'BUNNY_PACK_PREFIX',
+  'BUNNY_PULL_ZONE',
+  'BUNNY_SECURITY_KEY',
+  'BUNNY_STREAM_LIBRARY_ID',
+  'BUNNY_STREAM_API_KEY',
+  'FTP_HOST',
+  'FTP_USER',
+  'FTP_PASSWORD',
+  'FTP_BASE_PATH',
+  'FTP_VIDEOS_PATH',
+  'FTP_SECURE',
+  'FTP_USE_TLS',
+  'FTP_INSECURE',
+  'HETZNER_FTP_HOST',
+  'HETZNER_FTP_USER',
+  'HETZNER_FTP_PASSWORD',
+  'HETZNER_ROBOT_USER',
+  'HETZNER_ROBOT_PASSWORD',
+  'HETZNER_STORAGEBOX_ID',
+  'NEXT_PUBLIC_FTP_HOST',
+  'VIDEOS_PATH',
+  'USE_VIDEOS_FROM_DB',
+  'OPENAI_API_KEY',
+  'OPENAI_CHAT_MODEL',
+  'ADMIN_EMAIL_WHITELIST',
+  'CURRENCY_USD_TO_MXN_RATE',
+  'NEXT_PUBLIC_URL',
+]
+
+// Mínimo imprescindible en Render para que la app funcione (login, checkout, webhooks).
+// PayPal es opcional; si no usas PayPal, no hace falta tener esas 4 variables.
 const REQUIRED_KEYS = [
   'NEXT_PUBLIC_APP_URL',
   'NODE_ENV',
@@ -93,10 +171,6 @@ const REQUIRED_KEYS = [
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET',
   'FIX_ADMIN_SECRET',
-  'NEXT_PUBLIC_PAYPAL_CLIENT_ID',
-  'PAYPAL_CLIENT_SECRET',
-  'PAYPAL_USE_SANDBOX',
-  'NEXT_PUBLIC_PAYPAL_USE_SANDBOX',
 ]
 
 async function main() {
@@ -127,28 +201,66 @@ async function main() {
     NODE_ENV: 'production',
     FIX_ADMIN_SECRET: process.env.FIX_ADMIN_SECRET || 'bearbeat-admin-2027-secreto',
   }
+  const allowedKeys = new Set(PROJECT_RENDER_KEYS)
   const vars = []
+  const skippedUnknown = []
   if (fs.existsSync(envPath)) {
     fs.readFileSync(envPath, 'utf8').split('\n').forEach((line) => {
       const m = line.match(/^([^#=]+)=(.*)$/)
       if (!m) return
       const key = m[1].trim()
       const raw = m[2].trim().replace(/^["']|["']$/g, '')
-      if (skipKeys.includes(key) || !raw) return
+      if (skipKeys.includes(key)) return
+      if (!allowedKeys.has(key)) {
+        if (raw) skippedUnknown.push(key)
+        return
+      }
+      if (!raw) return
       vars.push({ key, value: overrides[key] ?? raw })
     })
+  }
+  if (skippedUnknown.length) {
+    console.log('   ⚠️ En .env.local pero no en PROJECT_RENDER_KEYS (no se suben):', skippedUnknown.join(', '))
+    console.log('   Si son del proyecto, añádelas en scripts/render-set-env.js → PROJECT_RENDER_KEYS')
   }
 
   // Bunny: si no están en .env.local, tomar de process.env (p. ej. .env)
   const BUNNY_KEYS = ['BUNNY_CDN_URL', 'NEXT_PUBLIC_BUNNY_CDN_URL', 'BUNNY_API_KEY', 'BUNNY_STORAGE_ZONE', 'BUNNY_STORAGE_PASSWORD', 'BUNNY_TOKEN_KEY', 'BUNNY_PACK_PATH_PREFIX']
   const hasKey = (k) => vars.some((v) => v.key === k)
   const isPlaceholder = (v) => !v || /^tu_|^xxx$|^\.\.\.$|clave_secreta|password_de|^re_$/i.test(String(v).trim())
+  function isValidBunnyCdnUrl(url) {
+    if (!url || url.length < 15) return false
+    try {
+      const u = new URL(url)
+      if (u.protocol !== 'https:') return false
+      return (u.hostname || '').length >= 8
+    } catch { return false }
+  }
+  function isValidBunnyTokenKey(key) {
+    const k = String(key || '').trim()
+    return k.length >= 8 && k.length <= 500
+  }
   for (const key of BUNNY_KEYS) {
     if (hasKey(key)) continue
     const val = process.env[key]
     if (val && !isPlaceholder(val)) {
       vars.push({ key, value: val })
       console.log('   (Bunny desde .env)', key)
+    }
+  }
+
+  // Validar Bunny antes de subir: advertir si valores son inválidos
+  const cdnVal = (process.env.NEXT_PUBLIC_BUNNY_CDN_URL || process.env.BUNNY_CDN_URL || '').trim().replace(/\/+$/, '')
+  const tokenVal = (process.env.BUNNY_TOKEN_KEY || '').trim()
+  if (vars.some((v) => v.key.startsWith('BUNNY_') || v.key === 'NEXT_PUBLIC_BUNNY_CDN_URL')) {
+    if (cdnVal && !isValidBunnyCdnUrl(cdnVal)) {
+      console.warn('   ⚠️ NEXT_PUBLIC_BUNNY_CDN_URL/BUNNY_CDN_URL parece inválida: debe ser https://tu-zona.b-cdn.net (sin barra final).')
+    }
+    if (tokenVal && !isValidBunnyTokenKey(tokenVal)) {
+      console.warn('   ⚠️ BUNNY_TOKEN_KEY parece inválida: debe tener entre 8 y 500 caracteres (Token Auth de Bunny → Pull Zone → Security).')
+    }
+    if (!cdnVal || !tokenVal) {
+      console.warn('   ⚠️ Para demos/thumbnails necesitas NEXT_PUBLIC_BUNNY_CDN_URL y BUNNY_TOKEN_KEY correctos en .env.local.')
     }
   }
 
@@ -167,6 +279,20 @@ async function main() {
   if (!vars.some((v) => v.key === 'FIX_ADMIN_SECRET')) {
     vars.push({ key: 'FIX_ADMIN_SECRET', value: overrides.FIX_ADMIN_SECRET })
     console.log('   (FIX_ADMIN_SECRET fijo para /fix-admin)')
+  }
+
+  // REQUIRED_KEYS: si falta alguna en vars, subir con valor por defecto para que Render no quede incompleto
+  const requiredDefaults = {
+    NODE_ENV: 'production',
+    NEXT_PUBLIC_APP_URL: appUrl,
+  }
+  for (const key of REQUIRED_KEYS) {
+    if (vars.some((v) => v.key === key)) continue
+    const val = requiredDefaults[key] || process.env[key]
+    if (val) {
+      vars.push({ key, value: val })
+      console.log('   (Requerida por defecto)', key)
+    }
   }
 
   for (const { key, value } of vars) {
@@ -212,9 +338,10 @@ async function main() {
 
   const bunnyPushed = vars.filter((v) => v.key.startsWith('BUNNY_') || v.key === 'NEXT_PUBLIC_BUNNY_CDN_URL').length
   if (bunnyPushed) {
-    console.log('   🐰 Bunny:', bunnyPushed, 'variable(s) subidas (demos/descargas por CDN).')
+    console.log('   🐰 Bunny:', bunnyPushed, 'variable(s) subidas.')
+    console.log('   Tras el deploy, abre https://bear-beat2027.onrender.com/api/debug-config para verificar que la config sea correcta.')
   } else {
-    console.log('   Para demos por Bunny: añade BUNNY_CDN_URL en .env.local y vuelve a ejecutar: npm run deploy:env')
+    console.log('   Para demos por Bunny: añade NEXT_PUBLIC_BUNNY_CDN_URL y BUNNY_TOKEN_KEY en .env.local y vuelve a ejecutar: npm run deploy:env')
   }
 }
 

@@ -21,6 +21,7 @@
     "maintenance:sync-db": "npx tsx scripts/maintenance/sync-db.ts",
     "deploy:env": "node scripts/render-set-env.js",
     "supabase:set-auth-urls": "node scripts/supabase-set-auth-urls.js",
+    "verify:render-supabase": "node scripts/verify-render-and-supabase.js",
     "test": "npm run type-check",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"

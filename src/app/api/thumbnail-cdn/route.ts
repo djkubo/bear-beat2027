@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateSignedUrl, isBunnyConfigured, getBunnyPackPrefix } from '@/lib/bunny'
+import { generateSignedUrl, isBunnyConfigured, getBunnyPackPrefix, getBunnyConfigStatus } from '@/lib/bunny'
 import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
 import { Readable } from 'stream'
 
 export const dynamic = 'force-dynamic'
 
+const PLACEHOLDER_URL = '/api/placeholder/thumb?text=V'
+
 /**
  * GET /api/thumbnail-cdn?path=Genre/filename.jpg
- * Bunny: redirige a URL firmada. Sin Bunny o si Bunny falla: stream desde FTP.
+ * Bunny: redirige a URL firmada. Si Bunny no está configurado: no redirigir a URL inválida (evita 502); usar placeholder o FTP.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -23,17 +25,34 @@ export async function GET(req: NextRequest) {
     }
     pathNorm = pathNorm.replace(/^Videos Enero 2026\/?/i, '').trim() || pathNorm
 
-    if (isBunnyConfigured()) {
-      try {
-        const prefix = getBunnyPackPrefix()
-        const bunnyPath = prefix ? `${prefix}/${pathNorm}` : pathNorm
-        const signedUrl = generateSignedUrl(bunnyPath, 3600)
-        if (signedUrl && signedUrl.startsWith('http')) {
-          return NextResponse.redirect(signedUrl)
+    if (!isBunnyConfigured()) {
+      const status = getBunnyConfigStatus()
+      console.warn('[thumbnail-cdn] Bunny no configurado o inválido:', { missing: status.missing, invalid: status.invalid })
+      if (isFtpConfigured()) {
+        try {
+          const stream = await streamFileFromFtp(pathNorm, 'thumb')
+          const webStream = Readable.toWeb(stream) as ReadableStream
+          const contentType = getContentType(pathNorm)
+          return new NextResponse(webStream, {
+            headers: { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400' },
+          })
+        } catch (e) {
+          console.error('[thumbnail-cdn] FTP stream failed:', (e as Error)?.message || e, 'path:', pathNorm)
         }
-      } catch (e) {
-        console.warn('[thumbnail-cdn] Bunny signed URL failed:', (e as Error)?.message || e)
       }
+      return NextResponse.redirect(new URL(PLACEHOLDER_URL, req.url))
+    }
+
+    try {
+      const prefix = getBunnyPackPrefix()
+      const bunnyPath = prefix ? `${prefix}/${pathNorm}` : pathNorm
+      const signedUrl = generateSignedUrl(bunnyPath, 3600)
+      if (signedUrl && signedUrl.startsWith('http') && signedUrl.length > 20) {
+        return NextResponse.redirect(signedUrl)
+      }
+      console.warn('[thumbnail-cdn] URL firmada inválida (vacía o corta). No redirigir para evitar 502.')
+    } catch (e) {
+      console.warn('[thumbnail-cdn] Bunny signed URL failed:', (e as Error)?.message || e)
     }
 
     if (isFtpConfigured()) {
@@ -49,16 +68,13 @@ export async function GET(req: NextRequest) {
         })
       } catch (e) {
         console.error('[thumbnail-cdn] FTP stream failed:', (e as Error)?.message || e, 'path:', pathNorm)
-        return NextResponse.json({ error: 'Portada no disponible' }, { status: 503 })
+        return NextResponse.redirect(new URL(PLACEHOLDER_URL, req.url))
       }
     }
 
-    return NextResponse.json(
-      { error: 'Thumbnails no configurados. Configura Bunny o FTP.' },
-      { status: 503 }
-    )
+    return NextResponse.redirect(new URL(PLACEHOLDER_URL, req.url))
   } catch (e) {
     console.error('[thumbnail-cdn] Unhandled:', (e as Error)?.message || e)
-    return NextResponse.json({ error: 'Portada no disponible' }, { status: 503 })
+    return NextResponse.redirect(new URL(PLACEHOLDER_URL, req.url))
   }
 }

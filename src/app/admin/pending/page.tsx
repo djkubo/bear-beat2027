@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { formatDate, formatPrice } from '@/lib/utils'
 import { ActivatePendingButton } from '../ActivatePendingButton'
 import { ActivateByStripeIdForm } from '../ActivateByStripeIdForm'
+import { RetryAllPendingButton } from '../RetryAllPendingButton'
 
 export default async function AdminPendingPurchasesPage() {
   const supabase = await createServerClient()
@@ -45,15 +46,18 @@ export default async function AdminPendingPurchasesPage() {
       <ActivateByStripeIdForm />
 
       <div className="rounded-xl p-6 border border-white/5 border-l-4 border-l-amber-500/60 bg-zinc-900/80 shadow-xl">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
           <h2 className="text-xl font-black text-white">
             ⚠️ Pendientes de Completar ({pendingPurchases?.length || 0})
           </h2>
-          {pendingPurchases && pendingPurchases.length > 0 && (
-            <div className="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-4 py-2 rounded-full font-bold">
-              ¡Acción requerida!
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <RetryAllPendingButton pendingCount={pendingPurchases?.length ?? 0} />
+            {pendingPurchases && pendingPurchases.length > 0 && (
+              <div className="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-4 py-2 rounded-full font-bold">
+                ¡Acción requerida!
+              </div>
+            )}
+          </div>
         </div>
 
         {!pendingPurchases || pendingPurchases.length === 0 ? (

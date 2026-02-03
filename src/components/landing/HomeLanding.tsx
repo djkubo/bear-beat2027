@@ -147,6 +147,10 @@ export default function HomeLanding() {
   const [downloadingVideoId, setDownloadingVideoId] = useState<string | null>(null)
   const expandedSectionRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+    setDemoError(false)
+  }, [selectedVideo?.id])
+
   const handleDownloadFromList = async (video: Video) => {
     setDownloadingVideoId(video.id)
     try {
@@ -157,16 +161,9 @@ export default function HomeLanding() {
     setDownloadingVideoId(null)
   }
 
-  /** URL de portada: la API devuelve /api/thumbnail-cdn?path=...; si no, construimos por convención. */
-  const getThumbnailUrl = (video: Video): string => {
-    if (video.thumbnailUrl) {
-      if (video.thumbnailUrl.startsWith('http://') || video.thumbnailUrl.startsWith('https://')) return video.thumbnailUrl
-      if (video.thumbnailUrl.startsWith('/')) return video.thumbnailUrl
-      return `/api/thumbnail-cdn?path=${encodeURIComponent(video.thumbnailUrl)}`
-    }
-    const pathJpg = video.path.replace(/\.(mp4|mov|avi|mkv)$/i, '.jpg')
-    return `/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`
-  }
+  /** URL de portada en HOME: usamos placeholder estático para no depender del CDN (evita 502/503 en producción). */
+  const DEMO_THUMB_PLACEHOLDER = '/thumbnails-cache/Bachata_Dalvin%20La%20Melodia%20-%20Chiquilla%20Bonita%20(10A%20%E2%80%93%20124%20BPM).jpg'
+  const getThumbnailUrl = (_video: Video): string => DEMO_THUMB_PLACEHOLDER
   const videoRef = useRef<HTMLVideoElement>(null)
   const inventory = useVideoInventory()
   const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted ?? '0 B'
@@ -622,17 +619,17 @@ export default function HomeLanding() {
                           className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4 select-none"
                           onContextMenu={(e) => e.preventDefault()}
                         >
-                          {!thumbErrors.has(selectedVideo.id) ? (
-                            <img src={getThumbnailUrl(selectedVideo)} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setThumbErrors((s) => new Set(s).add(selectedVideo.id))} />
-                          ) : (
-                            <div className="absolute inset-0 bg-gradient-to-br from-bear-blue/20 to-zinc-900 flex items-center justify-center">
-                              <Play className="h-10 w-10 text-bear-blue ml-1" />
-                            </div>
-                          )}
+                          <img src={getThumbnailUrl(selectedVideo)} alt="" className="absolute inset-0 w-full h-full object-cover" />
                           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                             <span className="text-white/20 text-xl font-black rotate-[-25deg]">BEAR BEAT</span>
                           </div>
-                          {!demoError && (
+                          {demoError ? (
+                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/80 p-4 text-center">
+                              <p className="text-amber-400 font-bold">Demo no disponible</p>
+                              <p className="text-sm text-zinc-400">Los demos requieren Bunny CDN o FTP configurado en el servidor.</p>
+                              <p className="text-xs text-zinc-500">Desbloquea el pack para descargar y ver todos los videos.</p>
+                            </div>
+                          ) : (
                             <video
                               ref={videoRef}
                               key={selectedVideo.path}

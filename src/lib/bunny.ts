@@ -20,8 +20,78 @@ export function getBunnyPackPrefix(): string {
   return raw.replace(/\/+$/, '')
 }
 
+/** URL debe ser https y parecer CDN de Bunny (ej. https://xxx.b-cdn.net). */
+export function isValidBunnyCdnUrl(url: string): boolean {
+  if (!url || url.length < 15) return false
+  try {
+    const u = new URL(url)
+    if (u.protocol !== 'https:') return false
+    const host = (u.hostname || '').toLowerCase()
+    if (!host) return false
+    if (host.includes('b-cdn.net')) return true
+    if (host.includes('bunnycdn') || host.includes('bunny')) return true
+    return host.length >= 8
+  } catch {
+    return false
+  }
+}
+
+/** Token no vacío y longitud mínima (Bunny suele dar claves largas). */
+export function isValidBunnyTokenKey(key: string): boolean {
+  const k = (key || '').trim()
+  return k.length >= 8 && k.length <= 500
+}
+
 export function isBunnyConfigured(): boolean {
-  return !!(BUNNY_CDN_URL && BUNNY_TOKEN_KEY)
+  return isValidBunnyCdnUrl(BUNNY_CDN_URL) && isValidBunnyTokenKey(BUNNY_TOKEN_KEY)
+}
+
+/** Para mensajes 503: indica qué falta o qué está mal (no expone valores). */
+export function getBunnyMissingVars(): string[] {
+  const missing: string[] = []
+  if (!BUNNY_CDN_URL) missing.push('NEXT_PUBLIC_BUNNY_CDN_URL o BUNNY_CDN_URL')
+  if (!BUNNY_TOKEN_KEY) missing.push('BUNNY_TOKEN_KEY')
+  return missing
+}
+
+export type BunnyConfigStatus = {
+  ok: boolean
+  missing: string[]
+  invalid: string[]
+  hints: string[]
+}
+
+/** Verifica que las variables existan Y estén correctas. */
+export function getBunnyConfigStatus(): BunnyConfigStatus {
+  const missing: string[] = []
+  const invalid: string[] = []
+  const hints: string[] = []
+
+  if (!BUNNY_CDN_URL) {
+    missing.push('NEXT_PUBLIC_BUNNY_CDN_URL o BUNNY_CDN_URL')
+  } else if (!isValidBunnyCdnUrl(BUNNY_CDN_URL)) {
+    invalid.push('NEXT_PUBLIC_BUNNY_CDN_URL / BUNNY_CDN_URL: debe ser https y una URL de Bunny (ej. https://tu-zona.b-cdn.net, sin barra final)')
+    hints.push('En Render: sin barra final. En BunnyCDN → Pull Zone → Hostname.')
+  }
+
+  if (!BUNNY_TOKEN_KEY) {
+    missing.push('BUNNY_TOKEN_KEY')
+  } else if (!isValidBunnyTokenKey(BUNNY_TOKEN_KEY)) {
+    invalid.push('BUNNY_TOKEN_KEY: debe tener entre 8 y 500 caracteres (Token Authentication Key de la Pull Zone)')
+    hints.push('BunnyCDN → Pull Zone → Security → Token Authentication → copiar la clave.')
+  }
+
+  const prefix = getBunnyPackPrefix()
+  if (BUNNY_CDN_URL && BUNNY_TOKEN_KEY && !prefix) {
+    hints.push('BUNNY_PACK_PATH_PREFIX: si tus archivos están en una carpeta (ej. "Videos Enero 2026"), configúralo; si están en la raíz, está bien vacío.')
+  }
+
+  return {
+    ok: missing.length === 0 && invalid.length === 0,
+    missing,
+    invalid,
+    hints,
+  }
 }
 
 /**

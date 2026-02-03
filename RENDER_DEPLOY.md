@@ -22,7 +22,7 @@ El script `scripts/start.js` ya escucha en `0.0.0.0` y usa la variable `PORT` de
 
 ## 2. Variables de entorno obligatorias
 
-En **Environment** del servicio, asegúrate de tener al menos:
+En **Environment** del servicio, asegúrate de tener al menos (las mismas que valida `npm run deploy:env`):
 
 | Variable | Valor (ejemplo) |
 |----------|------------------|
@@ -31,10 +31,15 @@ En **Environment** del servicio, asegúrate de tener al menos:
 | `NEXT_PUBLIC_SUPABASE_URL` | (tu URL de Supabase) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | (tu anon key) |
 | `SUPABASE_SERVICE_ROLE_KEY` | (tu service role key) |
+| `DATABASE_URL` | (connection string PostgreSQL de Supabase) |
 | `NEXT_PUBLIC_STRIPE_PUBLIC_KEY` | (pk_test_ o pk_live_) |
 | `STRIPE_SECRET_KEY` | (sk_test_ o sk_live_) |
+| `STRIPE_WEBHOOK_SECRET` | (whsec_... del webhook en Stripe) |
+| `FIX_ADMIN_SECRET` | (valor secreto para `/fix-admin?token=...`) |
 
-Copia el resto de variables desde tu `.env.local` (Stripe webhook, Resend, etc.).
+**PayPal** es opcional: si no usas PayPal, no hace falta configurar `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, etc.
+
+La lista completa de claves que el proyecto acepta en Render está en `scripts/render-set-env.js` (`PROJECT_RENDER_KEYS`). El comando `npm run deploy:env` solo sube variables que estén en esa lista. Copia el resto desde tu `.env.local` o configúralas en el Dashboard.
 
 **ManyChat (admin y webhook):** Para que `/admin/manychat` y el webhook funcionen, añade en Render → Environment:
 - `MANYCHAT_API_KEY` = tu API Key (ManyChat → Settings → API; formato `pageId:key`)

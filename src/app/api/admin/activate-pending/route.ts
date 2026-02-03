@@ -11,6 +11,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import { stripe } from '@/lib/stripe'
 
+type StripeSessionLike = {
+  id: string
+  customer_details?: { email?: string; name?: string; phone?: string }
+  metadata?: { pack_id?: string }
+  amount_total?: number
+  currency?: string
+}
+
 function randomPassword(): string {
   const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
   let s = ''
@@ -102,14 +110,15 @@ export async function POST(req: NextRequest) {
               )
             }
             let email = (pi.receipt_email || (pi.metadata?.customer_email as string) || '').trim()
-            let sessionFromPi: { id: string; customer_details?: { email?: string; name?: string; phone?: string }; metadata?: { pack_id?: string }; amount_total?: number; currency?: string } | null = null
+            let sessionFromPi: StripeSessionLike | null = null
 
             if (!email || !email.includes('@')) {
               const list = await stripe.checkout.sessions.list({
                 payment_intent: sessionId,
                 limit: 1,
               })
-              sessionFromPi = list.data[0] as typeof sessionFromPi
+              const first = list.data[0]
+              sessionFromPi = first ? (first as unknown as StripeSessionLike) : null
               if (sessionFromPi?.customer_details?.email) {
                 email = (sessionFromPi.customer_details.email || '').trim()
               }
