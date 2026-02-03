@@ -152,6 +152,17 @@ async function main() {
     }
   }
 
+  // ManyChat: igual, desde process.env si se pasa (ej. MANYCHAT_API_KEY=xxx npm run deploy:env)
+  const MANYCHAT_KEYS = ['MANYCHAT_API_KEY', 'NEXT_PUBLIC_MANYCHAT_PAGE_ID']
+  for (const key of MANYCHAT_KEYS) {
+    if (hasKey(key)) continue
+    const val = process.env[key]
+    if (val && val.trim()) {
+      vars.push({ key, value: val.trim() })
+      console.log('   (ManyChat desde env)', key)
+    }
+  }
+
   // FIX_ADMIN_SECRET: siempre subir a Render (fix-admin?token=valor)
   if (!vars.some((v) => v.key === 'FIX_ADMIN_SECRET')) {
     vars.push({ key: 'FIX_ADMIN_SECRET', value: overrides.FIX_ADMIN_SECRET })

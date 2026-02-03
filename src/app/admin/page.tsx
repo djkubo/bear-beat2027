@@ -129,7 +129,7 @@ export default async function AdminDashboardPage() {
       .sort((a, b) => b.revenueMxn - a.revenueMxn)
   }
 
-  // Últimas compras: SELECT real a purchases con join a users (email, name) y packs (name)
+  // Últimas compras activadas (tabla purchases)
   const { data: recentPurchases } = await supabase
     .from('purchases')
     .select(`
@@ -139,6 +139,52 @@ export default async function AdminDashboardPage() {
     `)
     .order('purchased_at', { ascending: false })
     .limit(10)
+
+  // Pagos cobrados pendientes de activar (para que la compra aparezca aunque no hayan pasado por /complete-purchase)
+  const { data: recentPending } = await supabase
+    .from('pending_purchases')
+    .select('*, pack:packs(name)')
+    .eq('payment_status', 'paid')
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  // Lista unificada: activadas + pendientes, ordenada por fecha (la compra cobrada siempre aparece)
+  type PaymentRow = {
+    id: string | number
+    date: string
+    email: string
+    name: string
+    packName: string
+    amount: number
+    currency: string
+    provider: string
+    status: 'activated' | 'pending'
+  }
+  const activatedRows: PaymentRow[] = (recentPurchases || []).map((p: any) => ({
+    id: p.id,
+    date: p.purchased_at,
+    email: p.user?.email || '',
+    name: p.user?.name || 'Sin nombre',
+    packName: p.pack?.name || '—',
+    amount: Number(p.amount_paid) || 0,
+    currency: p.currency || 'MXN',
+    provider: p.payment_provider || 'stripe',
+    status: 'activated',
+  }))
+  const pendingRows: PaymentRow[] = (recentPending || []).map((p: any) => ({
+    id: 'p-' + p.id,
+    date: p.created_at,
+    email: p.customer_email || '',
+    name: p.customer_name || 'Pendiente',
+    packName: p.pack?.name || '—',
+    amount: Number(p.amount_paid) || 0,
+    currency: p.currency || 'MXN',
+    provider: p.payment_provider || 'stripe',
+    status: 'pending',
+  }))
+  const allPayments = [...activatedRows, ...pendingRows]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 12)
 
   return (
     <>
@@ -276,91 +322,71 @@ export default async function AdminDashboardPage() {
           <SyncVideosFtpButton />
         </div>
 
-        {/* Últimas Compras (solo activadas; los cobrados pendientes en /admin/pending) */}
+        {/* Últimos pagos cobrados (activadas + pendientes de activar: la compra siempre aparece) */}
         <div className="rounded-2xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
           <h2 className="text-xl font-black text-white mb-1 tracking-tight">
-            💳 Últimas Compras (10)
+            💳 Últimos pagos cobrados
           </h2>
-          {pendingCount > 0 && (
-            <p className="text-sm text-zinc-500 mb-6">
-              Solo activadas. Hay {pendingCount} pago(s) cobrado(s) pendientes de activar en <a href="/admin/pending" className="text-bear-blue hover:underline">Pendientes</a>.
-            </p>
-          )}
-          {!pendingCount && <div className="mb-6" />}
+          <p className="text-sm text-zinc-500 mb-6">
+            Incluye cobros exitosos en Stripe. Los marcados &quot;Pendiente&quot; aún no pasaron por /complete-purchase → <a href="/admin/pending" className="text-bear-blue hover:underline">Pendientes</a>
+          </p>
 
-          {!recentPurchases || recentPurchases.length === 0 ? (
-            <p className="text-center py-12 text-zinc-500">
-              {pendingCount > 0 ? 'Aún no hay compras activadas (revisa Pendientes).' : 'Aún no hay compras'}
-            </p>
+          {allPayments.length === 0 ? (
+            <p className="text-center py-12 text-zinc-500">Aún no hay pagos cobrados</p>
           ) : (
             <>
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-white/5">
-                      <th className="text-left py-3 px-4 font-bold text-zinc-400 w-10" title="Fuente">Fuente</th>
                       <th className="text-left py-3 px-4 font-bold text-zinc-400">Fecha</th>
-                      <th className="text-left py-3 px-4 font-bold text-zinc-400">Usuario</th>
+                      <th className="text-left py-3 px-4 font-bold text-zinc-400">Cliente</th>
                       <th className="text-left py-3 px-4 font-bold text-zinc-400">Pack</th>
                       <th className="text-left py-3 px-4 font-bold text-zinc-400">Monto</th>
-                      <th className="text-left py-3 px-4 font-bold text-zinc-400">Método</th>
+                      <th className="text-left py-3 px-4 font-bold text-zinc-400">Estado</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recentPurchases.map((purchase: any) => {
-                      const { icon } = sourceDisplay(purchase.utm_source || purchase.traffic_source || 'direct')
-                      return (
-                        <tr key={purchase.id} className="border-b border-white/5 hover:bg-white/5">
-                          <td className="py-3 px-4 text-xl" title={purchase.utm_source || 'direct'}>
-                            {icon}
-                          </td>
-                          <td className="py-3 px-4 text-zinc-300">{formatDate(purchase.purchased_at)}</td>
-                          <td className="py-3 px-4">
-                            <div className="font-medium text-white">{purchase.user?.name || 'Sin nombre'}</div>
-                            <div className="text-sm text-zinc-500">{purchase.user?.email}</div>
-                          </td>
-                          <td className="py-3 px-4 font-medium text-white">{purchase.pack?.name}</td>
-                          <td className="py-3 px-4 font-bold text-bear-blue">
-                            {formatPrice(purchase.amount_paid, purchase.currency as any)}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="px-2 py-1 bg-bear-blue/20 text-bear-blue rounded text-xs font-bold">
-                              {purchase.payment_provider}
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    })}
+                    {allPayments.map((row) => (
+                      <tr key={row.id} className="border-b border-white/5 hover:bg-white/5">
+                        <td className="py-3 px-4 text-zinc-300">{formatDate(row.date)}</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-white">{row.name}</div>
+                          <div className="text-sm text-zinc-500">{row.email}</div>
+                        </td>
+                        <td className="py-3 px-4 font-medium text-white">{row.packName}</td>
+                        <td className="py-3 px-4 font-bold text-bear-blue">
+                          {formatPrice(row.amount, row.currency as any)}
+                        </td>
+                        <td className="py-3 px-4">
+                          {row.status === 'activated' ? (
+                            <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs font-bold">Activada</span>
+                          ) : (
+                            <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-xs font-bold">Pendiente de activar</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
 
               <div className="block md:hidden space-y-4">
-                {recentPurchases.map((purchase: any) => {
-                  const { icon } = sourceDisplay(purchase.utm_source || purchase.traffic_source || 'direct')
-                  return (
-                    <div
-                      key={purchase.id}
-                      className="flex gap-4 p-4 rounded-xl border border-white/5 bg-zinc-800/50"
-                    >
-                      <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-bear-blue/10 border border-bear-blue/30 flex items-center justify-center text-3xl">
-                        {icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-white truncate">
-                          {purchase.user?.name || 'Sin nombre'} · {purchase.pack?.name || '—'}
-                        </div>
-                        <div className="text-lg font-bold text-bear-blue mt-0.5">
-                          {formatPrice(purchase.amount_paid, purchase.currency as any)}
-                        </div>
-                        <div className="text-xs text-zinc-500 mt-1">{formatDate(purchase.purchased_at)}</div>
-                        <span className="inline-block mt-2 px-2 py-1 bg-bear-blue/20 text-bear-blue rounded text-xs font-bold">
-                          {purchase.payment_provider}
-                        </span>
-                      </div>
+                {allPayments.map((row) => (
+                  <div key={row.id} className="flex gap-4 p-4 rounded-xl border border-white/5 bg-zinc-800/50">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-white truncate">{row.name} · {row.packName}</div>
+                      <div className="text-sm text-zinc-500 truncate">{row.email}</div>
+                      <div className="text-lg font-bold text-bear-blue mt-0.5">{formatPrice(row.amount, row.currency as any)}</div>
+                      <div className="text-xs text-zinc-500 mt-1">{formatDate(row.date)}</div>
+                      {row.status === 'activated' ? (
+                        <span className="inline-block mt-2 px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs font-bold">Activada</span>
+                      ) : (
+                        <span className="inline-block mt-2 px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-xs font-bold">Pendiente</span>
+                      )}
                     </div>
-                  )
-                })}
+                  </div>
+                ))}
               </div>
             </>
           )}

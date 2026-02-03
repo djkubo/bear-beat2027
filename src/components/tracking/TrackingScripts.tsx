@@ -2,7 +2,9 @@
 
 import Script from 'next/script'
 import { usePathname } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { trackPageView } from '@/lib/tracking'
+import { AttributionTracker } from '@/components/tracking/AttributionTracker'
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || ''
 const MANYCHAT_ID = process.env.NEXT_PUBLIC_MANYCHAT_ID || process.env.NEXT_PUBLIC_MANYCHAT_PAGE_ID || ''
@@ -16,13 +18,28 @@ declare global {
   }
 }
 
+function pathToPageName(pathname: string): string {
+  if (!pathname || pathname === '/') return 'home'
+  const slug = pathname.replace(/^\//, '').split('/')[0] || 'home'
+  return slug === 'checkout' ? 'checkout' : slug === 'contenido' ? 'contenido' : slug
+}
+
 /**
- * Scripts de tracking: Facebook Pixel + ManyChat.
- * PageView se dispara en cada cambio de ruta (App Router).
- * Estrategia afterInteractive para no bloquear la carga.
+ * Scripts de tracking: Facebook Pixel + ManyChat + nuestro backend (user_events).
+ * En cada cambio de ruta: Pixel PageView + trackPageView interno (Supabase).
+ * AttributionTracker guarda UTM first-touch en cookie.
  */
 export function TrackingScripts() {
   const pathname = usePathname()
+  const lastPathRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const pageName = pathToPageName(pathname || '/')
+    if (lastPathRef.current === pathname) return
+    lastPathRef.current = pathname
+    trackPageView(pageName)
+  }, [pathname])
 
   useEffect(() => {
     if (DISABLED || !PIXEL_ID || typeof window === 'undefined' || !window.fbq) return
@@ -36,6 +53,7 @@ export function TrackingScripts() {
 
   return (
     <>
+      <AttributionTracker />
       {/* Facebook Pixel */}
       {PIXEL_ID && !DISABLED && (
         <Script

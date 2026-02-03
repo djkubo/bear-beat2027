@@ -34,7 +34,13 @@ En **Environment** del servicio, asegúrate de tener al menos:
 | `NEXT_PUBLIC_STRIPE_PUBLIC_KEY` | (pk_test_ o pk_live_) |
 | `STRIPE_SECRET_KEY` | (sk_test_ o sk_live_) |
 
-Copia el resto de variables desde tu `.env.local` (Stripe webhook, Resend, ManyChat, etc.).
+Copia el resto de variables desde tu `.env.local` (Stripe webhook, Resend, etc.).
+
+**ManyChat (admin y webhook):** Para que `/admin/manychat` y el webhook funcionen, añade en Render → Environment:
+- `MANYCHAT_API_KEY` = tu API Key (ManyChat → Settings → API; formato `pageId:key`)
+- `NEXT_PUBLIC_MANYCHAT_PAGE_ID` = ID de la página (opcional; para el widget)
+
+Sin `MANYCHAT_API_KEY` verás "Error de Conexión" en Admin → ManyChat.
 
 ### FTP (acceso real tras pagar)
 

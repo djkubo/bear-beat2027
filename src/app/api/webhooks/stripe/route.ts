@@ -5,11 +5,23 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { headers } from 'next/headers'
 import { upsertSubscriber, addMultipleTags, BEAR_BEAT_TAGS } from '@/lib/manychat'
 import { sendServerEvent } from '@/lib/fpixel-server'
+import {
+  createStorageBoxSubaccount,
+  isHetznerFtpConfigured,
+} from '@/lib/hetzner-robot'
+import { isFtpConfigured } from '@/lib/ftp-stream'
 
 function generateRandomPassword(): string {
   const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
   let s = ''
   for (let i = 0; i < 16; i++) s += chars[Math.floor(Math.random() * chars.length)]
+  return s
+}
+
+function generateFtpPassword(): string {
+  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  let s = ''
+  for (let i = 0; i < 14; i++) s += chars[Math.floor(Math.random() * chars.length)]
   return s
 }
 
@@ -233,6 +245,71 @@ export async function POST(req: NextRequest) {
           }
         } catch (authErr) {
           console.warn('Webhook: crear/confirmar usuario Auth (non-critical):', authErr)
+        }
+      }
+
+      // Auto-activar compra: crear fila en purchases para que el usuario tenga "1 pack" y acceso sin pasar por /complete-purchase
+      if (customerEmail && typeof customerEmail === 'string' && customerEmail.includes('@')) {
+        try {
+          const admin = createAdminClient()
+          const { data: userRow } = await (admin.from('users') as any).select('id').eq('email', customerEmail).maybeSingle()
+          const userId = userRow?.id
+          if (userId) {
+            const amountPaid = session.amount_total / 100
+            const currency = (session.currency || 'MXN').toUpperCase()
+            const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent as any)?.id || session.id
+            const utm_source = (session.metadata?.utm_source as string) || null
+            const utm_medium = (session.metadata?.utm_medium as string) || null
+            const utm_campaign = (session.metadata?.utm_campaign as string) || null
+
+            const { data: existingPurchase } = await (admin as any).from('purchases').select('id').eq('user_id', userId).eq('pack_id', packId).maybeSingle()
+            if (!existingPurchase) {
+              let ftp_username: string
+              let ftp_password: string
+              if (isHetznerFtpConfigured()) {
+                const storageboxId = process.env.HETZNER_STORAGEBOX_ID!
+                const subUsername = `u${storageboxId}-sub-${userId.slice(0, 8)}`
+                const subPassword = generateFtpPassword()
+                const result = await createStorageBoxSubaccount(storageboxId, subUsername, subPassword, true)
+                if (result.ok) {
+                  ftp_username = result.username
+                  ftp_password = result.password
+                } else {
+                  ftp_username = `dj_${userId.slice(0, 8)}`
+                  ftp_password = generateFtpPassword()
+                }
+              } else if (isFtpConfigured()) {
+                ftp_username = process.env.FTP_USER || process.env.HETZNER_FTP_USER!
+                ftp_password = process.env.FTP_PASSWORD || process.env.HETZNER_FTP_PASSWORD!
+              } else {
+                ftp_username = `dj_${userId.slice(0, 8)}`
+                ftp_password = generateFtpPassword()
+              }
+
+              await (admin as any).from('purchases').insert({
+                user_id: userId,
+                pack_id: packId,
+                amount_paid: amountPaid,
+                currency,
+                payment_provider: 'stripe',
+                payment_id: paymentIntent,
+                ftp_username,
+                ftp_password,
+                ...(utm_source && { utm_source }),
+                ...(utm_medium && { utm_medium }),
+                ...(utm_campaign && { utm_campaign }),
+                ...(utm_source && { traffic_source: utm_source }),
+              })
+              await (admin as any).from('pending_purchases').update({
+                user_id: userId,
+                status: 'completed',
+                completed_at: new Date().toISOString(),
+              }).eq('stripe_session_id', session.id)
+              console.log('Webhook: compra auto-activada para', customerEmail, 'pack_id', packId)
+            }
+          }
+        } catch (autoActivateErr: any) {
+          console.warn('Webhook: auto-activar compra (non-critical):', autoActivateErr?.message || autoActivateErr)
         }
       }
 
