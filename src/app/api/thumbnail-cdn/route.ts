@@ -19,8 +19,10 @@ export async function GET(req: NextRequest) {
 
   if (isBunnyConfigured()) {
     try {
-      const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitized}` : sanitized
-      const signedUrl = generateSignedUrl(bunnyPath, 3600, process.env.NEXT_PUBLIC_APP_URL)
+      const decoded = decodeURIComponent(sanitized)
+      const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${decoded}` : decoded
+      // Sin allowedReferrer para que las imágenes carguen desde cualquier origen (evita 403/502)
+      const signedUrl = generateSignedUrl(bunnyPath, 3600)
       return NextResponse.redirect(signedUrl)
     } catch (e) {
       console.warn('[thumbnail-cdn] Bunny signed URL failed, falling back to FTP:', (e as Error)?.message || e)

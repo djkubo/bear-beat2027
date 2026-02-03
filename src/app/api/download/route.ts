@@ -77,10 +77,18 @@ export async function GET(req: NextRequest) {
       if (signedUrl) {
         try {
           const range = req.headers.get('range') || ''
-          const res = await fetch(signedUrl, {
-            method: 'GET',
-            headers: range ? { Range: range } : {},
-          })
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 25000)
+          let res: Response
+          try {
+            res = await fetch(signedUrl, {
+              method: 'GET',
+              headers: range ? { Range: range } : {},
+              signal: controller.signal,
+            })
+          } finally {
+            clearTimeout(timeoutId)
+          }
           if (!res.ok && res.status !== 206) {
             console.warn('[download] Bunny response:', res.status, res.statusText, 'path:', sanitizedPath)
           }
@@ -110,7 +118,14 @@ export async function GET(req: NextRequest) {
             return new NextResponse(res.body ?? undefined, { status: res.status, headers })
           }
         } catch (e) {
-          console.error('[download] Bunny proxy fetch failed:', (e as Error)?.message || e, 'path:', sanitizedPath)
+          const isTimeout = (e as Error)?.name === 'AbortError'
+          console.error('[download] Bunny proxy failed:', (e as Error)?.message || e, 'path:', sanitizedPath, isTimeout ? '(timeout)' : '')
+          if (isTimeout) {
+            return NextResponse.json(
+              { error: 'La descarga tardó demasiado. Intenta de nuevo o descarga por FTP desde tu panel.', redirect: '/dashboard' },
+              { status: 503 }
+            )
+          }
         }
       }
       // Bunny falló: fallback a FTP si está configurado

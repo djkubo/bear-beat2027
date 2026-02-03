@@ -81,7 +81,7 @@ export default function ChatWidget() {
     });
   }, []);
 
-  // Anuncios globales proactivos: si hay uno activo y no lo cerró antes, abrir chat y mostrarlo
+  // Anuncios globales proactivos (tabla opcional: si no existe en Supabase no romper)
   useEffect(() => {
     const supabase = createClient();
     supabase
@@ -98,7 +98,8 @@ export default function ChatWidget() {
         announcementIdRef.current = announcement.id;
         setMessages(prev => [{ role: 'assistant', content: `📢 ${announcement.message}` }, ...prev]);
         setIsOpen(true);
-      });
+      })
+      .catch(() => { /* tabla no existe (404) o red: ignorar */ });
   }, []);
 
   // Al cerrar el chat, marcar anuncio como visto para no volver a abrirlo
