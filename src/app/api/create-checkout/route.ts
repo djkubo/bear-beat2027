@@ -162,6 +162,8 @@ export async function POST(req: NextRequest) {
 
     if (stripeCustomerId) {
       sessionConfig.customer = stripeCustomerId
+    } else if (emailForCustomer) {
+      sessionConfig.customer_email = emailForCustomer
     } else if (loggedUser?.email) {
       sessionConfig.customer_email = loggedUser.email
     }

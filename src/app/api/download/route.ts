@@ -62,45 +62,53 @@ export async function GET(req: NextRequest) {
 
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
-      const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
-      // Sin referrer: el proxy hace fetch desde el servidor; Bunny rechazaría con token_referrer.
-      const signedUrl = generateSignedUrl(bunnyPath, expiresIn)
+      let signedUrl: string
       try {
-        const range = req.headers.get('range') || ''
-        const res = await fetch(signedUrl, {
-          method: 'GET',
-          headers: range ? { Range: range } : {},
-        })
-        if (!res.ok && res.status !== 206) {
-          console.warn('download Bunny response:', res.status, res.statusText, 'path:', sanitizedPath)
-        }
-        if (res.ok || res.status === 206) {
-          try {
-            await supabase.from('downloads').insert({
-              user_id: user.id,
-              pack_id: purchases[0].pack_id,
-              file_path: sanitizedPath,
-              download_method: 'web',
-            })
-          } catch {
-            // ignorar
-          }
-          const headers = new Headers({
-            'Content-Type': res.headers.get('content-type') || contentType,
-            'Cache-Control': 'private, max-age=' + expiresIn,
-            'Content-Disposition': disposition,
-            'Accept-Ranges': 'bytes',
-          })
-          const contentLength = res.headers.get('content-length')
-          if (contentLength) headers.set('Content-Length', contentLength)
-          if (res.status === 206) {
-            const cr = res.headers.get('content-range')
-            if (cr) headers.set('Content-Range', cr)
-          }
-          return new NextResponse(res.body ?? undefined, { status: res.status, headers })
-        }
+        const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
+        signedUrl = generateSignedUrl(bunnyPath, expiresIn)
       } catch (e) {
-        console.error('download Bunny proxy:', e)
+        console.error('[download] Bunny signed URL failed:', (e as Error)?.message || e, 'path:', sanitizedPath)
+        // fallthrough to FTP below
+        signedUrl = ''
+      }
+      if (signedUrl) {
+        try {
+          const range = req.headers.get('range') || ''
+          const res = await fetch(signedUrl, {
+            method: 'GET',
+            headers: range ? { Range: range } : {},
+          })
+          if (!res.ok && res.status !== 206) {
+            console.warn('[download] Bunny response:', res.status, res.statusText, 'path:', sanitizedPath)
+          }
+          if (res.ok || res.status === 206) {
+            try {
+              await supabase.from('downloads').insert({
+                user_id: user.id,
+                pack_id: purchases[0].pack_id,
+                file_path: sanitizedPath,
+                download_method: 'web',
+              })
+            } catch {
+              // ignorar
+            }
+            const headers = new Headers({
+              'Content-Type': res.headers.get('content-type') || contentType,
+              'Cache-Control': 'private, max-age=' + expiresIn,
+              'Content-Disposition': disposition,
+              'Accept-Ranges': 'bytes',
+            })
+            const contentLength = res.headers.get('content-length')
+            if (contentLength) headers.set('Content-Length', contentLength)
+            if (res.status === 206) {
+              const cr = res.headers.get('content-range')
+              if (cr) headers.set('Content-Range', cr)
+            }
+            return new NextResponse(res.body ?? undefined, { status: res.status, headers })
+          }
+        } catch (e) {
+          console.error('[download] Bunny proxy fetch failed:', (e as Error)?.message || e, 'path:', sanitizedPath)
+        }
       }
       // Bunny falló: fallback a FTP si está configurado
       if (isFtpConfigured()) {

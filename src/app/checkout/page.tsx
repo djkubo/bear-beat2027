@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -11,12 +11,10 @@ import { fbTrackInitiateCheckout, fbTrackAddPaymentInfo } from '@/components/ana
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Shield, Lock, CreditCard, Building2, Banknote, Wallet, ChevronRight } from 'lucide-react'
-import { loadStripe } from '@stripe/stripe-js'
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
 
 // ==========================================
-// CHECKOUT – Tarjeta (Stripe Elements) | PayPal (nativo) | OXXO/SPEI (Stripe redirect)
+// CHECKOUT – Tarjeta (redirect Stripe) | PayPal (nativo) | OXXO/SPEI (redirect Stripe)
 // ==========================================
 
 type PaymentMethod = 'card' | 'paypal' | 'oxxo' | 'spei'
@@ -25,161 +23,11 @@ type Step = 'select' | 'processing' | 'redirect'
 const RESERVATION_MINUTES = 15
 const BB_USER_NAME_COOKIE = 'bb_user_name'
 const stripePk = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ?? ''
-const stripePromise = stripePk ? loadStripe(stripePk) : null
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null
   const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'))
   return match ? decodeURIComponent(match[1]) : null
-}
-
-// —— Formulario de pago con tarjeta (Stripe Elements) ——
-function CardPaymentForm({
-  clientSecret,
-  price,
-  currencyLabel,
-  packSlug,
-  customerEmail,
-  onError,
-}: {
-  clientSecret: string
-  price: number
-  currencyLabel: string
-  packSlug: string
-  customerEmail?: string | null
-  onError: (msg: string) => void
-}) {
-  const stripe = useStripe()
-  const elements = useElements()
-  const [loading, setLoading] = useState(false)
-  const [elementReady, setElementReady] = useState(false)
-
-  // Fallback: si onReady no dispara (red lenta), habilitar botón tras 12s para que el usuario pueda intentar
-  useEffect(() => {
-    if (!elementReady && stripe && elements) {
-      const t = setTimeout(() => setElementReady(true), 12000)
-      return () => clearTimeout(t)
-    }
-  }, [elementReady, stripe, elements])
-
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault()
-      if (!stripe || !elements) return
-      setLoading(true)
-      onError('')
-      try {
-        const returnUrl = typeof window !== 'undefined'
-          ? `${window.location.origin}/complete-purchase`
-          : `${process.env.NEXT_PUBLIC_APP_URL || ''}/complete-purchase`
-        const { error } = await stripe.confirmPayment({
-          elements,
-          confirmParams: {
-            return_url: returnUrl,
-            receipt_email: (customerEmail && customerEmail.trim()) || undefined,
-          },
-        })
-        if (error) {
-          onError(error.message || 'Error al procesar el pago')
-          toast.error(error.message || 'Revisa los datos de tu tarjeta')
-        }
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Error al procesar el pago'
-        onError(msg)
-        toast.error(msg)
-      } finally {
-        setLoading(false)
-      }
-    },
-    [stripe, elements, customerEmail, onError]
-  )
-
-  const canSubmit = stripe && elements && elementReady && !loading
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement
-        options={{ layout: 'tabs' }}
-        onReady={() => setElementReady(true)}
-      />
-      <div className="flex flex-wrap items-center justify-center gap-2 py-3 text-xs text-gray-400">
-        <Lock className="h-4 w-4 shrink-0" />
-        <span>Transacción Encriptada 256-bit SSL</span>
-        <span className="hidden sm:inline">·</span>
-        <CreditCard className="h-3.5 w-3.5" />
-        <span>Visa, Mastercard</span>
-        <span className="mx-0.5">·</span>
-        <Banknote className="h-3.5 w-3.5" />
-        <span>OXXO</span>
-      </div>
-      <button
-        type="submit"
-        disabled={!canSubmit}
-        className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-      >
-        {loading ? 'Procesando...' : `PAGAR $${price} ${currencyLabel} Y ACCEDER →`}
-      </button>
-    </form>
-  )
-}
-
-// —— Wrapper Elements para tarjeta (necesita clientSecret) ——
-function StripeCardSection({
-  clientSecret,
-  price,
-  currencyLabel,
-  packSlug,
-  customerEmail,
-  error,
-  setError,
-}: {
-  clientSecret: string
-  price: number
-  currencyLabel: string
-  packSlug: string
-  customerEmail?: string | null
-  error: string | null
-  setError: (s: string | null) => void
-}) {
-  if (!stripePromise) {
-    return (
-      <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3">
-        <p className="text-sm text-amber-400">Stripe no está configurado (falta NEXT_PUBLIC_STRIPE_PUBLIC_KEY). Usa PayPal u OXXO/SPEI.</p>
-      </div>
-    )
-  }
-  const options = {
-    clientSecret,
-    appearance: {
-      theme: 'night' as const,
-      variables: { colorPrimary: '#08E1F7', colorBackground: '#121212', colorText: '#fff', colorDanger: '#ef4444' },
-    },
-  }
-  return (
-    <>
-      {error && (
-        <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 mb-6">
-          <p className="text-sm text-red-400">{error}</p>
-        </div>
-      )}
-      <Elements stripe={stripePromise} options={options}>
-        <CardPaymentForm
-          clientSecret={clientSecret}
-          price={price}
-          currencyLabel={currencyLabel}
-          packSlug={packSlug}
-          customerEmail={customerEmail}
-          onError={setError}
-        />
-      </Elements>
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs text-gray-500">
-        <Lock className="h-3.5 w-3.5" />
-        <span>Transacción Encriptada 256-bit SSL</span>
-        <span className="hidden sm:inline">·</span>
-        <span className="font-mono text-[10px] font-bold text-gray-500">Visa · MC · OXXO</span>
-      </div>
-    </>
-  )
 }
 
 export default function CheckoutPage() {
@@ -193,8 +41,6 @@ export default function CheckoutPage() {
   const [currency, setCurrency] = useState<'mxn' | 'usd'>('mxn')
   const [error, setError] = useState<string | null>(null)
   const [reservationSeconds, setReservationSeconds] = useState(RESERVATION_MINUTES * 60)
-  const [cardClientSecret, setCardClientSecret] = useState<string | null>(null)
-  const [cardClientSecretLoading, setCardClientSecretLoading] = useState(false)
   const [checkoutEmail, setCheckoutEmail] = useState<string | null>(null)
   const [checkoutName, setCheckoutName] = useState<string>('')
 
@@ -237,30 +83,7 @@ export default function CheckoutPage() {
     return () => clearInterval(t)
   }, [step, reservationSeconds])
 
-  // Al elegir Tarjeta, obtener clientSecret UNA vez (no refetch al cambiar email para no remontar el form y desbloquear el botón)
-  useEffect(() => {
-    if (selectedMethod !== 'card') {
-      setCardClientSecret(null)
-      return
-    }
-    setError(null)
-    setCardClientSecretLoading(true)
-    const body: { packSlug: string; currency: string; email?: string } = { packSlug, currency }
-    if (checkoutEmail) body.email = checkoutEmail
-    fetch('/api/create-payment-intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.clientSecret) setCardClientSecret(data.clientSecret)
-        else setError(data.error || 'Error al preparar el pago')
-      })
-      .catch(() => setError('Error de conexión. Intenta de nuevo.'))
-      .finally(() => setCardClientSecretLoading(false))
-    // Solo al cambiar a "card" o moneda/pack; NO al cambiar email (el email se envía en confirmPayment y evita remontar el PaymentElement)
-  }, [selectedMethod, packSlug, currency])
+  // Tarjeta usa Checkout nativo de Stripe (redirect). Ya no usamos PaymentElement ni create-payment-intent.
 
   const price = currency === 'mxn' ? 350 : 19
   const currencyLabel = currency === 'mxn' ? 'MXN' : 'USD'
@@ -286,21 +109,26 @@ export default function CheckoutPage() {
   const reservationM = Math.floor(reservationSeconds / 60)
   const reservationS = reservationSeconds % 60
 
-  const handleOxxoSpeiPayment = async () => {
-    if (selectedMethod !== 'oxxo' && selectedMethod !== 'spei') return
-    if (!checkoutEmail?.trim()) {
+  const handleStripeCheckoutRedirect = async (method: 'card' | 'oxxo' | 'spei') => {
+    if (method !== 'card' && method !== 'oxxo' && method !== 'spei') return
+    if ((method === 'oxxo' || method === 'spei') && !checkoutEmail?.trim()) {
       setError('Ingresa tu email para pagar con OXXO o SPEI.')
       toast.error('Ingresa tu email arriba para continuar.')
       return
     }
     setStep('processing')
     setError(null)
-    trackCTAClick('checkout_method', 'checkout', `${selectedMethod}-${packSlug}`)
+    trackCTAClick('checkout_method', 'checkout', `${method}-${packSlug}`)
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packSlug, paymentMethod: selectedMethod, currency, email: checkoutEmail.trim() }),
+        body: JSON.stringify({
+          packSlug,
+          paymentMethod: method,
+          currency,
+          email: checkoutEmail?.trim() || undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al procesar')
@@ -582,29 +410,32 @@ export default function CheckoutPage() {
                     <span className="text-xs text-gray-400">OXXO</span>
                   </div>
 
-                  {/* ESCENARIO A: Tarjeta – Stripe Elements + PaymentElement + botón custom */}
+                  {/* ESCENARIO A: Tarjeta – Redirect al Checkout nativo de Stripe (sin PaymentElement, sin botón bloqueado) */}
                   {selectedMethod === 'card' && (
-                    <div className="mt-4">
-                      {cardClientSecretLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="w-10 h-10 border-2 border-bear-blue/30 border-t-bear-blue rounded-full animate-spin" />
-                        </div>
-                      ) : cardClientSecret ? (
-                        <StripeCardSection
-                          clientSecret={cardClientSecret}
-                          price={price}
-                          currencyLabel={currencyLabel}
-                          packSlug={packSlug}
-                          customerEmail={checkoutEmail}
-                          error={error}
-                          setError={setError}
-                        />
-                      ) : error ? (
-                        <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3">
+                    <>
+                      {error && (
+                        <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 mb-4">
                           <p className="text-sm text-red-400">{error}</p>
                         </div>
-                      ) : null}
-                    </div>
+                      )}
+                      <div className="flex flex-wrap items-center justify-center gap-2 py-3 text-xs text-gray-400 mb-4">
+                        <Lock className="h-4 w-4 shrink-0" />
+                        <span>Te llevamos a la página segura de Stripe</span>
+                        <span className="hidden sm:inline">·</span>
+                        <CreditCard className="h-3.5 w-3.5" />
+                        <span>Visa, Mastercard, Link</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleStripeCheckoutRedirect('card')}
+                        className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#0a0a0a] transition-all"
+                      >
+                        Ir a pagar con tarjeta → ${price} {currencyLabel}
+                      </button>
+                      <p className="mt-3 text-center text-xs text-gray-500">
+                        Stripe te pedirá los datos de la tarjeta en su página. Pago 100% seguro.
+                      </p>
+                    </>
                   )}
 
                   {/* ESCENARIO B: PayPal – Solo botones nativos (@paypal/react-paypal-js) */}
@@ -681,7 +512,7 @@ export default function CheckoutPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={handleOxxoSpeiPayment}
+                        onClick={() => handleStripeCheckoutRedirect(selectedMethod!)}
                         className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
                         PAGAR ${price} {currencyLabel} Y ACCEDER →
@@ -720,6 +551,7 @@ export default function CheckoutPage() {
               <div className="w-14 h-14 border-2 border-bear-blue/30 border-t-bear-blue rounded-full animate-spin mb-8" />
               <h2 className="text-xl font-black text-white mb-2">Preparando tu pago...</h2>
               <p className="text-gray-500 text-sm">
+                {selectedMethod === 'card' && 'Redirigiendo a la página segura de Stripe...'}
                 {selectedMethod === 'oxxo' && 'Generando tu ficha OXXO...'}
                 {selectedMethod === 'spei' && 'Generando tu referencia SPEI...'}
               </p>

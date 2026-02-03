@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
+import { downloadFile } from '@/lib/download'
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
@@ -64,7 +65,7 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl, totalVideos
   const handleDownload = async () => {
     setDownloading(true)
     try {
-      window.open(`/api/download?file=${encodeURIComponent(video.path)}`, '_blank')
+      await downloadFile(video.path)
     } catch (error) {
       console.error('Error downloading:', error)
     }
@@ -142,7 +143,19 @@ export default function HomeLanding() {
   const [userState, setUserState] = useState<UserState>({ isLoggedIn: false, hasAccess: false })
   const [demoError, setDemoError] = useState(false)
   const [cdnBaseUrl, setCdnBaseUrl] = useState<string | null>(null)
+  const [thumbErrors, setThumbErrors] = useState<Set<string>>(new Set())
   const expandedSectionRef = useRef<HTMLDivElement>(null)
+
+  /** URL de portada: la API devuelve /api/thumbnail-cdn?path=...; si no, construimos por convención. */
+  const getThumbnailUrl = (video: Video): string => {
+    if (video.thumbnailUrl) {
+      if (video.thumbnailUrl.startsWith('http://') || video.thumbnailUrl.startsWith('https://')) return video.thumbnailUrl
+      if (video.thumbnailUrl.startsWith('/')) return video.thumbnailUrl
+      return `/api/thumbnail-cdn?path=${encodeURIComponent(video.thumbnailUrl)}`
+    }
+    const pathJpg = video.path.replace(/\.(mp4|mov|avi|mkv)$/i, '.jpg')
+    return `/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`
+  }
   const videoRef = useRef<HTMLVideoElement>(null)
   const inventory = useVideoInventory()
   const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted ?? '0 B'
@@ -467,33 +480,42 @@ export default function HomeLanding() {
                   ) : (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {filteredGenres.map((genre) => (
-                          <motion.div
-                            key={genre.id}
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 transition-all hover:border-bear-blue hover:shadow-[0_0_24px_rgba(8,225,247,0.12)] hover:-translate-y-0.5 cursor-pointer min-w-0"
-                            onClick={() => setExpandedGenre(expandedGenre === genre.id ? null : genre.id)}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-bear-blue/10 text-bear-blue">
-                                  <Folder className="h-6 w-6" />
-                                </span>
-                                <div className="min-w-0">
+                        {filteredGenres.map((genre) => {
+                          const firstVideo = genre.videos?.[0]
+                          const isExpanded = expandedGenre === genre.id
+                          return (
+                            <motion.div
+                              key={genre.id}
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className={`rounded-xl border bg-zinc-900/80 overflow-hidden transition-all hover:border-bear-blue hover:shadow-[0_0_24px_rgba(8,225,247,0.12)] cursor-pointer min-w-0 ${isExpanded ? 'border-bear-blue/60 ring-2 ring-bear-blue/20' : 'border-zinc-800'}`}
+                              onClick={() => setExpandedGenre(isExpanded ? null : genre.id)}
+                            >
+                              <div className="flex gap-4 p-4">
+                                <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
+                                  {firstVideo && !thumbErrors.has(firstVideo.id) ? (
+                                    <img src={getThumbnailUrl(firstVideo)} alt="" className="w-full h-full object-cover" onError={() => setThumbErrors((s) => new Set(s).add(firstVideo.id))} />
+                                  ) : (
+                                    <Folder className="h-8 w-8 text-bear-blue" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0 flex flex-col justify-center">
                                   <h3 className="font-bold text-white truncate">{genre.name}</h3>
                                   <p className="text-sm text-gray-500">
                                     {genre.videoCount} videos · {genre.totalSizeFormatted}
                                   </p>
+                                  <p className="mt-1 text-xs text-bear-blue font-medium flex items-center gap-1">
+                                    {isExpanded ? 'Cerrar carpeta' : 'Abrir carpeta'}
+                                    <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                  </p>
                                 </div>
+                                <span className="shrink-0 self-center text-bear-blue">
+                                  <ChevronRight className={`h-5 w-5 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                                </span>
                               </div>
-                              <span className="shrink-0 text-bear-blue">
-                                <ChevronRight className={`h-5 w-5 transition-transform ${expandedGenre === genre.id ? 'rotate-90' : ''}`} />
-                              </span>
-                            </div>
-                            <p className="mt-3 text-xs text-bear-blue font-medium flex items-center gap-1">Explorar</p>
-                          </motion.div>
-                        ))}
+                            </motion.div>
+                          )
+                        })}
                       </div>
 
                       <AnimatePresence initial={false}>
@@ -511,7 +533,8 @@ export default function HomeLanding() {
                               .map((genre) => (
                                 <div key={genre.id} className="min-w-0">
                                   <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-white/10 bg-zinc-800/50">
-                                    <h3 className="font-bold text-white truncate">{genre.name}</h3>
+                                    <h3 className="font-bold text-white truncate">Videos en {genre.name}</h3>
+                                    <button type="button" onClick={() => setExpandedGenre(null)} className="text-sm text-zinc-400 hover:text-white transition">Cerrar</button>
                                   </div>
                                   <div className="max-h-[50vh] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0 overscroll-contain">
                                     {genre.videos.map((video) => (
@@ -528,6 +551,18 @@ export default function HomeLanding() {
                                         >
                                           <Play className="h-4 w-4" />
                                         </button>
+                                        <div className="w-14 h-10 sm:w-16 sm:h-10 shrink-0 rounded overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
+                                          {!thumbErrors.has(video.id) ? (
+                                            <img
+                                              src={getThumbnailUrl(video)}
+                                              alt=""
+                                              className="w-full h-full object-cover"
+                                              onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
+                                            />
+                                          ) : (
+                                            <Play className="h-5 w-5 text-bear-blue/60" />
+                                          )}
+                                        </div>
                                         <div className="flex-1 min-w-0">
                                           <p className="font-medium text-white truncate">{video.artist}</p>
                                           <p className="text-sm text-gray-500 truncate">{video.title}</p>
@@ -561,8 +596,8 @@ export default function HomeLanding() {
                           className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4 select-none"
                           onContextMenu={(e) => e.preventDefault()}
                         >
-                          {selectedVideo.thumbnailUrl ? (
-                            <img src={selectedVideo.thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                          {!thumbErrors.has(selectedVideo.id) ? (
+                            <img src={getThumbnailUrl(selectedVideo)} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setThumbErrors((s) => new Set(s).add(selectedVideo.id))} />
                           ) : (
                             <div className="absolute inset-0 bg-gradient-to-br from-bear-blue/20 to-zinc-900 flex items-center justify-center">
                               <Play className="h-10 w-10 text-bear-blue ml-1" />

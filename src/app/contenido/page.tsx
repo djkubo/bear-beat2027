@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
+import { downloadFile } from '@/lib/download'
 import { fbTrackViewContent, fbTrackSearch } from '@/components/analytics/MetaPixel'
 // Demo: /api/demo-url redirige a CDN firmado (rápido) o a proxy
 import { MobileMenu } from '@/components/ui/MobileMenu'
@@ -166,12 +167,15 @@ export default function ContenidoPage() {
   const genreCount = packInfo?.genreCount ?? inventory.genreCount ?? 0
   const statsLoading = inventory.loading && !packInfo
 
-  const handleDownloadAttempt = (video: Video) => {
+  const handleDownloadAttempt = async (video: Video) => {
     if (hasAccess) {
       setDownloadingVideoId(video.id)
-      const url = `/api/download?file=${encodeURIComponent(video.path)}`
-      window.open(url, '_blank')
-      setTimeout(() => setDownloadingVideoId(null), 2000)
+      try {
+        await downloadFile(video.path)
+      } catch (e) {
+        toast.error((e as Error)?.message || 'Error al descargar')
+      }
+      setDownloadingVideoId(null)
     } else {
       setSelectedVideo(video)
       setShowPaywall(true)
@@ -186,17 +190,20 @@ export default function ContenidoPage() {
 
   const ZIP_GENERATING_MSG = 'El Pack de este género se está generando, intenta más tarde.'
 
-  const handleDownloadFolderZip = (genre: Genre) => {
+  const handleDownloadFolderZip = async (genre: Genre) => {
     if (!hasAccess) {
       setShowPaywall(true)
       return
     }
     const zipName = `${genre.name}.zip`
     setDownloadingZipGenreId(genre.id)
-    const url = `/api/download?file=${encodeURIComponent(zipName)}`
-    window.open(url, '_blank')
     trackCTAClick('download_folder_zip', 'contenido', zipName)
-    setTimeout(() => setDownloadingZipGenreId(null), 2000)
+    try {
+      await downloadFile(zipName)
+    } catch (e) {
+      toast.error((e as Error)?.message || 'Error al descargar')
+    }
+    setDownloadingZipGenreId(null)
   }
 
   if (loading) {

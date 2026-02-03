@@ -20,9 +20,14 @@ export async function GET(req: NextRequest) {
   const pathNorm = sanitized.replace(/^Videos Enero 2026\/?/i, '').trim() || sanitized
 
   if (isBunnyConfigured()) {
-    const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${pathNorm}` : pathNorm
-    // Sin referrer: el proxy hace fetch desde el servidor; Bunny rechazaría con token_referrer.
-    const signedUrl = generateSignedUrl(bunnyPath, DEMO_EXPIRY_SECONDS)
+    let signedUrl: string
+    try {
+      const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${pathNorm}` : pathNorm
+      signedUrl = generateSignedUrl(bunnyPath, DEMO_EXPIRY_SECONDS)
+    } catch (e) {
+      console.error('[demo-url] Bunny signed URL failed:', (e as Error)?.message || e, 'path:', pathNorm)
+      return NextResponse.json({ error: 'Demo no disponible' }, { status: 502 })
+    }
     try {
       const range = req.headers.get('range') || ''
       const res = await fetch(signedUrl, {
@@ -49,7 +54,7 @@ export async function GET(req: NextRequest) {
         headers,
       })
     } catch (e) {
-      console.error('demo-url Bunny proxy:', e)
+      console.error('[demo-url] Bunny proxy fetch failed:', (e as Error)?.message || e, 'path:', pathNorm)
       return NextResponse.json({ error: 'Error al cargar el demo' }, { status: 502 })
     }
   }
