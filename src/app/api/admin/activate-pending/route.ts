@@ -3,6 +3,7 @@
  * Body: { sessionId?: string, pendingId?: number }
  * Solo admin. Busca en pending_purchases; si no hay fila (webhook no corrió), obtiene datos desde Stripe
  * (Checkout Session cs_xxx o Payment Intent pi_xxx) y activa igual.
+ * @build-id activate-pending-20260203 (si Render falla en L112, este commit no está en la rama desplegada)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -117,23 +118,9 @@ export async function POST(req: NextRequest) {
                 payment_intent: sessionId,
                 limit: 1,
               })
-              const first = list.data[0]
-              if (first) {
-                const cd = first.customer_details
-                sessionFromPi = {
-                  id: first.id,
-                  customer_details: cd
-                    ? {
-                        email: cd.email ?? undefined,
-                        name: cd.name ?? undefined,
-                        phone: cd.phone ?? undefined,
-                      }
-                    : undefined,
-                  metadata: first.metadata as StripeSessionLike['metadata'],
-                  amount_total: first.amount_total ?? undefined,
-                  currency: first.currency ?? undefined,
-                }
-              }
+              sessionFromPi = list.data[0]
+                ? (list.data[0] as unknown as StripeSessionLike)
+                : null
               if (sessionFromPi?.customer_details?.email) {
                 email = (sessionFromPi.customer_details.email || '').trim()
               }
