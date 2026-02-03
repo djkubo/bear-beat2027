@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { trackCTAClick } from '@/lib/tracking'
+import { trackCTAClick, trackPageView, trackStartCheckout } from '@/lib/tracking'
 import { fbTrackInitiateCheckout, fbTrackAddPaymentInfo } from '@/components/analytics/MetaPixel'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 import { createClient } from '@/lib/supabase/client'
@@ -87,6 +87,11 @@ export default function CheckoutPage() {
 
   const price = currency === 'mxn' ? 350 : 19
   const currencyLabel = currency === 'mxn' ? 'MXN' : 'USD'
+
+  useEffect(() => {
+    trackPageView('checkout')
+    trackStartCheckout(packSlug, 'Pack Enero 2026', price, checkoutEmail ?? undefined)
+  }, [packSlug])
 
   useEffect(() => {
     fbTrackInitiateCheckout(

@@ -27,14 +27,73 @@ export default async function AdminAttributionPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: trafficStats } = await supabase.rpc('get_traffic_stats', { days_ago: 30 })
-  const { data: topCampaigns } = await supabase.rpc('get_top_campaigns', { days_ago: 30, limit_rows: 10 })
+  let trafficStats: any[] | null = null
+  let topCampaigns: any[] | null = null
+  let rpcAvailable = true
+
+  const { data: trafficRpc, error: trafficError } = await supabase.rpc('get_traffic_stats', { days_ago: 30 })
+  if (trafficError) {
+    rpcAvailable = false
+    trafficStats = []
+  } else {
+    trafficStats = trafficRpc
+  }
+
+  const { data: campaignsRpc, error: campaignsError } = await supabase.rpc('get_top_campaigns', { days_ago: 30, limit_rows: 10 })
+  if (campaignsError) {
+    rpcAvailable = false
+    topCampaigns = []
+  } else {
+    topCampaigns = campaignsRpc
+  }
+
+  const daysAgo = 30
+  const since = new Date()
+  since.setDate(since.getDate() - daysAgo)
+  const sinceIso = since.toISOString()
+
   const { data: recentEvents } = await supabase
     .from('user_events')
     .select('*')
     .not('utm_source', 'is', null)
     .order('created_at', { ascending: false })
     .limit(50)
+
+  if (!rpcAvailable) {
+    const { data: fallbackEvents } = await supabase
+      .from('user_events')
+      .select('id, event_name, utm_source, utm_medium, utm_campaign, created_at')
+      .gte('created_at', sinceIso)
+    const events = fallbackEvents || []
+    const visitCount = events.filter((e: any) => e.event_name === 'page_view').length
+    const bySource: Record<string, { visits: number; source: string; medium: string }> = {}
+    events.forEach((e: any) => {
+      if (e.event_name !== 'page_view') return
+      const key = `${e.utm_source || 'direct'}|${e.utm_medium || 'none'}`
+      if (!bySource[key]) bySource[key] = { visits: 0, source: e.utm_source || 'direct', medium: e.utm_medium || 'none' }
+      bySource[key].visits += 1
+    })
+    trafficStats = Object.values(bySource).map((v) => ({
+      source: v.source,
+      medium: v.medium,
+      visits: v.visits,
+      unique_sessions: v.visits,
+      conversions: 0,
+      revenue: 0,
+      conversion_rate: '0',
+    }))
+    const byCampaign: Record<string, { visits: number; campaign: string; source: string; medium: string }> = {}
+    events.forEach((e: any) => {
+      if (e.event_name !== 'page_view' || !e.utm_campaign) return
+      const key = e.utm_campaign
+      if (!byCampaign[key]) byCampaign[key] = { visits: 0, campaign: e.utm_campaign, source: e.utm_source || '', medium: e.utm_medium || '' }
+      byCampaign[key].visits += 1
+    })
+    topCampaigns = Object.values(byCampaign)
+      .sort((a, b) => b.visits - a.visits)
+      .slice(0, 10)
+      .map((v) => ({ campaign: v.campaign, source: v.source, medium: v.medium, visits: v.visits, conversions: 0, revenue: 0, conversion_rate: '0' }))
+  }
 
   const totals = trafficStats?.reduce((acc: any, stat: any) => ({
     visits: acc.visits + Number(stat.visits || 0),
@@ -53,6 +112,11 @@ export default async function AdminAttributionPage() {
           <p className="text-gray-400 text-sm mt-1">
             De dónde vienen tus usuarios y qué fuentes convierten mejor
           </p>
+          {!rpcAvailable && (
+            <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm">
+              Vista simplificada (solo visitas por fuente). Para conversiones e ingresos por campaña, ejecuta en Supabase SQL Editor el script <code className="bg-black/30 px-1 rounded">supabase/schema_attribution.sql</code>.
+            </div>
+          )}
         </div>
       </div>
 
