@@ -79,13 +79,14 @@ export async function POST(req: Request) {
         ],
         temperature: 0.7,
         max_tokens: 300,
+        stream: false,
       };
       if (chatModel.startsWith('gpt-5')) {
         (createParams as unknown as Record<string, unknown>).reasoning_effort = 'none';
       }
       const response = await openai.chat.completions.create(createParams);
-
-      reply = response.choices[0].message.content ?? '';
+      const completion = response as { choices: Array<{ message?: { content?: string | null } }> };
+      reply = completion.choices[0]?.message?.content ?? '';
 
       if (userId && reply) {
         await supabase.from('chat_messages').insert({
