@@ -51,7 +51,8 @@ export async function POST(req: NextRequest) {
       gclid: (eventData?.gclid ?? '').toString().slice(0, 255) || null,
       ttclid: (eventData?.ttclid ?? '').toString().slice(0, 255) || null,
       device_type: (eventData?.device_type ?? eventData?.deviceType ?? '').toString().slice(0, 20) || null,
-      browser: (eventData?.browser ?? '').toString().slice(0, 50) || null,
+      // browser: columna no existe aún en user_events; descomentar cuando se añada la migración
+      // browser: (eventData?.browser ?? '').toString().slice(0, 50) || null,
       os: (eventData?.os ?? '').toString().slice(0, 50) || null,
     }
     const { error } = await supabase.from('user_events').insert(payload)

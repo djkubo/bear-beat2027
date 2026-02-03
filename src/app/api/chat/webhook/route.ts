@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         { role: 'user', content: message },
       ],
       temperature: 0.3,
-      max_tokens: 600,
+      max_completion_tokens: 600,
     })
 
     const reply = completion.choices[0]?.message?.content?.trim() ?? 'No pude generar una respuesta. Por favor contacta a un agente escribiendo "agente".'

@@ -156,7 +156,7 @@ export async function POST(req: Request) {
           { role: 'user', content: message }
         ],
         temperature: 0.7,
-        max_tokens: 300,
+        max_completion_tokens: 300,
         stream: false,
       };
       if (chatModel.startsWith('gpt-5')) {
@@ -189,7 +189,7 @@ export async function POST(req: Request) {
               { role: 'user', content: message }
             ],
             temperature: 0.7,
-            max_tokens: 300,
+            max_completion_tokens: 300,
             stream: false,
           };
           const fallback = await openai.chat.completions.create(fallbackParams);
