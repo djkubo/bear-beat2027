@@ -421,13 +421,12 @@ export async function sendFlow(subscriberId: string, flowNamespace: string): Pro
 // VERIFICAR CONEXIÓN (API KEY)
 // ==========================================
 
-const CONNECTION_ERROR_MSG = 'ERROR CRÍTICO: No se pudo conectar a ManyChat. Verifica la API KEY.'
-export const MANYCHAT_KEY_MISSING_MSG = 'MANYCHAT_API_KEY no está configurada. En producción: Render → Environment. En local: .env.local'
+const CONNECTION_ERROR_MSG = 'No se pudo conectar a ManyChat. Verifica la API KEY.'
+export const MANYCHAT_KEY_MISSING_MSG = 'MANYCHAT_API_KEY no está configurada. En producción: Render → Environment (y redeploy). En local: .env.local'
 
 /**
  * Verifica que la API Key de ManyChat sea válida haciendo una llamada simple (getTags).
  * Si falla por 401/403 o error de API, lanza con mensaje claro.
- * Usar al inicio del endpoint POST /api/manychat/init para evitar "falso positivo" de "ya existían".
  */
 export async function verifyConnection(): Promise<void> {
   if (!MANYCHAT_API_KEY?.trim()) {
@@ -438,17 +437,18 @@ export async function verifyConnection(): Promise<void> {
       `${MANYCHAT_API_URL}/fb/page/getTags`,
       { method: 'GET', headers: getHeaders() }
     )
+    const result: ManyChatResponse<ManyChatTag[]> = await response.json().catch(() => ({} as any))
     if (response.status === 401 || response.status === 403) {
-      throw new Error(CONNECTION_ERROR_MSG)
+      const apiMsg = result?.error?.message ? ` ManyChat: "${result.error.message}"` : ''
+      throw new Error(`API key rechazada por ManyChat (${response.status}).${apiMsg} Comprueba que la clave sea la correcta en ManyChat → Settings → API y que hayas hecho redeploy en Render después de añadirla.`)
     }
-    const result: ManyChatResponse<ManyChatTag[]> = await response.json()
     if (result.status !== 'success') {
-      throw new Error(result.error?.message || CONNECTION_ERROR_MSG)
+      throw new Error(result?.error?.message || CONNECTION_ERROR_MSG)
     }
   } catch (err: any) {
-    if (err.message === CONNECTION_ERROR_MSG) throw err
+    if (err.message && (err.message.includes('API key') || err.message.includes('MANYCHAT_API_KEY') || err.message.includes('No se pudo'))) throw err
     console.error('ManyChat verifyConnection error:', err)
-    throw new Error(CONNECTION_ERROR_MSG)
+    throw new Error(err?.message || CONNECTION_ERROR_MSG)
   }
 }
 

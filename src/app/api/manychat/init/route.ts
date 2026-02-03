@@ -75,13 +75,15 @@ export async function POST(req: NextRequest) {
     
   } catch (error: any) {
     console.error('ManyChat init error:', error)
-    const hint = process.env.NODE_ENV === 'production'
-      ? 'Añade MANYCHAT_API_KEY en Render → tu servicio → Environment.'
-      : 'Añade MANYCHAT_API_KEY en .env.local'
+    const isProd = process.env.NODE_ENV === 'production'
+    const hint = isProd
+      ? 'Render: Environment → MANYCHAT_API_KEY. Después de añadirla, haz "Manual Deploy" para que cargue.'
+      : 'Añade MANYCHAT_API_KEY en .env.local.'
     return NextResponse.json(
-      { 
+      {
         error: error.message || 'Initialization failed',
-        hint
+        hint,
+        keySet: !!process.env.MANYCHAT_API_KEY?.trim(),
       },
       { status: 500 }
     )
@@ -143,13 +145,15 @@ export async function GET() {
     
   } catch (error: any) {
     console.error('ManyChat status error:', error)
-    const hint = process.env.NODE_ENV === 'production'
-      ? 'Añade MANYCHAT_API_KEY en Render → tu servicio → Environment.'
-      : 'Añade MANYCHAT_API_KEY en .env.local'
+    const isProd = process.env.NODE_ENV === 'production'
+    const hint = isProd
+      ? 'Render: Environment → MANYCHAT_API_KEY (valor = API Key de ManyChat → Settings → API). Después de añadirla, haz "Manual Deploy" para que cargue.'
+      : 'Añade MANYCHAT_API_KEY en .env.local (API Key de ManyChat → Settings → API).'
     return NextResponse.json(
-      { 
+      {
         error: error.message || 'Failed to get status',
-        hint
+        hint,
+        keySet: !!process.env.MANYCHAT_API_KEY?.trim(),
       },
       { status: 500 }
     )

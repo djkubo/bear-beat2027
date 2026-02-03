@@ -86,15 +86,26 @@ export default async function AdminDashboardPage() {
     }
   }
 
-  // Ingresos totales: MXN + USD convertido a MXN (query real; RPC solo devuelve MXN)
+  // Ingresos totales: purchases + pending_purchases (pagados pero sin activar) = datos reales cobrados
   const { data: purchasesForRevenue } = await supabase.from('purchases').select('amount_paid, currency')
+  const { data: pendingPaid } = await supabase
+    .from('pending_purchases')
+    .select('amount_paid, currency')
+    .eq('payment_status', 'paid')
   const revenueMxn = (purchasesForRevenue || [])
     .filter((p: { currency?: string }) => (p.currency || '').toUpperCase() === 'MXN')
     .reduce((s: number, p: { amount_paid?: number }) => s + (p.amount_paid || 0), 0)
   const revenueUsdConverted = (purchasesForRevenue || [])
     .filter((p: { currency?: string }) => (p.currency || '').toUpperCase() === 'USD')
     .reduce((s: number, p: { amount_paid?: number }) => s + (p.amount_paid || 0) * USD_TO_MXN_RATE, 0)
-  const totalRevenueMxn = Math.round(revenueMxn + revenueUsdConverted)
+  const pendingRevenueMxn = (pendingPaid || [])
+    .filter((p: { currency?: string }) => (p.currency || '').toUpperCase() === 'MXN')
+    .reduce((s: number, p: { amount_paid?: number }) => s + (p.amount_paid || 0), 0)
+  const pendingRevenueUsd = (pendingPaid || [])
+    .filter((p: { currency?: string }) => (p.currency || '').toUpperCase() === 'USD')
+    .reduce((s: number, p: { amount_paid?: number }) => s + (p.amount_paid || 0) * USD_TO_MXN_RATE, 0)
+  const totalRevenueMxn = Math.round(revenueMxn + revenueUsdConverted + pendingRevenueMxn + pendingRevenueUsd)
+  const pendingCount = pendingPaid?.length ?? 0
 
   // Fuentes de tráfico: agrupar ventas por utm_source (First-Touch). Requiere migración add_purchases_attribution.
   let sourceRows: { source: string; count: number; revenueMxn: number }[] = []
@@ -178,10 +189,10 @@ export default async function AdminDashboardPage() {
               </span>
             </div>
             <div className="text-3xl font-black text-white mb-0.5">
-              {stats?.total_purchases || 0}
+              {(stats?.total_purchases ?? 0) + pendingCount}
             </div>
             <div className="text-sm text-zinc-400">
-              Packs Vendidos
+              Packs Vendidos {pendingCount > 0 ? `(${stats?.total_purchases ?? 0} activados)` : ''}
             </div>
           </div>
 
@@ -200,6 +211,15 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
         </div>
+
+        {pendingCount > 0 && (
+          <div className="mb-6 rounded-xl p-4 border border-amber-500/30 bg-amber-500/10 flex items-center justify-between gap-4">
+            <p className="text-amber-200 text-sm">
+              <strong>{pendingCount}</strong> pago(s) cobrado(s) aún sin activar (el cliente no completó /complete-purchase).{' '}
+              <a href="/admin/pending" className="text-bear-blue hover:underline font-bold">Ver pendientes →</a>
+            </p>
+          </div>
+        )}
 
         {/* Fuentes de Tráfico */}
         <div className="mb-8">
@@ -256,15 +276,21 @@ export default async function AdminDashboardPage() {
           <SyncVideosFtpButton />
         </div>
 
-        {/* Últimas Compras */}
+        {/* Últimas Compras (solo activadas; los cobrados pendientes en /admin/pending) */}
         <div className="rounded-2xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
-          <h2 className="text-xl font-black text-white mb-6 tracking-tight">
+          <h2 className="text-xl font-black text-white mb-1 tracking-tight">
             💳 Últimas Compras (10)
           </h2>
+          {pendingCount > 0 && (
+            <p className="text-sm text-zinc-500 mb-6">
+              Solo activadas. Hay {pendingCount} pago(s) cobrado(s) pendientes de activar en <a href="/admin/pending" className="text-bear-blue hover:underline">Pendientes</a>.
+            </p>
+          )}
+          {!pendingCount && <div className="mb-6" />}
 
           {!recentPurchases || recentPurchases.length === 0 ? (
             <p className="text-center py-12 text-zinc-500">
-              Aún no hay compras
+              {pendingCount > 0 ? 'Aún no hay compras activadas (revisa Pendientes).' : 'Aún no hay compras'}
             </p>
           ) : (
             <>

@@ -46,7 +46,13 @@ export default function AdminManyChat() {
       const data = await response.json()
       
       if (!response.ok) {
-        const msg = data.hint ? `${data.error}\n\n${data.hint}` : (data.error || 'Error al obtener estado')
+        let msg = data.error || 'Error al obtener estado'
+        if (data.hint) msg += '\n\n' + data.hint
+        if (data.keySet === false) {
+          msg += '\n\nLa variable no está cargada en el servidor: añádela en Render → Environment y haz "Manual Deploy".'
+        } else if (data.keySet === true) {
+          msg += '\n\nLa clave está cargada pero ManyChat la rechaza. Comprueba que sea la API Key correcta (ManyChat → Settings → API).'
+        }
         throw new Error(msg)
       }
       
@@ -125,9 +131,9 @@ export default function AdminManyChat() {
             <div className="rounded-xl p-6 border border-red-500/30 bg-red-500/10 text-center">
               <XCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
               <p className="font-bold text-red-400 mb-2">Error de Conexión</p>
-              <p className="text-red-300 text-sm whitespace-pre-line">{error}</p>
-              <p className="text-xs text-gray-500 mt-3">
-                Producción: Render → Environment → MANYCHAT_API_KEY. Local: .env.local
+              <p className="text-red-300 text-sm whitespace-pre-line text-left max-w-xl mx-auto">{error}</p>
+              <p className="text-xs text-gray-500 mt-4">
+                Producción: Render → Environment → MANYCHAT_API_KEY (valor = API Key de ManyChat). Después de guardar, haz &quot;Manual Deploy&quot;.
               </p>
             </div>
           ) : status ? (
