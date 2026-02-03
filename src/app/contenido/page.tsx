@@ -69,7 +69,7 @@ export default function ContenidoPage() {
   const expandedSectionRef = useRef<HTMLDivElement>(null)
   const inventory = useVideoInventory()
 
-  /** URL de portada: la API ya devuelve /api/thumbnail-cdn?path=...; si no, construimos por convención. */
+  /** URL de portada: siempre relativa (empieza con /). La API devuelve /api/thumbnail-cdn?path=...; si no, construimos por convención. Sin prefijo de dominio. */
   const getThumbnailUrl = (video: Video): string => {
     if (video.thumbnailUrl) {
       if (video.thumbnailUrl.startsWith('http://') || video.thumbnailUrl.startsWith('https://')) return video.thumbnailUrl

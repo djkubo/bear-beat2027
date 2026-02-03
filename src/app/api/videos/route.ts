@@ -88,6 +88,7 @@ function buildThumbnailUrl(
   } else {
     urlPath = `/api/thumbnail/${encodeURIComponent(relativePath)}`
   }
+  // Rutas internas /api/placeholder y /api/thumbnail*: siempre relativas (baseUrl debe ser '' en cliente/servidor).
   return baseUrl ? `${baseUrl}${urlPath}` : urlPath
 }
 
