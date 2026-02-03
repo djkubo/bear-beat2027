@@ -10,6 +10,10 @@ import {
   BEAR_BEAT_FIELDS,
 } from '@/lib/manychat'
 
+function isKeySet(): boolean {
+  return (process.env.MANYCHAT_API_KEY || '').trim().length > 0
+}
+
 /**
  * POST /api/manychat/init
  * 
@@ -83,7 +87,7 @@ export async function POST(req: NextRequest) {
       {
         error: error.message || 'Initialization failed',
         hint,
-        keySet: !!process.env.MANYCHAT_API_KEY?.trim(),
+        keySet: isKeySet(),
       },
       { status: 500 }
     )
@@ -153,7 +157,7 @@ export async function GET() {
       {
         error: error.message || 'Failed to get status',
         hint,
-        keySet: !!process.env.MANYCHAT_API_KEY?.trim(),
+        keySet: isKeySet(),
       },
       { status: 500 }
     )

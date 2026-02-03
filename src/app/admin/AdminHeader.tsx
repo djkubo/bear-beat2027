@@ -8,9 +8,9 @@ export function AdminHeader({ userEmail, showBackToDashboard = false }: { userEm
       <div className="max-w-7xl mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
         <div className="flex items-center gap-4">
           {showBackToDashboard && (
-            <Link href="/admin" className="text-zinc-400 hover:text-bear-blue text-sm font-medium transition">
-              ← Panel
-            </Link>
+            <a href="/admin" className="text-zinc-400 hover:text-bear-blue text-sm font-medium transition">
+              ← Volver al Panel
+            </a>
           )}
           <Link href="/admin" className="flex items-center gap-2 shrink-0">
             <Image

@@ -11,12 +11,13 @@
  */
 
 const MANYCHAT_API_URL = 'https://api.manychat.com'
-const MANYCHAT_API_KEY = process.env.MANYCHAT_API_KEY || ''
+// Siempre usar .trim() para evitar 401 por espacios/saltos al pegar en Render
+const getManyChatApiKey = () => (process.env.MANYCHAT_API_KEY || '').trim()
 const MANYCHAT_PAGE_ID = process.env.NEXT_PUBLIC_MANYCHAT_PAGE_ID || '104901938679498'
 
-// Headers comunes para todas las peticiones
+// Headers comunes para todas las peticiones (Bearer con clave sin espacios)
 const getHeaders = () => ({
-  'Authorization': `Bearer ${MANYCHAT_API_KEY}`,
+  'Authorization': `Bearer ${getManyChatApiKey()}`,
   'Content-Type': 'application/json',
 })
 
@@ -429,7 +430,8 @@ export const MANYCHAT_KEY_MISSING_MSG = 'MANYCHAT_API_KEY no está configurada. 
  * Si falla por 401/403 o error de API, lanza con mensaje claro.
  */
 export async function verifyConnection(): Promise<void> {
-  if (!MANYCHAT_API_KEY?.trim()) {
+  const key = getManyChatApiKey()
+  if (!key) {
     throw new Error(MANYCHAT_KEY_MISSING_MSG)
   }
   try {
@@ -440,7 +442,12 @@ export async function verifyConnection(): Promise<void> {
     const result: ManyChatResponse<ManyChatTag[]> = await response.json().catch(() => ({} as any))
     if (response.status === 401 || response.status === 403) {
       const apiMsg = result?.error?.message ? ` ManyChat: "${result.error.message}"` : ''
-      throw new Error(`API key rechazada por ManyChat (${response.status}).${apiMsg} Comprueba que la clave sea la correcta en ManyChat → Settings → API y que hayas hecho redeploy en Render después de añadirla.`)
+      throw new Error(
+        `API key rechazada por ManyChat (${response.status}).${apiMsg}\n\n` +
+        '• Usa la clave de Account Public API: ManyChat → Settings → API → "Generate your API Key". NO uses la de Profile (app.manychat.com/profile).\n' +
+        '• Al pegarla en Render, no dejes espacios ni saltos de línea al inicio o final.\n' +
+        '• Después de guardar en Render, haz "Manual Deploy".'
+      )
     }
     if (result.status !== 'success') {
       throw new Error(result?.error?.message || CONNECTION_ERROR_MSG)

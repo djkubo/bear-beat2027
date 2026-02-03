@@ -14,9 +14,9 @@ Para que **demos**, **descargas** y **portadas (thumbnails)** funcionen en produ
 | `BUNNY_TOKEN_KEY` | Sí | *(Security Key de la Pull Zone)* | Token Authentication en Bunny → Pull Zone → Security. |
 | `BUNNY_PACK_PATH_PREFIX` o `BUNNY_PACK_PREFIX` | Opcional | `packs/enero-2026` | Si los archivos en Bunny están dentro de una carpeta; si están en la raíz, déjalo vacío. |
 
-- **Demos:** se hace **redirect** a la URL firmada de Bunny (el navegador carga el video desde el CDN → no hay timeout 502).
+- **Demos:** redirect (302) a la URL firmada de Bunny; el navegador carga el video desde el CDN (no hay timeout 502).
 - **Thumbnails:** redirect a URL firmada.
-- **Descargas:** proxy desde Bunny con timeout 25 s; si falla, se usa FTP si está configurado.
+- **Descargas (video y ZIP):** redirect (302) a la URL firmada; el navegador descarga desde el CDN. Si Bunny falla, se usa FTP (stream).
 
 ### FTP (fallback o único origen)
 

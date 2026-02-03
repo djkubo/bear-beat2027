@@ -5,6 +5,7 @@ import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import { Users, DollarSign, Package, TrendingUp } from 'lucide-react'
 import { SyncVideosFtpButton } from './SyncVideosFtpButton'
 import { AdminDashboardToolbar } from './AdminDashboardToolbar'
+import { ActivatePendingButton } from './ActivatePendingButton'
 
 const USD_TO_MXN_RATE = Number(process.env.CURRENCY_USD_TO_MXN_RATE) || 17
 
@@ -159,6 +160,8 @@ export default async function AdminDashboardPage() {
     currency: string
     provider: string
     status: 'activated' | 'pending'
+    pendingId?: number
+    sessionId?: string | null
   }
   const activatedRows: PaymentRow[] = (recentPurchases || []).map((p: any) => ({
     id: p.id,
@@ -181,6 +184,8 @@ export default async function AdminDashboardPage() {
     currency: p.currency || 'MXN',
     provider: p.payment_provider || 'stripe',
     status: 'pending',
+    pendingId: p.id,
+    sessionId: p.stripe_session_id,
   }))
   const allPayments = [...activatedRows, ...pendingRows]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -344,6 +349,7 @@ export default async function AdminDashboardPage() {
                       <th className="text-left py-3 px-4 font-bold text-zinc-400">Pack</th>
                       <th className="text-left py-3 px-4 font-bold text-zinc-400">Monto</th>
                       <th className="text-left py-3 px-4 font-bold text-zinc-400">Estado</th>
+                      <th className="text-left py-3 px-4 font-bold text-zinc-400">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -365,6 +371,13 @@ export default async function AdminDashboardPage() {
                             <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-xs font-bold">Pendiente de activar</span>
                           )}
                         </td>
+                        <td className="py-3 px-4">
+                          {row.status === 'pending' && row.pendingId != null ? (
+                            <ActivatePendingButton pendingId={row.pendingId} sessionId={row.sessionId} email={row.email} />
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -382,7 +395,14 @@ export default async function AdminDashboardPage() {
                       {row.status === 'activated' ? (
                         <span className="inline-block mt-2 px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs font-bold">Activada</span>
                       ) : (
-                        <span className="inline-block mt-2 px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-xs font-bold">Pendiente</span>
+                        <>
+                          <span className="inline-block mt-2 px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-xs font-bold">Pendiente</span>
+                          {row.pendingId != null && (
+                            <div className="mt-2">
+                              <ActivatePendingButton pendingId={row.pendingId} sessionId={row.sessionId} email={row.email} />
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

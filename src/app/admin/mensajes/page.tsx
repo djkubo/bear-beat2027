@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
@@ -119,9 +118,9 @@ export default function AdminMensajes() {
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="border-b border-white/5 bg-zinc-950/80">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block font-medium">
+          <a href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block font-medium">
             ← Volver al Panel
-          </Link>
+          </a>
           <h1 className="text-2xl md:text-3xl font-black text-white">✉️ Enviar Mensajes</h1>
           <p className="text-gray-400 text-sm mt-1">Comunicación con usuarios</p>
         </div>

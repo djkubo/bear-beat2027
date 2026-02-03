@@ -31,9 +31,9 @@ export default async function AdminPurchasesPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-8">
-      <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-4 inline-block font-medium">
+      <a href="/admin" className="text-sm text-bear-blue hover:underline mb-4 inline-block font-medium">
         ← Volver al Panel
-      </Link>
+      </a>
       <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-1">💳 Compras</h1>
       <p className="text-zinc-500 text-sm mb-6">
         Activadas: {count || 0} · Ingresos activados: {formatPrice(totalRevenue, 'MXN')}

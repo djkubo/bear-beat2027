@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { Loader2, CheckCircle, XCircle, RefreshCw } from 'lucide-react'
 
 interface ManyChatStatus {
@@ -97,9 +96,9 @@ export default function AdminManyChat() {
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="border-b border-white/5 bg-zinc-950/80">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block font-medium">
-            ← Volver al Dashboard
-          </Link>
+          <a href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block font-medium">
+            ← Volver al Panel
+          </a>
           <h1 className="text-2xl md:text-3xl font-black text-white">🤖 Configuración ManyChat</h1>
           <p className="text-gray-400 text-sm mt-1">
             Inicializa y gestiona la integración con ManyChat
@@ -108,6 +107,17 @@ export default function AdminManyChat() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80 mb-6">
+          <h2 className="text-sm font-bold text-zinc-400 mb-2">📌 Dónde obtener la API key</h2>
+          <p className="text-sm text-gray-300 mb-2">
+            ManyChat → <strong className="text-white">Settings → API</strong> → &quot;Generate your API Key&quot;. 
+            Usa esa clave (Account Public API). <strong>No</strong> uses la de Profile (app.manychat.com/profile/dashboard#settings).
+          </p>
+          <p className="text-xs text-gray-500">
+            En Render: Environment → <code className="bg-zinc-800 px-1 rounded">MANYCHAT_API_KEY</code> = pegar sin espacios. Luego &quot;Manual Deploy&quot;.
+          </p>
+        </div>
+
         <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-white">📊 Estado de Configuración</h2>
@@ -128,13 +138,19 @@ export default function AdminManyChat() {
               <span className="ml-3">Verificando configuración...</span>
             </div>
           ) : error ? (
-            <div className="rounded-xl p-6 border border-red-500/30 bg-red-500/10 text-center">
-              <XCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+            <div className="rounded-xl p-6 border border-red-500/30 bg-red-500/10">
+              <XCircle className="h-12 w-12 text-red-400 mb-4" />
               <p className="font-bold text-red-400 mb-2">Error de Conexión</p>
-              <p className="text-red-300 text-sm whitespace-pre-line text-left max-w-xl mx-auto">{error}</p>
-              <p className="text-xs text-gray-500 mt-4">
-                Producción: Render → Environment → MANYCHAT_API_KEY (valor = API Key de ManyChat). Después de guardar, haz &quot;Manual Deploy&quot;.
-              </p>
+              <p className="text-red-300 text-sm whitespace-pre-line text-left mb-6">{error}</p>
+              <div className="rounded-lg bg-zinc-900/80 border border-white/10 p-4 text-left">
+                <p className="font-bold text-white mb-2 text-sm">✓ Checklist (401 = clave rechazada):</p>
+                <ul className="text-sm text-gray-300 space-y-1 list-disc list-inside">
+                  <li>La clave es de <strong className="text-white">Account Public API</strong>: ManyChat → <strong>Settings → API</strong> → &quot;Generate your API Key&quot; (no uses la de Profile).</li>
+                  <li>En Render: Environment → <code className="bg-zinc-800 px-1 rounded">MANYCHAT_API_KEY</code> = pegar la clave <strong>sin espacios</strong> al inicio/final.</li>
+                  <li>Después de guardar en Render, haz <strong>Manual Deploy</strong> para que cargue la variable.</li>
+                  <li>La API de ManyChat está en planes de pago; si tu cuenta es gratuita, puede devolver 401.</li>
+                </ul>
+              </div>
             </div>
           ) : status ? (
             <>

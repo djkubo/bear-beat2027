@@ -6,14 +6,22 @@ Cuando envías tráfico de noche, al día siguiente puedes revisar todo aquí.
 
 ## URL desde ManyChat (broadcasts / flujos)
 
-Usa este formato para que quede atribuido a ManyChat y al usuario:
+Usa **cualquiera** de estos formatos (el sitio acepta varios nombres de parámetro):
 
 ```
 https://bear-beat2027.onrender.com/?mc_id={{user_id}}&fname={{first_name}}&utm_source=manychat&utm_medium=broadcast
 ```
 
-- **mc_id** y **fname** se guardan en cookies (`bb_mc_id`, `bb_user_name`); el middleware redirige a la misma página **sin** esos params pero **conservando** `utm_source` y `utm_medium`.
-- Todos los eventos llevan `utm_source=manychat`, `utm_medium=broadcast` y en `event_data` el `mc_id` (para cruzar con ManyChat).
+o (nombres que ManyChat suele usar):
+
+```
+https://bear-beat2027.onrender.com/?subscriber_id={{subscriber_id}}&first_name={{first_name}}&utm_source=manychat&utm_medium=broadcast
+```
+
+- **ID del suscriptor**: se acepta `mc_id`, `subscriber_id`, `user_id` o `contact_id` (valor = ID de ManyChat).
+- **Nombre**: se acepta `fname`, `first_name` o `firstname` (valor = {{first_name}} o similar).
+- Esos valores se guardan en cookies (`bb_mc_id`, `bb_user_name`); el middleware redirige a la misma página **sin** esos params pero **conservando** `utm_source` y `utm_medium`.
+- Todos los eventos llevan en `event_data` el `mc_id` (para cruzar con ManyChat).
 - En Admin → Atribución verás fuente **manychat** y medio **broadcast**.
 
 ---

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import Link from 'next/link'
 import { toast } from 'sonner'
 
 // ==========================================
@@ -121,9 +120,9 @@ export default function AdminPushPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <Link href="/admin" className="text-bear-blue hover:underline text-sm">
-              ← Volver al Admin
-            </Link>
+            <a href="/admin" className="text-bear-blue hover:underline text-sm">
+              ← Volver al Panel
+            </a>
             <h1 className="text-3xl font-black mt-2">📢 Notificaciones</h1>
           </div>
         </div>

@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import Link from 'next/link'
 
 const SOURCE_ICONS: Record<string, string> = {
   facebook: '📘',
@@ -105,9 +104,9 @@ export default async function AdminAttributionPage() {
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="border-b border-white/5 bg-zinc-950/80">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block font-medium">
-            ← Volver al Dashboard
-          </Link>
+          <a href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block font-medium">
+            ← Volver al Panel
+          </a>
           <h1 className="text-2xl md:text-3xl font-black text-white">📊 Atribución de Tráfico</h1>
           <p className="text-gray-400 text-sm mt-1">
             De dónde vienen tus usuarios y qué fuentes convierten mejor

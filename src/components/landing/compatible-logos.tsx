@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
-/** Logos de software compatible. Añade en /public/logos/ los PNG (o SVG) oficiales con estos nombres. */
+/** Logos de software compatible. Usa placeholder único para evitar 404 si no existen serato.svg, etc. en /public/logos/. */
+const PLACEHOLDER_SRC = '/logos/compatible-placeholder.svg'
 const LOGOS = [
   { slug: 'serato', label: 'Serato' },
   { slug: 'rekordbox', label: 'Rekordbox' },
@@ -27,17 +27,6 @@ interface CompatibleLogosProps {
 
 export function CompatibleLogos({ variant = 'all', className, logoHeight = 40, subtle = false }: CompatibleLogosProps) {
   const list = variant === 'hero' ? LOGOS.slice(0, 3) : LOGOS
-  // Por logo: 'svg' → intentar .svg, 'png' → intentar .png, 'text' → mostrar texto
-  const [ext, setExt] = useState<Record<string, 'svg' | 'png' | 'text'>>({})
-
-  const handleError = (slug: string) => {
-    setExt((p) => {
-      const current = p[slug] ?? 'svg'
-      if (current === 'svg') return { ...p, [slug]: 'png' }
-      return { ...p, [slug]: 'text' }
-    })
-  }
-
   return (
     <div
       className={cn(
@@ -48,38 +37,23 @@ export function CompatibleLogos({ variant = 'all', className, logoHeight = 40, s
       )}
       style={{ minHeight: logoHeight }}
     >
-      {list.map(({ slug, label }) => {
-        const state = ext[slug] ?? 'svg'
-        if (state === 'text') {
-          return (
-            <span
-              key={slug}
-              className="text-base md:text-lg font-bold text-white/90 tracking-tight"
-              style={{ height: logoHeight, lineHeight: `${logoHeight}px` }}
-            >
-              {label}
-            </span>
-          )
-        }
-        const extension = state === 'svg' ? 'svg' : 'png'
-        return (
-          <div
-            key={slug}
-            className="relative flex items-center justify-center shrink-0"
-            style={{ height: logoHeight, minWidth: 70 }}
-          >
-            <Image
-              src={`/logos/${slug}.${extension}`}
-              alt={label}
-              width={140}
-              height={logoHeight}
-              className="w-auto max-w-[120px] h-full object-contain object-center"
-              onError={() => handleError(slug)}
-              unoptimized
-            />
-          </div>
-        )
-      })}
+      {list.map(({ slug, label }) => (
+        <div
+          key={slug}
+          className="relative flex items-center justify-center shrink-0"
+          style={{ height: logoHeight, minWidth: 70 }}
+          title={label}
+        >
+          <Image
+            src={PLACEHOLDER_SRC}
+            alt={label}
+            width={140}
+            height={logoHeight}
+            className="w-auto max-w-[120px] h-full object-contain object-center"
+            unoptimized
+          />
+        </div>
+      ))}
     </div>
   )
 }

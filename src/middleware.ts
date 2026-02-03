@@ -16,19 +16,32 @@ const BB_USER_NAME_COOKIE = 'bb_user_name'
 const MC_ID_MAX_AGE_DAYS = 30
 const COOKIE_OPTS = { path: '/', sameSite: 'lax' as const, httpOnly: false }
 
+// Parámetros que ManyChat puede enviar (diferentes nombres según plantilla/flujo)
+const MC_ID_PARAMS = ['mc_id', 'subscriber_id', 'user_id', 'contact_id']
+const FNAME_PARAMS = ['fname', 'first_name', 'firstname']
+
+function getFirstParam(url: URL, keys: string[]): string | null {
+  for (const key of keys) {
+    const v = url.searchParams.get(key)
+    if (v != null && v.trim() !== '') return v.trim()
+  }
+  return null
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const url = request.nextUrl.clone()
-  const mcId = url.searchParams.get('mc_id')
-  const fname = url.searchParams.get('fname')
+  const mcId = getFirstParam(url, MC_ID_PARAMS)
+  const fname = getFirstParam(url, FNAME_PARAMS)
 
-  // ManyChat: capturar mc_id y fname, guardar en cookies y redirigir a URL limpia
-  if (mcId != null || (fname != null && fname.trim() !== '')) {
+  // ManyChat: capturar ID y nombre (cualquier variante), guardar en cookies y redirigir a URL limpia
+  if (mcId != null || fname != null) {
     const isProd = process.env.NODE_ENV === 'production'
     const maxAge = MC_ID_MAX_AGE_DAYS * 24 * 60 * 60
     const redirectUrl = new URL(pathname, url.origin)
+    const stripKeys = new Set([...MC_ID_PARAMS, ...FNAME_PARAMS])
     url.searchParams.forEach((value, key) => {
-      if (key !== 'mc_id' && key !== 'fname') redirectUrl.searchParams.set(key, value)
+      if (!stripKeys.has(key)) redirectUrl.searchParams.set(key, value)
     })
     const response = NextResponse.redirect(redirectUrl, 307)
     if (mcId) {
@@ -38,8 +51,8 @@ export async function middleware(request: NextRequest) {
         ...(isProd && { secure: true }),
       })
     }
-    if (fname != null && fname.trim() !== '') {
-      response.cookies.set(BB_USER_NAME_COOKIE, fname.trim(), {
+    if (fname != null && fname !== '') {
+      response.cookies.set(BB_USER_NAME_COOKIE, fname, {
         ...COOKIE_OPTS,
         maxAge,
         ...(isProd && { secure: true }),

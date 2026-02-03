@@ -1,11 +1,21 @@
 /**
- * Descarga un archivo vía /api/download sin abrir ventana nueva.
- * El contenido se obtiene por fetch (proxy en servidor) y se dispara la descarga
- * con un <a> temporal, así no se expone la URL del CDN.
+ * Descarga un archivo vía /api/download.
+ * Si el servidor redirige (302) a CDN, abre esa URL en nueva pestaña para que el navegador descargue desde el CDN.
+ * Si el servidor devuelve el archivo (200), lo descarga por blob.
  */
 export async function downloadFile(fileParam: string): Promise<void> {
   const url = `/api/download?file=${encodeURIComponent(fileParam)}`
-  const res = await fetch(url, { credentials: 'include' })
+  const res = await fetch(url, { credentials: 'include', redirect: 'manual' })
+  if (res.type === 'opaqueredirect' || res.status === 302) {
+    const location = res.headers.get('Location')
+    if (location) {
+      window.open(location, '_blank', 'noopener,noreferrer')
+      return
+    }
+    // Algunos navegadores no exponen Location con redirect: 'manual'; abrir la misma URL y el servidor redirigirá
+    window.open(url, '_blank', 'noopener,noreferrer')
+    return
+  }
   if (!res.ok) {
     const text = await res.text()
     let err: Error

@@ -28,12 +28,16 @@ export async function POST(req: NextRequest) {
     const referer = headersList.get('referer') || '(direct)'
     
     const att = eventData?.attribution || {}
+    const mcIdFromCookie = req.cookies.get('bb_mc_id')?.value?.trim()
+    const eventDataNormalized = typeof eventData === 'object' && eventData !== null ? { ...eventData } : {}
+    if (mcIdFromCookie && !eventDataNormalized.mc_id) eventDataNormalized.mc_id = mcIdFromCookie
+
     const payload: Record<string, unknown> = {
       session_id: (sessionId || '').slice(0, 255),
       user_id: userId || null,
       event_type: String(eventType).slice(0, 50),
       event_name: eventName ? String(eventName).slice(0, 255) : null,
-      event_data: typeof eventData === 'object' && eventData !== null ? eventData : {},
+      event_data: eventDataNormalized,
       page_url: (eventData?.pageUrl || referer || '').slice(0, 2048),
       referrer: (referer || '').slice(0, 2048),
       user_agent: (userAgent || '').slice(0, 512),

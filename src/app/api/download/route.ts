@@ -11,8 +11,9 @@ const EXPIRY_ZIP = 10800 // 3 h (los ZIP tardan más en bajar)
 
 /**
  * GET /api/download?file=Genre/video.mp4 | Banda.zip
- * Solo usuarios con compras activas. Hace proxy del archivo desde Bunny o FTP
- * con Content-Disposition: attachment para forzar descarga (no abrir en pestaña).
+ * Solo usuarios con compras activas.
+ * Bunny: redirige (302) a URL firmada para que el navegador descargue desde el CDN (sin timeout).
+ * FTP: stream del archivo con Content-Disposition: attachment.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -54,6 +55,7 @@ export async function GET(req: NextRequest) {
     } catch {
       sanitizedPath = (filePath || '').replace(/\.\./g, '').replace(/^\//, '').trim()
     }
+    sanitizedPath = sanitizedPath.replace(/^Videos Enero 2026\/?/i, '').trim() || sanitizedPath
     if (!sanitizedPath) {
       return NextResponse.json({ error: 'Path inválido' }, { status: 400 })
     }
@@ -76,62 +78,21 @@ export async function GET(req: NextRequest) {
         signedUrl = generateSignedUrl(bunnyPath, expiresIn)
       } catch (e) {
         console.error('[download] Bunny signed URL failed:', (e as Error)?.message || e, 'path:', sanitizedPath)
-        // fallthrough to FTP below
         signedUrl = ''
       }
       if (signedUrl) {
         try {
-          const range = req.headers.get('range') || ''
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 25000)
-          let res: Response
-          try {
-            res = await fetch(signedUrl, {
-              method: 'GET',
-              headers: range ? { Range: range } : {},
-              signal: controller.signal,
-            })
-          } finally {
-            clearTimeout(timeoutId)
-          }
-          if (!res.ok && res.status !== 206) {
-            console.warn('[download] Bunny response:', res.status, res.statusText, 'path:', sanitizedPath)
-          }
-          if (res.ok || res.status === 206) {
-            try {
-              await supabase.from('downloads').insert({
-                user_id: user.id,
-                pack_id: purchases[0].pack_id,
-                file_path: sanitizedPath,
-                download_method: 'web',
-              })
-            } catch {
-              // ignorar
-            }
-            const headers = new Headers({
-              'Content-Type': res.headers.get('content-type') || contentType,
-              'Cache-Control': 'private, max-age=' + expiresIn,
-              'Content-Disposition': disposition,
-              'Accept-Ranges': 'bytes',
-            })
-            const contentLength = res.headers.get('content-length')
-            if (contentLength) headers.set('Content-Length', contentLength)
-            if (res.status === 206) {
-              const cr = res.headers.get('content-range')
-              if (cr) headers.set('Content-Range', cr)
-            }
-            return new NextResponse(res.body ?? undefined, { status: res.status, headers })
-          }
-        } catch (e) {
-          const isTimeout = (e as Error)?.name === 'AbortError'
-          console.error('[download] Bunny proxy failed:', (e as Error)?.message || e, 'path:', sanitizedPath, isTimeout ? '(timeout)' : '')
-          if (isTimeout) {
-            return NextResponse.json(
-              { error: 'La descarga tardó demasiado. Intenta de nuevo o descarga por FTP desde tu panel.', redirect: '/dashboard' },
-              { status: 503 }
-            )
-          }
+          await supabase.from('downloads').insert({
+            user_id: user.id,
+            pack_id: purchases[0].pack_id,
+            file_path: sanitizedPath,
+            download_method: 'web',
+          })
+        } catch {
+          // ignorar
         }
+        // Redirect: el navegador descarga desde Bunny directamente (evita 502/timeout en Render)
+        return NextResponse.redirect(signedUrl, 302)
       }
       // Bunny falló: fallback a FTP si está configurado
       if (isFtpConfigured()) {

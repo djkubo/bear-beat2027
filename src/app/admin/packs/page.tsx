@@ -22,9 +22,9 @@ export default async function AdminPacksPage() {
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-2 inline-block font-medium">
+          <a href="/admin" className="text-sm text-bear-blue hover:underline mb-2 inline-block font-medium">
             ← Volver al Panel
-          </Link>
+          </a>
           <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">📦 Gestión de Packs</h1>
           <p className="text-zinc-500 text-sm mt-1">
             Total: {packs?.length || 0} packs

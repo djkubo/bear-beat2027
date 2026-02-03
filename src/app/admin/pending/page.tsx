@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { formatDate, formatPrice } from '@/lib/utils'
-import Link from 'next/link'
+import { ActivatePendingButton } from '../ActivatePendingButton'
 
 export default async function AdminPendingPurchasesPage() {
   const supabase = await createServerClient()
@@ -33,9 +33,9 @@ export default async function AdminPendingPurchasesPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-8">
-      <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-4 inline-block font-medium">
+      <a href="/admin" className="text-sm text-bear-blue hover:underline mb-4 inline-block font-medium">
         ← Volver al Panel
-      </Link>
+      </a>
       <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-1">⏳ Compras Pendientes</h1>
       <p className="text-zinc-500 text-sm mb-6">
         Pagos exitosos que aún no completan datos
@@ -113,10 +113,17 @@ export default async function AdminPendingPurchasesPage() {
                     </div>
                   </div>
 
-                  <div className="bg-bear-blue/10 rounded-lg p-4 border border-bear-blue/30">
-                    <p className="text-sm font-bold text-center text-bear-blue">
-                      ⏰ Usuario debe completar sus datos en: /complete-purchase?session_id={purchase.stripe_session_id.slice(0, 20)}...
-                    </p>
+                  <div className="flex flex-wrap items-center gap-3 mt-4">
+                    <div className="bg-bear-blue/10 rounded-lg p-4 border border-bear-blue/30 flex-1 min-w-0">
+                      <p className="text-sm font-bold text-bear-blue">
+                        ⏰ Usuario puede completar: /complete-purchase?session_id=...
+                      </p>
+                    </div>
+                    <ActivatePendingButton
+                      pendingId={purchase.id}
+                      sessionId={purchase.stripe_session_id}
+                      email={purchase.customer_email}
+                    />
                   </div>
                 </div>
               ))}

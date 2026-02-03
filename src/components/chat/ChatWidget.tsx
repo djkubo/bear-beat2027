@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Send, MessageSquare, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ function useVisualViewportHeight() {
 }
 
 export default function ChatWidget() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{role: string, content: string}[]>([
     { role: 'assistant', content: DEFAULT_GREETING }
@@ -81,25 +83,19 @@ export default function ChatWidget() {
     });
   }, []);
 
-  // Anuncios globales proactivos (tabla opcional: si no existe en Supabase no romper)
+  // Anuncios globales proactivos (API evita 404 si la tabla no existe en Supabase)
   useEffect(() => {
-    const supabase = createClient();
-    void Promise.resolve(
-      supabase
-        .from('global_announcements')
-        .select('id, message')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-    ).then(({ data: announcement, error }) => {
-      if (error || !announcement) return;
-      const dismissed = typeof window !== 'undefined' && localStorage.getItem(STORAGE_DISMISSED_PREFIX + announcement.id);
-      if (dismissed) return;
-      announcementIdRef.current = announcement.id;
-      setMessages(prev => [{ role: 'assistant', content: `📢 ${announcement.message}` }, ...prev]);
-      setIsOpen(true);
-    }).catch(() => { /* tabla no existe (404) o red: ignorar */ });
+    fetch('/api/announcements')
+      .then((res) => res.ok ? res.json() : { announcement: null })
+      .then(({ announcement }) => {
+        if (!announcement) return;
+        const dismissed = typeof window !== 'undefined' && localStorage.getItem(STORAGE_DISMISSED_PREFIX + announcement.id);
+        if (dismissed) return;
+        announcementIdRef.current = announcement.id;
+        setMessages(prev => [{ role: 'assistant', content: `📢 ${announcement.message}` }, ...prev]);
+        setIsOpen(true);
+      })
+      .catch(() => {});
   }, []);
 
   // Al cerrar el chat, marcar anuncio como visto para no volver a abrirlo
@@ -148,6 +144,8 @@ export default function ChatWidget() {
   const availableHeight = viewportHeight != null && viewportHeight > 120 ? viewportHeight - 100 : null;
   const chatPanelMaxHeight =
     availableHeight != null ? `min(380px, ${Math.max(200, availableHeight)}px)` : 'min(380px, 55dvh)';
+
+  if (pathname?.startsWith('/admin')) return null;
 
   return (
     <div
