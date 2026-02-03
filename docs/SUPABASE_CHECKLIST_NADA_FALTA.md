@@ -64,6 +64,33 @@ Sin esto, el login en producción puede redirigir mal o pedir login otra vez.
 
 ---
 
+## 4.1 Emails de contraseña y confirmación (que SÍ lleguen)
+
+Si los usuarios dicen que **no les llega el email** de recuperar contraseña o de confirmación:
+
+1. **URL Configuration (obligatorio)**  
+   - **Site URL** = tu app en producción, ej. `https://bear-beat2027.onrender.com`  
+   - **Redirect URLs** debe incluir tu dominio con `/**` (ej. `https://bear-beat2027.onrender.com/**`).  
+   Sin esto, Supabase puede no generar bien el enlace del correo o el enlace falla al abrir.
+
+2. **Plantillas de email**  
+   - **Authentication** → **Email Templates**.  
+   - Revisa **Confirm signup** y **Reset Password**: que estén habilitadas y con asunto/cuerpo válidos (puedes personalizar el texto).  
+   - El enlace de confirmación debe usar `{{ .ConfirmationURL }}` y el de reset `{{ .ConfirmationURL }}` (o lo que indique la plantilla por defecto).
+
+3. **Proveedor de email (recomendado)**  
+   Por defecto Supabase envía desde `noreply@mail.app.supabase.io` y muchos correos caen en **Spam**. Para que lleguen bien:  
+   - **Project Settings** (engranaje) → **Auth** → **SMTP Settings**.  
+   - Activa **Custom SMTP** y configura con Resend, SendGrid, etc. (ej. Resend: host `smtp.resend.com`, puerto 465, user `resend`, password = API key, sender = un email verificado como `noreply@tudominio.com`).
+
+4. **Variable en producción**  
+   En Render (o tu hosting): **NEXT_PUBLIC_APP_URL** = `https://bear-beat2027.onrender.com` (sin barra final). Así el enlace del correo apunta siempre a tu sitio.
+
+5. **Si sigue sin llegar**  
+   En Supabase: **Logs** → **Auth** y revisa si hay errores al enviar el email. Comprueba también la carpeta **Spam / Promociones** del usuario.
+
+---
+
 ## 5. Usuario admin
 
 - Crear usuario en **Authentication** → Users (o registrarse en la app).

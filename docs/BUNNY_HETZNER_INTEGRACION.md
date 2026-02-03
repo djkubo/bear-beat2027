@@ -81,6 +81,14 @@ Storage Zone (ej. bear-beat)/
 
 Si Token Authentication no está activada o la clave no coincide, las descargas devolverán 403.
 
+### 2.5 Si ves 404 en una URL del CDN
+
+Cuando la app redirige a una URL como `https://bearbeat.b-cdn.net/Videos%20Enero%202026/Bachata/Video.mp4?token=...` y Bunny devuelve **404**:
+
+1. **La ruta debe existir en Bunny Storage.** La app pide `BUNNY_PACK_PATH_PREFIX` + ruta relativa (ej. `Videos Enero 2026/Bachata/Video.mp4`). Revisa en Bunny Dashboard → Storage Zone que esa carpeta y archivo existan.
+2. **Coincidencia de prefijo:** Si en Storage los archivos están **en la raíz** (solo `Bachata/`, `Cumbia/`, etc.), deja **BUNNY_PACK_PATH_PREFIX vacío** en Render. La app ya quita `Videos Enero 2026/` del path y pide solo `Bachata/Video.mp4`. Si en Storage están bajo la carpeta `Videos Enero 2026/`, pon `BUNNY_PACK_PATH_PREFIX=Videos Enero 2026`.
+3. **Subir archivos:** Si los videos están solo en FTP o en disco, hay que subirlos a Bunny Storage (por panel, API o script de sincronización) para que el CDN los sirva.
+
 ### 2.4 Qué usa cada ruta
 
 - **Demos:** El front usa `src="/api/demo-url?path=Genre/Video.mp4"`. Esa ruta redirige (302) a URL firmada de Bunny CDN. Soporta: (1) BUNNY_PULL_ZONE + BUNNY_SECURITY_KEY, (2) legacy BUNNY_CDN_URL + BUNNY_TOKEN_KEY. Si Bunny no está configurado, redirige a `/api/demo/...` (proxy FTP).

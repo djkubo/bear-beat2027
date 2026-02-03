@@ -16,7 +16,7 @@ El remitente por defecto de Supabase es `noreply@mail.app.supabase.io`. Busca es
 
 ## 2. Configuración en Supabase (obligatoria)
 
-El enlace del correo lleva a tu sitio. Si Supabase no tiene tu URL configurada, el email puede no enviarse o el enlace fallar.
+El enlace del correo lleva primero a Supabase y luego redirige a tu sitio (`/auth/callback` → `/reset-password`). Si Supabase no tiene tu URL configurada, el email puede no enviarse o el enlace fallar.
 
 1. Entra en **https://supabase.com/dashboard** y abre tu proyecto.
 2. Menú **Authentication** → **URL Configuration**.

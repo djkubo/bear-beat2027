@@ -24,11 +24,18 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
+      // El enlace del email lleva a Supabase y luego redirige a nuestro callback con ?code=...
+      // El callback intercambia el code por sesión y redirige a next=/reset-password
       const baseUrl =
         typeof window !== 'undefined'
           ? window.location.origin
           : (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
-      const redirectTo = baseUrl ? `${baseUrl}/reset-password` : '/reset-password'
+      if (!baseUrl || !baseUrl.startsWith('http')) {
+        toast.error('Configuración incorrecta: falta la URL de la app. Contacta soporte.')
+        setLoading(false)
+        return
+      }
+      const redirectTo = `${baseUrl}/auth/callback?next=${encodeURIComponent('/reset-password')}`
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo,
       })
