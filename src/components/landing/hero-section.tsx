@@ -47,7 +47,7 @@ export function HeroSection({ pack }: HeroSectionProps) {
 
           {/* COLUMNA DERECHA (TEXTO) - En Mobile va PRIMERO (order-1) */}
           <div className="order-1 lg:order-2 space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/20 border-2 border-orange-400/60 text-orange-600 dark:text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.3)]">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 border-2 border-orange-400/70 text-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.4)]">
               <span className="text-2xl">🔥</span>
               <span className="text-sm font-bold">ACCESO EXCLUSIVO: PACK ENERO 2026</span>
             </div>
@@ -82,7 +82,7 @@ export function HeroSection({ pack }: HeroSectionProps) {
               <Link href="/checkout" className="w-full" onClick={() => trackCTAClick('DESCARGAR AHORA', 'hero')}>
                 <Button 
                   size="xl" 
-                  className="w-full bg-bear-blue text-bear-black hover:bg-bear-blue/90 font-extrabold text-lg md:text-2xl py-7 md:py-9 shadow-[0_0_30px_rgba(34,211,238,0.5)] rounded-2xl animate-pulse"
+                  className="w-full bg-bear-blue text-bear-black hover:bg-bear-blue/90 font-extrabold text-lg md:text-2xl py-7 md:py-9 shadow-cyan-500/50 shadow-lg rounded-2xl animate-pulse"
                 >
                   DESCARGAR AHORA - ACCESO INMEDIATO ⚡
                 </Button>

@@ -507,6 +507,18 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
+                  {/* Franja seguridad: justo arriba del flujo de pago */}
+                  <div className="mb-4 flex flex-wrap items-center justify-center gap-2 py-3 px-4 rounded-xl border border-green-500/30 bg-green-500/10 text-center">
+                    <Lock className="h-4 w-4 shrink-0 text-green-400" />
+                    <span className="text-sm font-bold text-green-200">🔒 Pago 100% Seguro y Encriptado</span>
+                    <span className="hidden sm:inline text-gray-500">·</span>
+                    <CreditCard className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs text-gray-400">Visa</span>
+                    <span className="text-xs text-gray-400">Mastercard</span>
+                    <Banknote className="h-3.5 w-3.5 text-orange-400" />
+                    <span className="text-xs text-gray-400">OXXO</span>
+                  </div>
+
                   {/* Alerta de email CRÍTICO – visible siempre */}
                   <div className="mb-4 rounded-xl border-2 border-amber-500/60 bg-amber-500/15 px-4 py-3 text-center">
                     <p className="text-sm font-bold text-amber-200">
