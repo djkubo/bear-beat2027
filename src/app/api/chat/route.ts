@@ -112,9 +112,11 @@ export async function POST(req: Request) {
             ],
             temperature: 0.7,
             max_tokens: 300,
+            stream: false,
           };
           const fallback = await openai.chat.completions.create(fallbackParams);
-          const fallbackReply = fallback.choices[0].message.content ?? '';
+          const fallbackCompletion = fallback as { choices: Array<{ message?: { content?: string | null } }> };
+          const fallbackReply = fallbackCompletion.choices[0]?.message?.content ?? '';
           if (fallbackReply) {
             if (userId) {
               await supabase.from('chat_messages').insert({
