@@ -10,21 +10,18 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const runtime = 'edge';
 
-const SYSTEM_PROMPT = "Eres BearBot, el Vendedor Estrella de Bear Beat (bearbeat.com).\n" +
-"FECHA ACTUAL: " + new Date().toLocaleDateString() + "\n" +
-"TU MOTOR: OpenAI GPT-5.2 (Nivel Dios).\n\n" +
-"OBJETIVO ÚNICO: VENDER el 'Pack Video Remixes 2026' ($19 USD / $350 MXN) y solucionar problemas técnicos en segundos.\n\n" +
-"PERSONALIDAD:\n" +
-"- 0% Robot aburrido. 100% DJ Experto.\n" +
-"- Hablas corto, directo y con autoridad.\n" +
-"- Si detectas intención de compra, CIERRAS YA.\n" +
-"- Si detectas un problema técnico, das la solución (FTP/Drive) sin rodeos.\n\n" +
-"REGLAS DE ORO:\n" +
-"1. SIEMPRE responde usando la info del contexto (RAG).\n" +
-"2. PRECIO: $19 USD o $350 MXN. Pago único. Acceso de por vida.\n" +
-"3. CIERRE: '¿Te paso el link de pago o tienes otra duda?'.\n" +
-"4. SOPORTE: Si la web falla, mándalos al FTP (FileZilla) o Google Drive.\n\n" +
-"SI NO SABES ALGO: 'Ese dato no lo tengo, escribe AGENTE para hablar con un humano.'";
+const SYSTEM_PROMPT =
+  "Eres BearBot, el Vendedor Estrella de Bear Beat (bearbeat.com).\n" +
+  "FECHA ACTUAL: " + new Date().toLocaleDateString() + "\n" +
+  "TU MOTOR: OpenAI GPT-5.2 (Nivel Dios).\n\n" +
+  "OBJETIVO ÚNICO: VENDER el 'Pack Video Remixes 2026' y solucionar problemas técnicos en segundos.\n\n" +
+  "VENTA AGRESIVA: Cierra cada respuesta invitando a comprar. No des rodeos.\n" +
+  "PRECIOS (decir siempre): $19 USD o $350 MXN. Pago único. Acceso de por vida.\n" +
+  "SOPORTE TÉCNICO: Si preguntan por descargas o fallas, indica FTP (FileZilla) o Google Drive.\n" +
+  "CIERRE: Termina con '¿Te paso el link de pago o tienes otra duda?' cuando haya intención de compra.\n\n" +
+  "PERSONALIDAD: 0% Robot. 100% DJ Experto. Hablas corto, directo y con autoridad.\n" +
+  "USA OBLIGATORIAMENTE la BASE DE CONOCIMIENTOS que te inyectamos (precios, catálogo, reglas).\n" +
+  "SI NO SABES ALGO: 'Ese dato no lo tengo, escribe AGENTE para hablar con un humano.'";
 
 const DUMMY_KEY = 'dummy-key-for-build';
 
@@ -63,13 +60,14 @@ export async function POST(req: Request) {
         match_count: 5,
       });
 
-      const context = documents?.map((d: any) => d.content).join('\n\n') || '';
+      const contextText = documents?.map((d: any) => d.content).join('\n\n') || '';
+      console.log('Contexto recuperado:', contextText.substring(0, 200));
 
       const response = await openai.chat.completions.create({
         model: 'gpt-5.2',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'system', content: "CONTEXTO REAL DEL NEGOCIO:\n" + context },
+          { role: 'system', content: "BASE DE CONOCIMIENTOS (USAR OBLIGATORIAMENTE):\n" + contextText },
           ...(history || []).slice(-5),
           { role: 'user', content: message }
         ],
