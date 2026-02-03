@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
 // Demo: /api/demo-url redirige a CDN firmado (rápido) o proxy
 import { MobileMenu } from '@/components/ui/MobileMenu'
+import { HeroSection } from '@/components/landing/hero-section'
+import { StatsSection } from '@/components/landing/stats-section'
 import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 
@@ -515,13 +517,9 @@ export default function HomeLanding() {
       </header>
 
       {/* HERO SECTION - DIFERENTE SEGÚN ESTADO */}
-      <section className="py-12 md:py-24 lg:py-28 px-4 md:px-6 relative overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-bear-blue/10 rounded-full blur-[150px] pointer-events-none" />
-        
-        {userState.hasAccess ? (
-          // ==========================================
-          // HERO PARA USUARIOS CON ACCESO – limpio y directo
-          // ==========================================
+      {userState.hasAccess ? (
+        <section className="py-12 md:py-24 lg:py-28 px-4 md:px-6 relative overflow-hidden">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-bear-blue/10 rounded-full blur-[150px] pointer-events-none" />
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <motion.h1 
               initial={{ opacity: 0, y: 16 }} 
@@ -533,7 +531,6 @@ export default function HomeLanding() {
               <span className="text-bear-blue">{statsLoading ? '...' : totalVideos.toLocaleString()}</span>
               {' '}Video Remixes
             </motion.h1>
-
             <motion.p 
               initial={{ opacity: 0, y: 12 }} 
               animate={{ opacity: 1, y: 0 }} 
@@ -542,8 +539,6 @@ export default function HomeLanding() {
             >
               Tus videos están listos. Descarga por navegador o por FTP.
             </motion.p>
-
-            {/* Mini stats: mismo dato que verán en /contenido */}
             {!statsLoading && (
               <motion.p 
                 initial={{ opacity: 0 }} 
@@ -554,7 +549,6 @@ export default function HomeLanding() {
                 {totalVideos.toLocaleString()} videos · {genreCount} géneros · {totalSizeFormatted}
               </motion.p>
             )}
-
             <motion.div 
               initial={{ opacity: 0, y: 12 }} 
               animate={{ opacity: 1, y: 0 }} 
@@ -574,7 +568,6 @@ export default function HomeLanding() {
                 </button>
               </Link>
             </motion.div>
-
             <motion.p 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
@@ -584,30 +577,21 @@ export default function HomeLanding() {
               Descarga por navegador · FTP · Soporte 24/7
             </motion.p>
           </div>
-        ) : (
-          // ==========================================
-          // HERO PARA NUEVOS USUARIOS – Gancho + dolor/solución + CTA alto contraste
-          // ==========================================
-          <div className="max-w-5xl mx-auto text-center relative z-10">
-            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-4 bg-gradient-to-r from-white via-cyan-200 to-bear-blue bg-clip-text text-transparent">
-              {statsLoading ? '...' : totalVideos.toLocaleString()} videos HD para DJs. Un pago. Descarga hoy.
-            </motion.h1>
-
-            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Deja de perder horas ripeando de YouTube en mala calidad. Contenido HD organizado por género, con BPM y Key. Como el que usan los DJs pro.
-            </motion.p>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex flex-col items-center gap-4">
-              <Link href="/checkout?pack=enero-2026" onClick={() => handleCTAClick('hero')} className="w-full sm:w-auto">
-                <button className="w-full min-h-[52px] sm:min-h-[60px] bg-bear-blue text-bear-black font-black text-xl md:text-3xl px-10 py-5 md:py-7 rounded-2xl shadow-[0_0_30px_rgba(8,225,247,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all border-2 border-bear-blue">
-                  QUIERO ACCESO AHORA →
-                </button>
-              </Link>
-              <p className="text-sm text-gray-400">🔒 Acceso inmediato · Garantía de 30 días</p>
-            </motion.div>
-          </div>
-        )}
-      </section>
+        </section>
+      ) : (
+        <>
+          <HeroSection
+            pack={{
+              name: 'Pack Enero 2026',
+              slug: 'enero-2026',
+              total_videos: totalVideos,
+              total_size_gb: 0,
+              price_mxn: 350,
+            }}
+          />
+          <StatsSection />
+        </>
+      )}
 
       {/* ==========================================
           CONTENIDO SOLO PARA USUARIOS SIN ACCESO
