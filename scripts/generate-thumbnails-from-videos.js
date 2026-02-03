@@ -169,10 +169,17 @@ async function main() {
           { timeout: 15000, stdio: 'pipe' }
         );
       } catch {
-        execSync(
-          `ffmpeg -i "${tmpVideo}" -vframes 1 -q:v 2 -y "${tmpThumb}"`,
-          { timeout: 15000, stdio: 'pipe' }
-        );
+        try {
+          execSync(
+            `ffmpeg -ss 0.5 -i "${tmpVideo}" -vframes 1 -q:v 2 -y "${tmpThumb}"`,
+            { timeout: 15000, stdio: 'pipe' }
+          );
+        } catch {
+          execSync(
+            `ffmpeg -i "${tmpVideo}" -vframes 1 -q:v 2 -y "${tmpThumb}"`,
+            { timeout: 15000, stdio: 'pipe' }
+          );
+        }
       }
 
       if (!fs.existsSync(tmpThumb)) {

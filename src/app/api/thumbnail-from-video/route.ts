@@ -100,17 +100,24 @@ export async function GET(req: NextRequest) {
       const buf = Buffer.from(await res.arrayBuffer())
       await fs.promises.writeFile(tmpVideo, buf)
 
-      // Extraer frame a 1s (o primer frame si falla)
+      // Extraer frame a 1s (evita segundo 0, que suele ser negro); fallback 0.5s y luego frame 0 si video muy corto
       try {
         await execAsync(
           `ffmpeg -ss 1 -i "${tmpVideo}" -vframes 1 -q:v 2 -y "${tmpThumb}"`,
           { timeout: 15000 }
         )
       } catch {
-        await execAsync(
-          `ffmpeg -i "${tmpVideo}" -vframes 1 -q:v 2 -y "${tmpThumb}"`,
-          { timeout: 15000 }
-        )
+        try {
+          await execAsync(
+            `ffmpeg -ss 0.5 -i "${tmpVideo}" -vframes 1 -q:v 2 -y "${tmpThumb}"`,
+            { timeout: 15000 }
+          )
+        } catch {
+          await execAsync(
+            `ffmpeg -i "${tmpVideo}" -vframes 1 -q:v 2 -y "${tmpThumb}"`,
+            { timeout: 15000 }
+          )
+        }
       }
 
       if (!fs.existsSync(tmpThumb)) throw new Error('No se generó thumbnail')

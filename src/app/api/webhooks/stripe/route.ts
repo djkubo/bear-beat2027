@@ -171,21 +171,25 @@ export async function POST(req: NextRequest) {
         const utm_source = (session.metadata?.utm_source as string) || null
         const utm_medium = (session.metadata?.utm_medium as string) || null
         const utm_campaign = (session.metadata?.utm_campaign as string) || null
-        await supabase.from('user_events').insert({
-          session_id: session.id,
-          event_type: 'payment_success',
-          event_name: 'Pago completado',
-          event_data: {
-            pack_id: packId,
-            amount,
-            currency: session.currency,
+        try {
+          await supabase.from('user_events').insert({
             session_id: session.id,
-            stripe_session_id: session.id,
-          },
-          utm_source: utm_source || undefined,
-          utm_medium: utm_medium || undefined,
-          utm_campaign: utm_campaign || undefined,
-        })
+            event_type: 'payment_success',
+            event_name: 'Pago completado',
+            event_data: {
+              pack_id: packId,
+              amount,
+              currency: session.currency,
+              session_id: session.id,
+              stripe_session_id: session.id,
+            },
+            utm_source: utm_source || undefined,
+            utm_medium: utm_medium || undefined,
+            utm_campaign: utm_campaign || undefined,
+          })
+        } catch (trackErr) {
+          console.warn('user_events insert (non-critical):', (trackErr as Error)?.message ?? trackErr)
+        }
 
         if (customerEmail || customerPhone) {
           try {

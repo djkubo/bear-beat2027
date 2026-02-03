@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     const eventDataNormalized = typeof eventData === 'object' && eventData !== null ? { ...eventData } : {}
     if (mcIdFromCookie && !eventDataNormalized.mc_id) eventDataNormalized.mc_id = mcIdFromCookie
 
+    // Solo columnas que existen en user_events. browser es opcional (no incluir hasta tener migración).
     const payload: Record<string, unknown> = {
       session_id: (sessionId || '').slice(0, 255),
       user_id: userId || null,
@@ -51,8 +52,6 @@ export async function POST(req: NextRequest) {
       gclid: (eventData?.gclid ?? '').toString().slice(0, 255) || null,
       ttclid: (eventData?.ttclid ?? '').toString().slice(0, 255) || null,
       device_type: (eventData?.device_type ?? eventData?.deviceType ?? '').toString().slice(0, 20) || null,
-      // browser: columna no existe aún en user_events; descomentar cuando se añada la migración
-      // browser: (eventData?.browser ?? '').toString().slice(0, 50) || null,
       os: (eventData?.os ?? '').toString().slice(0, 50) || null,
     }
     const { error } = await supabase.from('user_events').insert(payload)
@@ -78,6 +77,7 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to track event'
     if (process.env.NODE_ENV === 'development') console.warn('track-event:', msg)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    // Siempre 200: el tracking es no crítico y no debe romper descargas ni flujos del usuario
+    return NextResponse.json({ success: false, error: msg }, { status: 200 })
   }
 }
