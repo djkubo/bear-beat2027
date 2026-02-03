@@ -211,7 +211,7 @@ export default function HomeLanding() {
   }, [expandedGenre])
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden">
+    <div className={`min-h-screen bg-[#050505] text-white overflow-x-hidden ${!userState.hasAccess ? 'pb-24 md:pb-0' : ''}`}>
 
       {/* NAVBAR */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-black/80 backdrop-blur-md">
@@ -301,7 +301,7 @@ export default function HomeLanding() {
               <div className="text-center lg:text-left space-y-6">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/50 text-red-400 text-xs font-bold uppercase tracking-wider mb-2">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  Pack Enero 2026
+                  Precio de lanzamiento · Pack Enero 2026
                 </div>
 
                 <h1 className="text-5xl lg:text-7xl font-black text-white leading-[0.9] tracking-tight">
@@ -328,14 +328,40 @@ export default function HomeLanding() {
 
                 <div className="flex flex-col gap-3 max-w-md mx-auto lg:mx-0">
                   <Link href="#catalogo" onClick={() => trackCTAClick('HERO', 'landing')}>
-                    <button className="w-full bg-bear-blue hover:bg-cyan-400 text-black text-xl font-black py-5 rounded-xl shadow-[0_0_30px_rgba(8,225,247,0.4)] hover:shadow-[0_0_50px_rgba(8,225,247,0.6)] transition transform hover:-translate-y-1">
+                    <button className="w-full bg-bear-blue hover:brightness-110 text-bear-black text-xl font-black py-5 rounded-xl shadow-[0_0_30px_rgba(8,225,247,0.4)] hover:shadow-[0_0_50px_rgba(8,225,247,0.6)] transition transform hover:-translate-y-1">
                       VER CATÁLOGO Y DESBLOQUEAR
                     </button>
                   </Link>
+                  <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('HERO_direct', 'landing')} className="text-sm text-bear-blue hover:underline text-center lg:text-left">
+                    O ir directo a pagar $350 →
+                  </Link>
                   <p className="text-xs text-zinc-500 flex justify-center lg:justify-start gap-4">
                     <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> Inmediato</span>
-                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> Garantía 30 días</span>
+                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> Garantía 30 días: devolución 100%</span>
                   </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* CÓMO FUNCIONA – 3 pasos (reduce fricción mental, embudo claro) */}
+          <section className="py-8 px-4 border-y border-white/5">
+            <div className="max-w-3xl mx-auto">
+              <p className="text-center text-zinc-500 text-sm font-medium mb-4">Así de simple:</p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-black text-sm">1</span>
+                  <span className="text-white font-medium">Mira el catálogo abajo</span>
+                </div>
+                <span className="hidden sm:block text-zinc-600">→</span>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-black text-sm">2</span>
+                  <span className="text-white font-medium">Paga $350 (una vez)</span>
+                </div>
+                <span className="hidden sm:block text-zinc-600">→</span>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-black text-sm">3</span>
+                  <span className="text-white font-medium">Descarga todo (web o FTP)</span>
                 </div>
               </div>
             </div>
@@ -608,11 +634,27 @@ export default function HomeLanding() {
           <section className="py-16 md:py-20 px-4 text-center bg-gradient-to-b from-transparent to-bear-blue/10">
             <h2 className="text-3xl md:text-5xl font-black text-white mb-6 tracking-tight">¿Listo para dominar la pista?</h2>
             <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('final_cta', 'landing')}>
-              <button className="bg-bear-blue hover:bg-cyan-400 text-black text-xl font-black py-5 px-10 rounded-2xl shadow-[0_0_40px_rgba(8,225,247,0.4)] hover:scale-105 transition">
+              <button className="bg-bear-blue hover:brightness-110 text-bear-black text-xl font-black py-5 px-10 rounded-2xl shadow-[0_0_40px_rgba(8,225,247,0.4)] hover:scale-105 transition">
                 QUIERO MI ACCESO — $350 MXN
               </button>
             </Link>
           </section>
+
+          {/* STICKY CTA MÓVIL – Siempre visible al scroll (invitados) */}
+          {!userState.hasAccess && (
+            <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-white/10 bg-[#0a0a0a]/95 backdrop-blur p-3 safe-area-pb">
+              <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
+                <p className="text-sm font-medium text-gray-300">
+                  <span className="text-white font-bold">{totalVideos > 0 ? totalVideos.toLocaleString() : '…'}</span> videos listos
+                </p>
+                <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('sticky_cta', 'landing')} className="shrink-0">
+                  <button className="h-11 px-5 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition">
+                    DESBLOQUEAR $350
+                  </button>
+                </Link>
+              </div>
+            </div>
+          )}
         </>
       )}
 

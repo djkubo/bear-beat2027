@@ -447,8 +447,11 @@ export default function CheckoutPage() {
               {/* Columna derecha – Pago (Caja Fuerte: borde neón, fondo oscuro) */}
               <div>
                 <div className="rounded-2xl border-2 border-bear-blue/30 bg-zinc-950 p-6 md:p-8 sticky lg:top-24 shadow-[0_0_40px_rgba(8,225,247,0.08)]">
-                  <h2 className="text-lg font-bold text-white mb-6">Completa tu pago</h2>
-                  <p className="text-sm text-gray-500 mb-4">Selecciona cómo quieres pagar</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-black text-xs">1</span>
+                    <h2 className="text-lg font-bold text-white">Completa tu pago</h2>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-4">Elige cómo pagar → luego recibes acceso al instante.</p>
                   <div className="grid grid-cols-2 gap-3 mb-6">
                     {country === 'MX' && (
                       <>

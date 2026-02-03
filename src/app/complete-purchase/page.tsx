@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import confetti from 'canvas-confetti'
-import { Check, Copy, ExternalLink, Lock, Globe, FolderOpen, Zap, ChevronDown, ChevronRight } from 'lucide-react'
+import { Check, Copy, ExternalLink, Lock, Globe, FolderOpen, Zap, ChevronDown, ChevronRight, Download } from 'lucide-react'
 
 const GOOGLE_DRIVE_FOLDER_URL = 'https://drive.google.com/drive/folders/1jGj20PjgnsbWN1Zbs7sV37zxOUaQxlrd?usp=share_link'
 import { createClient } from '@/lib/supabase/client'
@@ -958,16 +958,32 @@ export default function CompletePurchasePage() {
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-cyan-500/20 border-2 border-cyan-400 mb-6"
+                className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-bear-blue/20 border-2 border-bear-blue mb-6"
               >
-                <Check className="w-14 h-14 text-cyan-400" strokeWidth={2.5} />
+                <Check className="w-14 h-14 text-bear-blue" strokeWidth={2.5} />
               </motion.div>
               <h1 className="text-3xl md:text-4xl font-black text-white mb-2">
                 ¡Todo listo! Eres oficialmente parte de Bear Beat.
               </h1>
-              <p className="text-zinc-400 text-lg mb-10">
+              <p className="text-zinc-400 text-lg mb-6">
                 Hemos enviado tu recibo a <strong className="text-white">{generatedCredentials?.email || email}</strong>.
               </p>
+
+              {/* UN SOLO BOTÓN GIGANTE – Path de menor resistencia (cualquiera puede hacerlo) */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="mb-10"
+              >
+                <Link href="/contenido" className="block">
+                  <button className="w-full max-w-md mx-auto py-5 px-8 rounded-2xl bg-bear-blue text-bear-black font-black text-xl hover:brightness-110 transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(8,225,247,0.4)]">
+                    <Download className="w-6 h-6" />
+                    IR A DESCARGAR MI CONTENIDO
+                  </button>
+                </Link>
+                <p className="text-zinc-500 text-sm mt-2">Haz clic y empieza a descargar en 10 segundos.</p>
+              </motion.div>
 
               {/* User Badge: Avatar (iniciales) + Email + Miembro PRO */}
               <motion.div
@@ -977,11 +993,11 @@ export default function CompletePurchasePage() {
                 className="flex items-center justify-center gap-3 mb-10"
               >
                 <div className="flex items-center gap-3 bg-zinc-900/80 border border-zinc-700/50 rounded-xl px-4 py-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-amber-500 flex items-center justify-center text-white font-black text-sm shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-bear-blue to-amber-500 flex items-center justify-center text-white font-black text-sm shrink-0">
                     {(generatedCredentials?.email || email || 'U').slice(0, 1).toUpperCase()}
                   </div>
                   <span className="text-zinc-300 font-mono text-sm truncate max-w-[180px]">{generatedCredentials?.email || email}</span>
-                  <span className="bg-gradient-to-r from-amber-500/90 to-cyan-500/90 text-black text-xs font-bold px-2.5 py-1 rounded-full shrink-0">
+                  <span className="bg-gradient-to-r from-amber-500/90 to-bear-blue/90 text-black text-xs font-bold px-2.5 py-1 rounded-full shrink-0">
                     Miembro PRO
                   </span>
                 </div>
@@ -996,14 +1012,14 @@ export default function CompletePurchasePage() {
               >
                 <div className="bg-zinc-900/80 border border-zinc-700/50 rounded-2xl p-5 flex flex-col">
                   <div className="flex justify-center mb-3">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-cyan-500/10 border border-cyan-500/30">
-                      <Globe className="h-6 w-6 text-cyan-400" />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-bear-blue/10 border border-bear-blue/30">
+                      <Globe className="h-6 w-6 text-bear-blue" />
                     </div>
                   </div>
                   <h3 className="text-base font-bold text-white mb-1 text-center">Biblioteca Online</h3>
                   <p className="text-zinc-400 text-xs mb-4 text-center flex-1">Visualiza y descarga video por video.</p>
                   <Link href="/contenido" className="block">
-                    <button className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2">
+                    <button className="w-full bg-bear-blue hover:brightness-110 text-bear-black font-black text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2">
                       IR A LA BIBLIOTECA <ExternalLink className="w-4 h-4" />
                     </button>
                   </Link>
