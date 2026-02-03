@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateSignedUrl, isBunnyConfigured, buildBunnyPath, getBunnyConfigStatus } from '@/lib/bunny'
 import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
+import { getPublicAppOrigin } from '@/lib/utils'
 import { Readable } from 'stream'
 
 export const dynamic = 'force-dynamic'
 
 const PLACEHOLDER_URL = '/api/placeholder/thumb?text=V'
+
+function redirectToPlaceholder(req: NextRequest) {
+  const base = getPublicAppOrigin(req)
+  const url = base ? `${base.replace(/\/$/, '')}${PLACEHOLDER_URL}` : PLACEHOLDER_URL
+  return NextResponse.redirect(url)
+}
 
 /**
  * GET /api/thumbnail-cdn?path=Genre/filename.jpg
@@ -44,14 +51,14 @@ export async function GET(req: NextRequest) {
           console.error('[thumbnail-cdn] FTP stream failed:', (e as Error)?.message || e, 'path:', pathNorm)
         }
       }
-      return NextResponse.redirect(new URL(PLACEHOLDER_URL, req.url))
+      return redirectToPlaceholder(req)
     }
 
     try {
       // Mismo prefijo que videos (todo bajo BUNNY_PACK_PATH_PREFIX en Bunny Storage)
       const bunnyPath = buildBunnyPath(pathNorm, true)
       if (!bunnyPath) {
-        return NextResponse.redirect(new URL(PLACEHOLDER_URL, req.url))
+        return redirectToPlaceholder(req)
       }
       const signedUrl = generateSignedUrl(bunnyPath, 3600)
       if (signedUrl && signedUrl.startsWith('http') && signedUrl.length > 20) {
@@ -76,13 +83,13 @@ export async function GET(req: NextRequest) {
         })
       } catch (e) {
         console.error('[thumbnail-cdn] FTP stream failed:', (e as Error)?.message || e, 'path:', pathNorm)
-        return NextResponse.redirect(new URL(PLACEHOLDER_URL, req.url))
+        return redirectToPlaceholder(req)
       }
     }
 
-    return NextResponse.redirect(new URL(PLACEHOLDER_URL, req.url))
+    return redirectToPlaceholder(req)
   } catch (e) {
     console.error('[thumbnail-cdn] Unhandled:', (e as Error)?.message || e)
-    return NextResponse.redirect(new URL(PLACEHOLDER_URL, req.url))
+    return redirectToPlaceholder(req)
   }
 }

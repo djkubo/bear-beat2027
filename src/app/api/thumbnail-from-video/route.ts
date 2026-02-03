@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateSignedUrl, isBunnyConfigured, buildBunnyPath } from '@/lib/bunny'
 import { uploadFile } from '@/lib/storage/bunny'
+import { getPublicAppOrigin } from '@/lib/utils'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
@@ -15,12 +16,17 @@ const MAX_CONCURRENT_GENERATIONS = 3 // Evitar saturar el server con muchas peti
 const activeGenerations = { count: 0 }
 const pathsInProgress = new Set<string>()
 
+/** Redirige a URL pública; evita 0.0.0.0 en producción usando getPublicAppOrigin. */
+function redirectTo(req: NextRequest, pathSegment: string) {
+  const base = getPublicAppOrigin(req)
+  const url = base ? `${base.replace(/\/$/, '')}${pathSegment}` : pathSegment
+  return NextResponse.redirect(url)
+}
+
 function redirectToPlaceholder(req: NextRequest) {
   const artist = req.nextUrl.searchParams.get('artist') || ''
   const title = req.nextUrl.searchParams.get('title') || ''
-  return NextResponse.redirect(
-    new URL(`/api/placeholder/thumb?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`, req.url)
-  )
+  return redirectTo(req, `/api/placeholder/thumb?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`)
 }
 
 
@@ -34,7 +40,7 @@ function redirectToPlaceholder(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const pathParam = req.nextUrl.searchParams.get('path')
   if (!pathParam || pathParam.includes('..') || !/\.(mp4|mov|avi|mkv)$/i.test(pathParam)) {
-    return NextResponse.redirect(new URL('/api/placeholder/thumb?text=V', req.url))
+    return redirectTo(req, '/api/placeholder/thumb?text=V')
   }
   const sanitized = pathParam.replace(/^\//, '')
   const pathJpg = sanitized.replace(/\.(mp4|mov|avi|mkv)$/i, '.jpg')
@@ -57,7 +63,7 @@ export async function GET(req: NextRequest) {
     if (existing?.thumbnail_url) {
       const thumbPath = existing.thumbnail_url.startsWith('http') ? null : existing.thumbnail_url
       if (thumbPath) {
-        return NextResponse.redirect(new URL(`/api/thumbnail-cdn?path=${encodeURIComponent(thumbPath)}`, req.url))
+        return redirectTo(req, `/api/thumbnail-cdn?path=${encodeURIComponent(thumbPath)}`)
       }
       return NextResponse.redirect(existing.thumbnail_url)
     }
@@ -72,7 +78,7 @@ export async function GET(req: NextRequest) {
           .from('videos')
           .update({ thumbnail_url: pathJpg, updated_at: new Date().toISOString() })
           .eq('file_path', sanitized)
-        return NextResponse.redirect(new URL(`/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`, req.url))
+        return redirectTo(req, `/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`)
       }
     }
 
@@ -130,7 +136,7 @@ export async function GET(req: NextRequest) {
         .update({ thumbnail_url: pathJpg, updated_at: new Date().toISOString() })
         .eq('file_path', sanitized)
 
-      return NextResponse.redirect(new URL(`/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`, req.url))
+      return redirectTo(req, `/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`)
     } catch (e) {
       console.warn('thumbnail-from-video:', e)
       return redirectToPlaceholder(req)
