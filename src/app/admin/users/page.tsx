@@ -3,17 +3,33 @@ import { createServerClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
 
-export default async function AdminUsersPage() {
+type SearchParams = { search?: string }
+
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>
+}) {
   const supabase = await createServerClient()
-  
+  const params = await searchParams
+  const searchTerm = params?.search?.trim().toLowerCase()
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  
-  // Obtener todos los usuarios
+
   const { data: users, count } = await supabase
     .from('users')
     .select('*, purchases(count)', { count: 'exact' })
     .order('created_at', { ascending: false })
+
+  const filteredUsers = searchTerm
+    ? (users || []).filter(
+        (u: any) =>
+          u.name?.toLowerCase().includes(searchTerm) ||
+          u.email?.toLowerCase().includes(searchTerm) ||
+          u.id?.toLowerCase().includes(searchTerm)
+      )
+    : users || []
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-bear-blue/5 via-background to-bear-black/5">
@@ -26,7 +42,11 @@ export default async function AdminUsersPage() {
                 ← Volver al Dashboard
               </Link>
               <h1 className="text-3xl font-extrabold">👥 Usuarios</h1>
-              <p className="text-muted-foreground">Total: {count || 0} usuarios</p>
+              <p className="text-muted-foreground">
+                {searchTerm
+                  ? `${filteredUsers.length} resultado(s) para "${params?.search}"`
+                  : `Total: ${count || 0} usuarios`}
+              </p>
             </div>
           </div>
         </div>
@@ -34,10 +54,12 @@ export default async function AdminUsersPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="bg-card rounded-2xl p-6 border-2 border-bear-blue/30 shadow-xl">
-          {!users || users.length === 0 ? (
+          {filteredUsers.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-2xl font-bold text-muted-foreground">
-                Aún no hay usuarios registrados
+                {searchTerm
+                  ? `No hay resultados para "${params?.search}"`
+                  : 'Aún no hay usuarios registrados'}
               </p>
             </div>
           ) : (
@@ -55,7 +77,7 @@ export default async function AdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user: any) => (
+                  {filteredUsers.map((user: any) => (
                     <tr key={user.id} className="border-b hover:bg-bear-blue/5">
                       <td className="py-4 px-4">
                         <div className="font-bold">{user.name || 'Sin nombre'}</div>

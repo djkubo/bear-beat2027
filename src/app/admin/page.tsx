@@ -4,6 +4,7 @@ import { formatPrice, formatDate } from '@/lib/utils'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import { Users, DollarSign, Package, TrendingUp } from 'lucide-react'
 import { SyncVideosFtpButton } from './SyncVideosFtpButton'
+import { AdminDashboardToolbar } from './AdminDashboardToolbar'
 
 const USD_TO_MXN_RATE = Number(process.env.CURRENCY_USD_TO_MXN_RATE) || 17
 
@@ -157,7 +158,9 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <AdminDashboardToolbar />
+
+      <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         {/* KPIs */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
@@ -245,51 +248,51 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Menú de navegación - 9 secciones */}
-        <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-9 gap-3 mb-8">
-          <a href="/admin/users" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center">
+        {/* Menú de navegación - 9 secciones (móvil: 3 cols, min 80px, touch-friendly) */}
+        <div className="grid grid-cols-3 lg:grid-cols-9 gap-3 mb-8">
+          <a href="/admin/users" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
             <div className="text-3xl mb-1">👥</div>
-            <div className="font-bold text-sm">Usuarios</div>
+            <div className="font-bold text-sm whitespace-nowrap">Usuarios</div>
           </a>
 
-          <a href="/admin/purchases" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center">
+          <a href="/admin/purchases" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
             <div className="text-3xl mb-1">💳</div>
-            <div className="font-bold text-sm">Compras</div>
+            <div className="font-bold text-sm whitespace-nowrap">Compras</div>
           </a>
 
-          <a href="/admin/packs" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center">
+          <a href="/admin/packs" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
             <div className="text-3xl mb-1">📦</div>
-            <div className="font-bold text-sm">Packs</div>
+            <div className="font-bold text-sm whitespace-nowrap">Packs</div>
           </a>
 
-          <a href="/admin/tracking" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center">
+          <a href="/admin/tracking" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
             <div className="text-3xl mb-1">📊</div>
-            <div className="font-bold text-sm">Tracking</div>
+            <div className="font-bold text-sm whitespace-nowrap">Tracking</div>
           </a>
 
-          <a href="/admin/attribution" className="bg-card rounded-xl p-4 border-2 border-green-500 hover:border-green-600 shadow-lg hover:shadow-xl transition-all text-center">
+          <a href="/admin/attribution" className="bg-card rounded-xl p-4 border-2 border-green-500 hover:border-green-600 shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
             <div className="text-3xl mb-1">🎯</div>
-            <div className="font-bold text-sm">Atribución</div>
+            <div className="font-bold text-sm whitespace-nowrap">Atribución</div>
           </a>
 
-          <a href="/admin/chatbot" className="bg-card rounded-xl p-4 border-2 border-pink-500 hover:border-pink-600 shadow-lg hover:shadow-xl transition-all text-center">
+          <a href="/admin/chatbot" className="bg-card rounded-xl p-4 border-2 border-pink-500 hover:border-pink-600 shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
             <div className="text-3xl mb-1">💬</div>
-            <div className="font-bold text-sm">Chatbot</div>
+            <div className="font-bold text-sm whitespace-nowrap">Chatbot</div>
           </a>
 
-          <a href="/admin/manychat" className="bg-card rounded-xl p-4 border-2 border-purple-500 hover:border-purple-600 shadow-lg hover:shadow-xl transition-all text-center">
+          <a href="/admin/manychat" className="bg-card rounded-xl p-4 border-2 border-purple-500 hover:border-purple-600 shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
             <div className="text-3xl mb-1">🤖</div>
-            <div className="font-bold text-sm">ManyChat</div>
+            <div className="font-bold text-sm whitespace-nowrap">ManyChat</div>
           </a>
 
-          <a href="/admin/pending" className="bg-card rounded-xl p-4 border-2 border-yellow-500 hover:border-yellow-600 shadow-lg hover:shadow-xl transition-all text-center">
+          <a href="/admin/pending" className="bg-card rounded-xl p-4 border-2 border-yellow-500 hover:border-yellow-600 shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
             <div className="text-3xl mb-1">⏳</div>
-            <div className="font-bold text-sm">Pendientes</div>
+            <div className="font-bold text-sm whitespace-nowrap">Pendientes</div>
           </a>
 
-          <a href="/admin/settings" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center">
+          <a href="/admin/settings" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
             <div className="text-3xl mb-1">⚙️</div>
-            <div className="font-bold text-sm">Config</div>
+            <div className="font-bold text-sm whitespace-nowrap">Config</div>
           </a>
         </div>
 
@@ -298,60 +301,95 @@ export default async function AdminDashboardPage() {
           <SyncVideosFtpButton />
         </div>
 
-        {/* Últimas Compras */}
+        {/* Últimas Compras: tabla en desktop, cards en móvil */}
         <div className="bg-card rounded-2xl p-6 border-2 border-bear-blue/30 shadow-xl">
           <h2 className="text-2xl font-extrabold mb-6">
             💳 Últimas Compras (10)
           </h2>
-          
+
           {!recentPurchases || recentPurchases.length === 0 ? (
             <p className="text-center py-12 text-muted-foreground">
               Aún no hay compras
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-bear-blue/20">
-                    <th className="text-left py-3 px-4 font-bold w-10" title="Fuente">Fuente</th>
-                    <th className="text-left py-3 px-4 font-bold">Fecha</th>
-                    <th className="text-left py-3 px-4 font-bold">Usuario</th>
-                    <th className="text-left py-3 px-4 font-bold">Pack</th>
-                    <th className="text-left py-3 px-4 font-bold">Monto</th>
-                    <th className="text-left py-3 px-4 font-bold">Método</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentPurchases.map((purchase: any) => {
-                    const { icon } = sourceDisplay(purchase.utm_source || purchase.traffic_source || 'direct')
-                    return (
-                    <tr key={purchase.id} className="border-b hover:bg-bear-blue/5">
-                      <td className="py-3 px-4 text-xl" title={purchase.utm_source || 'direct'}>
+            <>
+              {/* Desktop: tabla completa */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full md:table">
+                  <thead>
+                    <tr className="border-b-2 border-bear-blue/20">
+                      <th className="text-left py-3 px-4 font-bold w-10" title="Fuente">Fuente</th>
+                      <th className="text-left py-3 px-4 font-bold">Fecha</th>
+                      <th className="text-left py-3 px-4 font-bold">Usuario</th>
+                      <th className="text-left py-3 px-4 font-bold">Pack</th>
+                      <th className="text-left py-3 px-4 font-bold">Monto</th>
+                      <th className="text-left py-3 px-4 font-bold">Método</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentPurchases.map((purchase: any) => {
+                      const { icon } = sourceDisplay(purchase.utm_source || purchase.traffic_source || 'direct')
+                      return (
+                        <tr key={purchase.id} className="border-b hover:bg-bear-blue/5">
+                          <td className="py-3 px-4 text-xl" title={purchase.utm_source || 'direct'}>
+                            {icon}
+                          </td>
+                          <td className="py-3 px-4">
+                            {formatDate(purchase.purchased_at)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-medium">{purchase.user?.name || 'Sin nombre'}</div>
+                            <div className="text-sm text-muted-foreground">{purchase.user?.email}</div>
+                          </td>
+                          <td className="py-3 px-4 font-medium">
+                            {purchase.pack?.name}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-green-600">
+                            {formatPrice(purchase.amount_paid, purchase.currency as any)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-1 bg-bear-blue/10 rounded text-xs font-bold">
+                              {purchase.payment_provider}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Móvil: lista de tarjetas */}
+              <div className="block md:hidden space-y-4">
+                {recentPurchases.map((purchase: any) => {
+                  const { icon } = sourceDisplay(purchase.utm_source || purchase.traffic_source || 'direct')
+                  return (
+                    <div
+                      key={purchase.id}
+                      className="flex gap-4 p-4 rounded-xl border-2 border-border bg-background/50 shadow-md"
+                    >
+                      <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-bear-blue/10 border border-bear-blue/30 flex items-center justify-center text-3xl">
                         {icon}
-                      </td>
-                      <td className="py-3 px-4">
-                        {formatDate(purchase.purchased_at)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="font-medium">{purchase.user?.name || 'Sin nombre'}</div>
-                        <div className="text-sm text-muted-foreground">{purchase.user?.email}</div>
-                      </td>
-                      <td className="py-3 px-4 font-medium">
-                        {purchase.pack?.name}
-                      </td>
-                      <td className="py-3 px-4 font-bold text-green-600">
-                        {formatPrice(purchase.amount_paid, purchase.currency as any)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-1 bg-bear-blue/10 rounded text-xs font-bold">
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-foreground truncate">
+                          {purchase.user?.name || 'Sin nombre'} · {purchase.pack?.name || '—'}
+                        </div>
+                        <div className="text-lg font-bold text-green-600 mt-0.5">
+                          {formatPrice(purchase.amount_paid, purchase.currency as any)}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {formatDate(purchase.purchased_at)}
+                        </div>
+                        <span className="inline-block mt-2 px-2 py-1 bg-bear-blue/10 rounded text-xs font-bold">
                           {purchase.payment_provider}
                         </span>
-                      </td>
-                    </tr>
-                  )})}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>

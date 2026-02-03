@@ -36,18 +36,23 @@ export function HeroSection({ pack }: HeroSectionProps) {
       </div>
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Desktop: Video IZQUIERDA, Texto DERECHA (flex-row-reverse = texto 1º en DOM va a la derecha). Móvil: texto arriba, video abajo */}
-        <div className="flex flex-col md:flex-row-reverse md:gap-12 lg:gap-16 items-center gap-8 animate-fade-in">
-          {/* Columna Texto + CTA – En DOM primero: en desktop va a la DERECHA por flex-row-reverse. Móvil: arriba */}
-          <div className="order-1 text-center md:text-left space-y-6 flex-1 min-w-0">
-            {/* Badge */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center text-center lg:text-left animate-fade-in">
+          {/* COLUMNA IZQUIERDA (VIDEO/VISUAL) - En Mobile va SEGUNDO (order-2) */}
+          <div className="order-2 lg:order-1 flex justify-center lg:justify-start relative group">
+            <Link href="/contenido" className="relative w-full max-w-md aspect-video bg-zinc-900 rounded-2xl border-2 border-bear-blue/30 flex items-center justify-center shadow-[0_0_30px_rgba(8,225,247,0.2)] overflow-hidden group-hover:shadow-[0_0_40px_rgba(8,225,247,0.3)] transition-shadow">
+              <Play className="w-20 h-20 text-bear-blue animate-pulse ml-1" />
+              <span className="absolute bottom-4 text-bear-blue font-mono text-sm">PREVIEW 2026</span>
+            </Link>
+          </div>
+
+          {/* COLUMNA DERECHA (TEXTO) - En Mobile va PRIMERO (order-1) */}
+          <div className="order-1 lg:order-2 space-y-6">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bear-blue/10 border-2 border-bear-blue/30">
               <span className="text-2xl">🔥</span>
               <span className="text-sm font-bold text-bear-black">PACK ACTUAL - Enero 2026</span>
             </div>
 
-            {/* Logo grande */}
-            <div className="flex justify-center md:justify-start mb-4">
+            <div className="flex justify-center lg:justify-start mb-4">
               <img 
                 src="/logos/BBLOGOTIPOPOSITIVO_Mesa de trabajo 1.png" 
                 alt="Bear Beat" 
@@ -55,7 +60,6 @@ export function HeroSection({ pack }: HeroSectionProps) {
               />
             </div>
 
-            {/* Main Heading */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
               <span className="block mb-2">{totalVideos} Video Remixes</span>
               <span className="block bg-gradient-to-r from-bear-blue to-bear-blue/70 bg-clip-text text-transparent">
@@ -63,17 +67,15 @@ export function HeroSection({ pack }: HeroSectionProps) {
               </span>
             </h1>
 
-            {/* Subtitle */}
             <p className="text-xl md:text-2xl lg:text-3xl font-bold max-w-xl">
               Descarga todo por solo
               <span className="block text-4xl md:text-5xl text-bear-blue mt-3">$350 MXN</span>
             </p>
-            
+
             <p className="text-base md:text-lg text-muted-foreground">
               ✅ Pago único • ✅ Sin mensualidades • ✅ Acceso inmediato
             </p>
 
-            {/* CTA principal */}
             <div className="flex flex-col gap-3 max-w-xl">
               <Link href="/checkout" className="w-full" onClick={() => trackCTAClick('COMPRAR AHORA', 'hero')}>
                 <Button 
@@ -86,8 +88,7 @@ export function HeroSection({ pack }: HeroSectionProps) {
               <p className="text-sm text-muted-foreground">👆 Haz clic aquí para comprar</p>
             </div>
 
-            {/* Features Pills */}
-            <div className="flex flex-wrap gap-3 justify-center md:justify-start pt-4">
+            <div className="flex flex-wrap gap-3 justify-center lg:justify-start pt-4">
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/80 backdrop-blur border-2 border-bear-blue/30">
                 <span className="text-green-500">✅</span>
                 <span className="text-sm font-bold">Acceso inmediato</span>
@@ -102,22 +103,9 @@ export function HeroSection({ pack }: HeroSectionProps) {
               </div>
             </div>
 
-            {/* Social Proof */}
             <p className="text-sm text-muted-foreground">
               🎉 Más de <span className="font-bold text-foreground">500 DJs</span> ya compraron este pack
             </p>
-          </div>
-
-          {/* Columna Video/Play – En DOM segundo: en desktop va a la IZQUIERDA por flex-row-reverse. Móvil: abajo */}
-          <div className="order-2 flex justify-center md:justify-start w-full md:max-w-lg">
-            <div className="w-full max-w-md aspect-video rounded-2xl bg-zinc-900/80 border-2 border-cyan-500/30 flex items-center justify-center overflow-hidden shadow-2xl">
-              <Link href="/contenido" className="flex flex-col items-center gap-3 p-8 group">
-                <span className="w-20 h-20 rounded-full bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center group-hover:bg-cyan-500/30 transition">
-                  <Play className="h-10 w-10 text-cyan-400 fill-cyan-400/30 ml-1" />
-                </span>
-                <span className="text-base md:text-lg font-bold text-cyan-400">Ver videos de ejemplo</span>
-              </Link>
-            </div>
           </div>
         </div>
       </div>
