@@ -77,8 +77,8 @@ export async function GET(req: NextRequest) {
 
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
-      // Videos: con prefijo (Videos Enero 2026/Genre/video.mp4). ZIPs: en raíz (Genre.zip)
-      const bunnyPath = buildBunnyPath(sanitizedPath, !isZip)
+      // Todo bajo el mismo prefijo en Bunny (BUNNY_PACK_PATH_PREFIX/Genre/video.mp4 o Genre.zip)
+      const bunnyPath = buildBunnyPath(sanitizedPath, true)
       let signedUrl: string
       try {
         signedUrl = bunnyPath ? generateSignedUrl(bunnyPath, expiresIn) : ''

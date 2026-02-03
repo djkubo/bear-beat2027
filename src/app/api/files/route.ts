@@ -140,10 +140,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Videos con prefijo; ZIPs en raíz (misma lógica que /api/download)
+    // Todo bajo el mismo prefijo en Bunny (BUNNY_PACK_PATH_PREFIX)
     const pathNorm = filePath.replace(/^\//, '').trim()
-    const isZip = pathNorm.toLowerCase().endsWith('.zip')
-    const fullPath = buildBunnyPath(pathNorm, !isZip)
+    const fullPath = buildBunnyPath(pathNorm, true)
     if (!fullPath) {
       return NextResponse.json({ success: false, error: 'Invalid file path' }, { status: 400 })
     }

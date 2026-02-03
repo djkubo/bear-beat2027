@@ -48,8 +48,8 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-      // Portadas en la raíz del CDN: SIN prefijo (Genre/foto.jpg)
-      const bunnyPath = buildBunnyPath(pathNorm, false)
+      // Mismo prefijo que videos (todo bajo BUNNY_PACK_PATH_PREFIX en Bunny Storage)
+      const bunnyPath = buildBunnyPath(pathNorm, true)
       if (!bunnyPath) {
         return NextResponse.redirect(new URL(PLACEHOLDER_URL, req.url))
       }

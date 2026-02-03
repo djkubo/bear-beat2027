@@ -62,9 +62,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(existing.thumbnail_url)
     }
 
-    // 2) ¿Existe ya el .jpg en Bunny? Portadas en raíz (Genre/foto.jpg)
+    // 2) ¿Existe ya el .jpg en Bunny? (mismo prefijo que videos)
     if (isBunnyConfigured()) {
-      const bunnyJpgPath = buildBunnyPath(pathJpg, false)
+      const bunnyJpgPath = buildBunnyPath(pathJpg, true)
       const jpgSignedUrl = bunnyJpgPath ? generateSignedUrl(bunnyJpgPath, 300) : ''
       const headRes = jpgSignedUrl ? await fetch(jpgSignedUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) }) : { ok: false }
       if (headRes.ok) {
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
 
       if (!fs.existsSync(tmpThumb)) throw new Error('No se generó thumbnail')
       const thumbBuffer = await fs.promises.readFile(tmpThumb)
-      const bunnyThumbPath = buildBunnyPath(pathJpg, false)
+      const bunnyThumbPath = buildBunnyPath(pathJpg, true)
       const upload = bunnyThumbPath ? await uploadFile(bunnyThumbPath, thumbBuffer) : { success: false, error: 'Invalid path' }
       if (!upload.success) throw new Error(upload.error || 'Upload failed')
 
