@@ -169,3 +169,11 @@ body,
 main {
   max-width: 100vw;
 }
+
+/* Safe area para barras fijas en móvil (notch, home indicator) */
+.safe-area-pb {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0));
+}
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top, 0);
+}

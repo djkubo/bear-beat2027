@@ -63,13 +63,17 @@ export async function GET(req: NextRequest) {
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
       const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
-      const signedUrl = generateSignedUrl(bunnyPath, expiresIn, process.env.NEXT_PUBLIC_APP_URL)
+      // Sin referrer: el proxy hace fetch desde el servidor; Bunny rechazaría con token_referrer.
+      const signedUrl = generateSignedUrl(bunnyPath, expiresIn)
       try {
         const range = req.headers.get('range') || ''
         const res = await fetch(signedUrl, {
           method: 'GET',
           headers: range ? { Range: range } : {},
         })
+        if (!res.ok && res.status !== 206) {
+          console.warn('download Bunny response:', res.status, res.statusText, 'path:', sanitizedPath)
+        }
         if (res.ok || res.status === 206) {
           try {
             await supabase.from('downloads').insert({

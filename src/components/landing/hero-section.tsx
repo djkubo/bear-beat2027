@@ -66,18 +66,17 @@ export function HeroSection({ pack, totalVideos: totalVideosProp }: HeroSectionP
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
               </span>
               <span className="text-sm font-bold text-orange-400 tracking-wide uppercase">
-                Acceso Exclusivo • Enero 2026
+                ⚠️ ACCESO RESTRINGIDO • SOLO 50 CUPOS HOY
               </span>
             </div>
 
             {/* Titular Agresivo */}
             <div className="space-y-4">
               <h1 className="text-5xl lg:text-7xl font-black text-white tracking-tight leading-[0.9]">
-                TU SET <span className="text-transparent bg-clip-text bg-gradient-to-r from-bear-blue to-cyan-400">PERFECTO</span><br />
-                EN 5 MINUTOS.
+                TU COMPETENCIA TE VA A <span className="text-transparent bg-clip-text bg-gradient-to-r from-bear-blue to-cyan-400">ENVIDIAR</span>.
               </h1>
               <p className="text-xl text-zinc-400 max-w-xl mx-auto lg:mx-0 font-medium leading-relaxed">
-                Deja de perder horas editando. Descarga <strong className="text-white">+{videoLabel} Video Remixes</strong> organizados por Key & BPM. Listos para reventar la pista.
+                Deja de ser un DJ del montón que pierde horas en YouTube. Obtén la <strong className="text-white">Ventaja Injusta</strong>: {videoLabel} Video Remixes de Élite. Arrastra, suelta y revienta la pista mientras ellos siguen buscando qué poner.
               </p>
             </div>
 
@@ -85,12 +84,12 @@ export function HeroSection({ pack, totalVideos: totalVideosProp }: HeroSectionP
             <div className="bg-zinc-900/50 border border-white/10 rounded-2xl p-6 backdrop-blur-sm inline-block">
               <div className="flex flex-col lg:flex-row items-center gap-6">
                 <div className="text-center lg:text-left">
-                  <p className="text-zinc-500 text-sm font-bold uppercase tracking-wider mb-1">Precio Regular</p>
-                  <p className="text-2xl text-zinc-600 line-through font-bold decoration-red-500/50">$1,500 MXN</p>
+                  <p className="text-zinc-500 text-sm font-bold uppercase tracking-wider mb-1">Valor Real del Material</p>
+                  <p className="text-2xl text-zinc-600 line-through font-bold decoration-red-500/50">$12,680 MXN</p>
                 </div>
                 <div className="hidden lg:block w-px h-12 bg-white/10" />
                 <div className="text-center lg:text-left">
-                  <p className="text-bear-blue text-sm font-bold uppercase tracking-wider mb-1">Oferta Hoy</p>
+                  <p className="text-bear-blue text-sm font-bold uppercase tracking-wider mb-1">Tu Inversión Ridícula</p>
                   <p className="text-5xl font-black text-white tracking-tighter shadow-bear-blue/20 drop-shadow-lg">
                     ${priceMXN} <span className="text-2xl text-zinc-400 font-medium">MXN</span>
                   </p>
@@ -102,13 +101,11 @@ export function HeroSection({ pack, totalVideos: totalVideosProp }: HeroSectionP
             <div className="space-y-4 max-w-lg mx-auto lg:mx-0">
               <Link href="/checkout" className="block" onClick={() => trackCTAClick('HERO_CTA', 'hero')}>
                 <Button className="w-full h-16 text-xl lg:text-2xl font-black bg-bear-blue hover:brightness-110 text-bear-black rounded-xl shadow-[0_0_40px_-10px_rgba(8,225,247,0.6)] hover:shadow-[0_0_60px_-10px_rgba(8,225,247,0.8)] transition-all transform hover:-translate-y-1">
-                  ⚡ DESCARGAR AHORA - ACCESO TOTAL
+                  ⚡ OBTENER MI VENTAJA INJUSTA - ${priceMXN}
                 </Button>
               </Link>
               <div className="flex items-center justify-center lg:justify-start gap-4 text-xs text-zinc-500 font-medium">
-                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> Pago Único</span>
-                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> Acceso Inmediato</span>
-                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> Servidores FTP</span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> 🔒 Si no te hace ganar más dinero, te devolvemos todo.</span>
               </div>
             </div>
 

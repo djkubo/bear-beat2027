@@ -182,16 +182,18 @@ export default function ComunidadPage() {
                 className={`rounded-2xl p-5 border-2 ${
                   bono.status === 'available'
                     ? 'bg-white/5 border-bear-blue/30'
-                    : 'bg-white/5 border-gray-700 opacity-75'
+                    : 'bg-white/5 border-gray-700'
                 }`}
               >
                 <p className="font-bold">{bono.title}</p>
-                <p className="text-sm text-gray-500">{bono.size}</p>
+                <p className="text-sm text-gray-500">
+                  {bono.status === 'coming' ? 'Próximamente' : bono.size}
+                </p>
                 {bono.description && (
                   <p className="text-sm text-gray-400 mt-1">{bono.description}</p>
                 )}
                 {bono.status === 'coming' && (
-                  <span className="inline-block mt-2 text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded">
+                  <span className="inline-block mt-2 text-xs font-medium bg-amber-500/20 text-amber-400 px-2 py-1 rounded">
                     Próximamente
                   </span>
                 )}

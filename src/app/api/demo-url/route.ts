@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
 
   if (isBunnyConfigured()) {
     const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${pathNorm}` : pathNorm
-    const signedUrl = generateSignedUrl(bunnyPath, DEMO_EXPIRY_SECONDS, process.env.NEXT_PUBLIC_APP_URL)
+    // Sin referrer: el proxy hace fetch desde el servidor; Bunny rechazaría con token_referrer.
+    const signedUrl = generateSignedUrl(bunnyPath, DEMO_EXPIRY_SECONDS)
     try {
       const range = req.headers.get('range') || ''
       const res = await fetch(signedUrl, {

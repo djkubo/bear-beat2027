@@ -3,7 +3,7 @@ import { generateSignedUrl, isBunnyConfigured } from '@/lib/bunny'
 import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
 import { Readable } from 'stream'
 
-const BUNNY_PACK_PREFIX = process.env.BUNNY_PACK_PATH_PREFIX || 'packs/enero-2026'
+const BUNNY_PACK_PREFIX = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || 'packs/enero-2026').replace(/\/$/, '')
 
 /**
  * GET /api/thumbnail-cdn?path=Genre/filename.jpg

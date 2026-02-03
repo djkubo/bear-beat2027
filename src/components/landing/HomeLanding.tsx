@@ -117,7 +117,7 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl, totalVideos
             ) : (
               <Link href={`/checkout?pack=${packSlug}`}>
                 <button className="bg-bear-blue hover:bg-cyan-400 text-black font-black py-3 px-8 rounded-full transition shadow-[0_0_20px_rgba(8,225,247,0.4)]">
-                  DESBLOQUEAR ESTE Y {moreLabel} MÁS
+                  DESBLOQUEAR MI ARSENAL
                 </button>
               </Link>
             )}
@@ -316,17 +316,16 @@ export default function HomeLanding() {
 
               {/* TEXTO DE VENTA (DERECHA EN DESKTOP) – Sin redundancia con catálogo */}
               <div className="text-center lg:text-left space-y-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-bear-blue/20 border border-bear-blue/50 text-bear-blue text-xs font-bold uppercase tracking-wider mb-2">
-                  {packName} · Pago único
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/50 text-orange-400 text-xs font-bold uppercase tracking-wider mb-2">
+                  ⚠️ ACCESO RESTRINGIDO • SOLO 50 CUPOS HOY
                 </div>
 
                 <h1 className="text-4xl lg:text-6xl font-black text-white leading-[1] tracking-tight">
-                  Video remixes HD<br />
-                  <span className="text-bear-blue">Key & BPM</span> para tu set
+                  TU COMPETENCIA TE VA A <span className="text-bear-blue">ENVIDIAR</span>.
                 </h1>
 
                 <p className="text-lg text-zinc-400 max-w-lg mx-auto lg:mx-0">
-                  Miles de videos listos para descargar. Mira el catálogo abajo, escucha demos y desbloquea todo con un solo pago.
+                  Deja de ser un DJ del montón que pierde horas en YouTube. Obtén la <strong className="text-white">Ventaja Injusta</strong>: 1,268 Video Remixes de Élite. Arrastra, suelta y revienta la pista mientras ellos siguen buscando qué poner.
                 </p>
 
                 <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-4 py-2">
@@ -340,19 +339,18 @@ export default function HomeLanding() {
                 </div>
 
                 <div className="flex flex-col gap-3 max-w-md mx-auto lg:mx-0">
-                  <Link href="#catalogo" onClick={() => trackCTAClick('HERO', 'landing')}>
+                  <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('HERO', 'landing')}>
                     <button className="w-full bg-bear-blue hover:brightness-110 text-bear-black text-lg font-black py-4 rounded-xl shadow-[0_0_20px_rgba(8,225,247,0.3)] transition">
+                      ⚡ OBTENER MI VENTAJA INJUSTA - ${priceMXN}
+                    </button>
+                  </Link>
+                  <Link href="#catalogo" onClick={() => trackCTAClick('HERO_direct', 'landing')} className="text-center lg:text-left">
+                    <button className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl border border-white/20 transition">
                       Ver catálogo y escuchar demos
                     </button>
                   </Link>
-                  <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('HERO_direct', 'landing')} className="text-center lg:text-left">
-                    <button className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl border border-white/20 transition">
-                      Comprar ahora · ${priceMXN} MXN
-                    </button>
-                  </Link>
                   <p className="text-xs text-zinc-500 flex justify-center lg:justify-start gap-3 flex-wrap">
-                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> Acceso al instante</span>
-                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> Descarga web y FTP</span>
+                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> 🔒 Si no te hace ganar más dinero, te devolvemos todo.</span>
                   </p>
                 </div>
               </div>
@@ -372,28 +370,45 @@ export default function HomeLanding() {
 
           <StatsSection totalPurchases={totalPurchases} totalVideos={totalVideos > 0 ? totalVideos : undefined} />
 
-          {/* UNA SOLA FILA DE BENEFICIOS (sin repetir hero) */}
+          {/* UNA SOLA FILA DE BENEFICIOS (Dolor vs Placer) */}
           <section className="py-12 border-y border-white/5">
             <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="flex items-center gap-4 p-4 rounded-xl bg-black/40 border border-white/10">
                 <div className="w-10 h-10 rounded-lg bg-bear-blue/20 flex items-center justify-center shrink-0 text-bear-blue"><Play className="h-5 w-5" /></div>
                 <div>
-                  <h3 className="font-bold text-white">HD 1080p</h3>
-                  <p className="text-zinc-500 text-sm">Sin pixelación en LED</p>
+                  <h3 className="font-bold text-white">Tus Pantallas LED Merecen Respeto</h3>
+                  <p className="text-zinc-500 text-sm">No más pixelación vergonzosa. Proyecta imagen de artista Top, no de amateur.</p>
                 </div>
               </div>
               <div className="flex items-center gap-4 p-4 rounded-xl bg-black/40 border border-white/10">
                 <div className="w-10 h-10 rounded-lg bg-bear-blue/20 flex items-center justify-center shrink-0 text-bear-blue"><Wifi className="h-5 w-5" /></div>
                 <div>
-                  <h3 className="font-bold text-white">Key & BPM</h3>
-                  <p className="text-zinc-500 text-sm">Mezcla armónica al instante</p>
+                  <h3 className="font-bold text-white">Mezcla Como un Cirujano</h3>
+                  <p className="text-zinc-500 text-sm">Olvídate de entrenar el oído. Todo está calculado matemáticamente para que tus mezclas sean perfectas.</p>
                 </div>
               </div>
               <div className="flex items-center gap-4 p-4 rounded-xl bg-black/40 border border-white/10">
                 <div className="w-10 h-10 rounded-lg bg-bear-blue/20 flex items-center justify-center shrink-0 text-bear-blue"><Download className="h-5 w-5" /></div>
                 <div>
-                  <h3 className="font-bold text-white">FTP ilimitado</h3>
-                  <p className="text-zinc-500 text-sm">Descarga masiva en minutos</p>
+                  <h3 className="font-bold text-white">Tu Tiempo Vale Oro</h3>
+                  <p className="text-zinc-500 text-sm">Descarga 170 GB mientras duermes. Levántate con el trabajo sucio ya hecho.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ¿Eres un DJ Pro o un Hobby? (Filtro de Ego) */}
+          <section className="py-12 px-4 border-y border-white/5">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-black text-white text-center mb-8">¿Eres un DJ Pro o un Hobby?</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-xl border-2 border-green-500/40 bg-green-500/5 p-6">
+                  <h3 className="font-bold text-green-400 mb-2">Cobras Bien por tu Show:</h3>
+                  <p className="text-zinc-400 text-sm">Si te pagan por calidad, necesitas herramientas de calidad. Punto.</p>
+                </div>
+                <div className="rounded-xl border-2 border-red-500/30 bg-red-500/5 p-6">
+                  <h3 className="font-bold text-red-400 mb-2">Prefieres lo Barato a lo Bueno:</h3>
+                  <p className="text-zinc-400 text-sm">Si $350 se te hace caro para tu carrera, este club no es para ti.</p>
                 </div>
               </div>
             </div>
@@ -597,8 +612,10 @@ export default function HomeLanding() {
                     )}
 
                     <div className="rounded-2xl border-2 border-bear-blue/60 bg-bear-blue/5 p-6 shadow-[0_0_30px_rgba(8,225,247,0.08)]">
-                      <h3 className="font-black text-white text-lg mb-1">Acceso completo al pack</h3>
-                      <p className="text-3xl font-black text-bear-blue mb-1">${priceMXN} MXN</p>
+                      <h3 className="font-black text-white text-lg mb-1">¿Cuánto vale tu reputación?</h3>
+                      <p className="text-xs text-amber-400 font-medium mb-2">🔥 El 93% de las licencias de Enero ya se vendieron. Quedan pocas.</p>
+                      <p className="text-2xl text-zinc-500 line-through mb-0.5">Valor Real del Material $12,680 MXN</p>
+                      <p className="text-3xl font-black text-bear-blue mb-1">Tu Inversión Ridícula: ${priceMXN} MXN</p>
                       <p className="text-xs text-gray-500 mb-4">Pago único · Descarga web y FTP</p>
                       <ul className="space-y-2 mb-5 text-sm text-gray-300">
                         {[`${totalVideos > 0 ? totalVideos.toLocaleString() : '…'} videos HD`, 'Descarga ilimitada', 'Acceso FTP incluido'].map((item, i) => (
@@ -610,7 +627,7 @@ export default function HomeLanding() {
                       </ul>
                       <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('sidebar_cta', 'landing')}>
                         <button className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition">
-                          Comprar ahora
+                          💎 UNIRME A LA ÉLITE AHORA
                         </button>
                       </Link>
                     </div>

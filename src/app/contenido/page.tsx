@@ -724,9 +724,9 @@ export default function ContenidoPage() {
                   <Lock className="h-7 w-7" />
                 </span>
               </div>
-              <h3 className="text-xl font-black text-white mb-2">Este contenido es exclusivo</h3>
+              <h3 className="text-xl font-black text-white mb-2">🔒 MATERIAL CLASIFICADO</h3>
               <p className="text-gray-400 text-sm mb-6">
-                Adquiere el pack para descargar este y otros {totalVideos.toLocaleString()} videos.
+                Solo los miembros VIP pueden descargar esta joya. ¿Vas a dejar que otro la toque antes que tú?
               </p>
               <div className="rounded-xl bg-bear-blue/10 border border-bear-blue/30 p-4 mb-6">
                 <p className="text-sm text-gray-400 mb-1">Pago único</p>
@@ -734,7 +734,7 @@ export default function ContenidoPage() {
               </div>
               <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('paywall_cta', 'contenido')}>
                 <button className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black hover:brightness-110 transition">
-                  OBTENER ACCESO ($350)
+                  DESBLOQUEAR MI ARSENAL
                 </button>
               </Link>
               <button

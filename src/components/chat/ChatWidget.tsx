@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, MessageSquare, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,23 @@ function getCookie(name: string): string | null {
 
 const DEFAULT_GREETING = '¡Hola! 👋 ¿Tienes dudas sobre el pack o quieres ver el catálogo?';
 
+/** Altura disponible para la ventana del chat (viewport visible - teclado en móvil). */
+function useVisualViewportHeight() {
+  const [height, setHeight] = useState<number | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const update = () => setHeight(window.visualViewport!.height);
+    update();
+    window.visualViewport.addEventListener('resize', update);
+    window.visualViewport.addEventListener('scroll', update);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', update);
+      window.visualViewport?.removeEventListener('scroll', update);
+    };
+  }, []);
+  return height;
+}
+
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{role: string, content: string}[]>([
@@ -27,7 +44,9 @@ export default function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [fromManyChat, setFromManyChat] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const announcementIdRef = useRef<number | null>(null);
+  const viewportHeight = useVisualViewportHeight();
 
   // ManyChat: saludo personalizado y auto-apertura si vienen del chat
   useEffect(() => {
@@ -54,6 +73,13 @@ export default function ChatWidget() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isOpen]);
+
+  const scrollInputIntoView = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    requestAnimationFrame(() => {
+      inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }, []);
 
   // Anuncios globales proactivos: si hay uno activo y no lo cerró antes, abrir chat y mostrarlo
   useEffect(() => {
@@ -118,33 +144,58 @@ export default function ChatWidget() {
     }
   };
 
+  const availableHeight = viewportHeight != null && viewportHeight > 120 ? viewportHeight - 100 : null;
+  const chatPanelMaxHeight =
+    availableHeight != null ? `min(380px, ${Math.max(200, availableHeight)}px)` : 'min(380px, 55dvh)';
+
   return (
-    <div className="fixed top-20 right-4 z-[25] flex flex-col items-end w-[calc(100vw-32px)] max-w-[350px] pointer-events-none [&>*]:pointer-events-auto">
-      {/* VENTANA DEL CHAT – abre hacia abajo para no tapar CTAs del footer */}
+    <div
+      className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-[45] flex flex-col items-end max-w-[min(350px,calc(100vw-2rem)] w-[calc(100vw-2rem)] md:w-auto md:max-w-[350px] pointer-events-none [&>*]:pointer-events-auto"
+      style={{
+        paddingBottom: 'env(safe-area-inset-bottom, 0)',
+        paddingRight: 'env(safe-area-inset-right, 0)',
+      }}
+    >
+      {/* Ventana del chat: altura limitada al viewport visible para no salirse al escribir en móvil */}
       {isOpen && (
-        <div className="mb-3 w-full h-[420px] max-h-[60vh] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-          
+        <div
+          className="mb-3 w-full bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden shrink-0"
+          style={{
+            height: chatPanelMaxHeight,
+            maxHeight: chatPanelMaxHeight,
+          }}
+        >
           {/* HEADER */}
-          <div className="p-4 bg-zinc-900 border-b border-zinc-800 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="font-bold text-white">BearBot AI 🤖</span>
+          <div className="p-3 md:p-4 bg-zinc-900 border-b border-zinc-800 flex justify-between items-center shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+              <span className="font-bold text-white truncate">BearBot AI 🤖</span>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-zinc-400 hover:text-white">
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="text-zinc-400 hover:text-white p-1 -m-1 touch-manipulation"
+              aria-label="Cerrar chat"
+            >
               <X size={20} />
             </button>
           </div>
 
           {/* MENSAJES */}
-          <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto space-y-4">
+          <div
+            ref={scrollRef}
+            className="flex-1 min-h-0 p-4 overflow-y-auto overflow-x-hidden space-y-4 overscroll-contain"
+          >
             {messages.map((m, i) => (
-              <div key={i} className={cn("flex", m.role === 'user' ? "justify-end" : "justify-start")}>
-                <div className={cn(
-                  "max-w-[85%] p-3 rounded-2xl text-sm",
-                  m.role === 'user' 
-                    ? "bg-bear-blue text-bear-black rounded-tr-none" 
-                    : "bg-zinc-800 text-zinc-200 rounded-tl-none"
-                )}>
+              <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
+                <div
+                  className={cn(
+                    'max-w-[85%] p-3 rounded-2xl text-sm break-words',
+                    m.role === 'user'
+                      ? 'bg-bear-blue text-bear-black rounded-tr-none'
+                      : 'bg-zinc-800 text-zinc-200 rounded-tl-none'
+                  )}
+                >
                   {m.content}
                 </div>
               </div>
@@ -158,28 +209,40 @@ export default function ChatWidget() {
             )}
           </div>
 
-          {/* INPUT */}
-          <div className="p-3 bg-zinc-900 border-t border-zinc-800 flex gap-2">
+          {/* INPUT – scrollIntoView al enfocar para que no quede bajo el teclado */}
+          <div className="p-3 bg-zinc-900 border-t border-zinc-800 flex gap-2 shrink-0">
             <input
-              className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2 text-[16px] text-white focus:outline-none focus:border-bear-blue"
+              ref={inputRef}
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              className="flex-1 min-w-0 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-[16px] text-white focus:outline-none focus:border-bear-blue"
               placeholder="Escribe aquí..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onFocus={scrollInputIntoView}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             />
-            <Button size="icon" className="bg-bear-blue hover:brightness-110 text-bear-black" onClick={sendMessage}>
+            <Button
+              size="icon"
+              type="button"
+              className="h-11 w-11 shrink-0 bg-bear-blue hover:brightness-110 text-bear-black touch-manipulation"
+              onClick={sendMessage}
+              aria-label="Enviar"
+            >
               <Send size={18} />
             </Button>
           </div>
         </div>
       )}
 
-      {/* BOTÓN FLOTANTE – arriba a la derecha para no tapar CTAs de compra */}
-      <Button 
+      {/* Botón flotante: esquina inferior derecha, siempre accesible */}
+      <Button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? 'Cerrar chat' : 'Abrir chat'}
         className={cn(
-          'h-12 w-12 rounded-full bg-bear-blue/90 hover:bg-bear-blue text-bear-black shadow-lg',
+          'h-12 w-12 min-w-[48px] min-h-[48px] rounded-full bg-bear-blue/90 hover:bg-bear-blue text-bear-black shadow-lg touch-manipulation',
           fromManyChat && !isOpen && 'animate-bounce'
         )}
       >

@@ -2,21 +2,21 @@ export function BenefitsSection() {
   const benefits = [
     {
       emoji: '💰',
-      title: 'Solo pagas UNA vez',
-      description: '$350 pesos y ya. NO pagas cada mes. Es tuyo para siempre.',
-      highlight: 'Sin mensualidades',
+      title: 'Tus Pantallas LED Merecen Respeto',
+      description: 'No más pixelación vergonzosa. Proyecta imagen de artista Top, no de amateur.',
+      highlight: 'Calidad',
     },
     {
       emoji: '⚡',
-      title: 'Acceso al INSTANTE',
-      description: 'En cuanto pagas, te llega tu acceso por email. En 1 minuto ya puedes descargar.',
-      highlight: 'Sin esperas',
+      title: 'Mezcla Como un Cirujano',
+      description: 'Olvídate de entrenar el oído. Todo está calculado matemáticamente para que tus mezclas sean perfectas.',
+      highlight: 'Key & BPM',
     },
     {
       emoji: '📥',
-      title: 'Descargas ILIMITADAS',
-      description: 'Descarga todo las veces que quieras. Se te borró? Lo vuelves a descargar. Sin problema.',
-      highlight: 'Sin límites',
+      title: 'Tu Tiempo Vale Oro',
+      description: 'Descarga 170 GB mientras duermes. Levántate con el trabajo sucio ya hecho.',
+      highlight: 'FTP Flash',
     },
     {
       emoji: '🎵',

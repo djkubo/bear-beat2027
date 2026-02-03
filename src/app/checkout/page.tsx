@@ -321,17 +321,21 @@ export default function CheckoutPage() {
   const isTestMode = isStripeTest || isPayPalSandbox
 
   return (
-    <div className="min-h-screen bg-[#020202] text-white flex flex-col">
+    <div className="min-h-screen bg-[#020202] text-white flex flex-col overflow-x-hidden min-w-0">
       <header className="border-b border-white/10 bg-black py-4">
-        <div className="max-w-4xl mx-auto px-4 flex justify-center">
-          <div className="flex items-center gap-2">
+        <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <Link href="/#catalogo" className="flex items-center gap-2 order-2 sm:order-1">
             <img src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png" className="h-10 w-auto" alt="Logo" />
             <span className="font-bold text-xl tracking-tight">CHECKOUT SEGURO 🔒</span>
-          </div>
+          </Link>
+          <Link href="/#catalogo" className="text-sm text-gray-400 hover:text-bear-blue transition order-1 sm:order-2">
+            ← Volver al catálogo
+          </Link>
         </div>
+        <p className="text-center text-xs text-gray-500 mt-2 max-w-4xl mx-auto px-4">Pago 100% seguro · Sin suscripciones · Acceso de por vida</p>
       </header>
 
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 md:py-12">
+      <main className="flex-1 max-w-4xl mx-auto w-full min-w-0 px-4 py-8 md:py-12">
         {isTestMode && (
           <div className="border-b border-amber-500/30 bg-amber-500/10 py-2 px-4 text-center">
             <p className="text-xs text-amber-400 font-medium">
@@ -359,8 +363,8 @@ export default function CheckoutPage() {
               exit={{ opacity: 0, y: -16 }}
               className="grid lg:grid-cols-2 gap-8 lg:gap-12"
             >
-              {/* Columna izquierda – Resumen (igual que antes) */}
-              <div className="space-y-8">
+              {/* Columna izquierda – Resumen (en desktop a la izq; en móvil abajo para que el formulario de pago se vea primero) */}
+              <div className="space-y-8 order-2 lg:order-1">
                 <div>
                   <h2 className="text-lg font-bold text-white mb-6">Resumen de tu Orden</h2>
                   <div className="rounded-2xl border-2 border-bear-blue/30 bg-zinc-950 p-5 flex gap-4">
@@ -389,7 +393,7 @@ export default function CheckoutPage() {
                         </li>
                         <li className="flex items-center gap-2">
                           <Check className="h-4 w-4 text-green-400 shrink-0" strokeWidth={2.5} />
-                          Garantía 30 días
+                          Si no te hace ganar más dinero, te devolvemos todo
                         </li>
                       </ul>
                       <div className="flex items-baseline gap-3 mt-3">
@@ -415,8 +419,8 @@ export default function CheckoutPage() {
                       <Shield className="h-5 w-5" />
                     </span>
                     <div>
-                      <h4 className="font-bold text-white">Garantía de 30 Días</h4>
-                      <p className="text-sm text-gray-400 mt-1">Si no te encanta, te devolvemos tu dinero. Sin preguntas.</p>
+                      <h4 className="font-bold text-white">Garantía de devolución</h4>
+                      <p className="text-sm text-gray-400 mt-1">Si no te hace ganar más dinero, te devolvemos todo. Sin preguntas.</p>
                     </div>
                   </div>
                 </div>
@@ -453,16 +457,25 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Columna derecha – Pago (Caja Fuerte: borde neón, fondo oscuro) */}
-              <div>
-                <div className="rounded-2xl border-2 border-bear-blue/30 bg-zinc-950 p-6 md:p-8 sticky lg:top-24 shadow-[0_0_40px_rgba(8,225,247,0.08)]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-black text-xs">1</span>
-                    <h2 className="text-lg font-bold text-white">Completa tu pago</h2>
+              {/* Columna derecha – Pago (en móvil primero para que sea fácil comprar; sticky en desktop) */}
+              <div className="order-1 lg:order-2">
+                <div className="rounded-2xl border-2 border-bear-blue/30 bg-zinc-950 p-6 md:p-8 sticky top-20 lg:top-24 shadow-[0_0_40px_rgba(8,225,247,0.08)]">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-black text-xs">1</span>
+                      <h2 className="text-lg font-bold text-white">Completa tu pago</h2>
+                    </div>
+                    <span className="text-xs text-gray-500 font-medium">Un solo paso</span>
                   </div>
-                  <p className="text-sm text-gray-500 mb-4">Nombre, email y luego elige cómo pagar.</p>
+                  <p className="text-sm text-gray-500 mb-4">Nombre, email y elige cómo pagar. En minutos tienes acceso.</p>
 
-                  {/* Nombre y email PRIMERO para que al completarlos se vean los botones de pago */}
+                  {/* Precio visible en la caja de pago (para móvil: no hace falta bajar al resumen) */}
+                  <div className="flex items-center justify-between rounded-xl bg-bear-blue/10 border border-bear-blue/30 px-4 py-3 mb-6">
+                    <span className="text-sm text-gray-400">Total a pagar</span>
+                    <span className="text-xl font-black text-bear-blue">${price} {currencyLabel}</span>
+                  </div>
+
+                  {/* Nombre y email */}
                   <div className="mb-4">
                     <label htmlFor="checkout-name" className="block text-sm font-medium text-gray-400 mb-1.5">
                       Tu nombre (para el recibo)
@@ -505,7 +518,8 @@ export default function CheckoutPage() {
                     </p>
                   </div>
 
-                  {/* Botones de método de pago – visibles después de nombre/email */}
+                  {/* Botones de método de pago */}
+                  <p className="text-sm font-bold text-white mb-3">Elige cómo pagar</p>
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     {country === 'MX' && (
                       <>
@@ -684,9 +698,11 @@ export default function CheckoutPage() {
                     &quot;La mejor inversión de mi carrera. Recuperé el dinero en un evento.&quot; — DJ Alex, CDMX
                   </p>
 
-                  {/* Sin método seleccionado: mensaje sutil */}
+                  {/* Sin método seleccionado */}
                   {!selectedMethod && (
-                    <p className="text-sm text-gray-500 mt-4">Elige un método de pago arriba.</p>
+                    <div className="mt-4 p-4 rounded-xl border border-dashed border-zinc-600 bg-zinc-900/30 text-center">
+                      <p className="text-sm text-gray-400">👆 Elige un método de pago arriba para continuar</p>
+                    </div>
                   )}
                 </div>
               </div>

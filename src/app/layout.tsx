@@ -14,6 +14,13 @@ export const metadata: Metadata = {
   description: 'La membresía definitiva de video remixes para DJs profesionales. Intro, Outro y Clean versions en alta calidad.',
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover' as const,
+}
+
 export default function RootLayout({
   children,
 }: {

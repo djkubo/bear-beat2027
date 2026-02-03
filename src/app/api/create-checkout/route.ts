@@ -26,15 +26,15 @@ export async function POST(req: NextRequest) {
   let paymentMethod: string | undefined
   try {
     const body = await req.json()
-    paymentMethod = (body as { paymentMethod?: string })?.paymentMethod
     const cookieHeader = req.headers.get('cookie')
     const attribution = parseAttributionCookie(cookieHeader)
-    const { packSlug, paymentMethod, currency = 'mxn', email: bodyEmail } = body as {
+    const { packSlug, paymentMethod: method, currency = 'mxn', email: bodyEmail } = body as {
       packSlug?: string
       paymentMethod?: string
       currency?: string
       email?: string
     }
+    paymentMethod = method
 
     if (!packSlug) {
       return NextResponse.json({ error: 'Pack slug required' }, { status: 400 })

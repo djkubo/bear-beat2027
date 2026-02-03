@@ -42,7 +42,7 @@ export function PricingSection({ pack, totalVideos: totalVideosProp, totalSizeFo
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-6xl font-extrabold mb-4">
-            ¿Cuánto cuesta?
+            ¿Cuánto vale tu reputación?
           </h2>
           <p className="text-3xl font-bold text-bear-blue mb-2">
             ${priceMXN} pesos mexicanos
@@ -56,7 +56,7 @@ export function PricingSection({ pack, totalVideos: totalVideosProp, totalSizeFo
           {/* Badge */}
           <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bear-blue text-bear-black text-sm font-bold shadow-lg">
-              🔥 OFERTA DE LANZAMIENTO
+              🔥 El 93% de las licencias de Enero ya se vendieron. Quedan pocas.
             </span>
           </div>
 
@@ -67,7 +67,9 @@ export function PricingSection({ pack, totalVideos: totalVideosProp, totalSizeFo
               
               {/* Price - SÚPER OBVIO */}
               <div className="space-y-4 bg-bear-blue/10 rounded-2xl p-6 border-2 border-bear-blue/50">
-                <p className="text-2xl font-bold">PAGAS UNA SOLA VEZ:</p>
+                <p className="text-2xl font-bold">Valor Real del Material</p>
+                <p className="text-2xl line-through font-bold text-muted-foreground">$12,680 MXN</p>
+                <p className="text-xl font-bold text-bear-blue">Tu Inversión Ridícula</p>
                 <div className="flex items-baseline justify-center gap-3">
                   <span className="text-7xl font-extrabold text-bear-blue">${priceMXN}</span>
                   <span className="text-3xl font-bold">MXN</span>
@@ -98,7 +100,7 @@ export function PricingSection({ pack, totalVideos: totalVideosProp, totalSizeFo
                 size="xl" 
                 className="w-full mb-4 bg-bear-blue text-bear-black hover:bg-bear-blue/90 font-extrabold text-2xl py-8 shadow-2xl rounded-2xl"
               >
-                🛒 SÍ, QUIERO COMPRAR AHORA
+                💎 UNIRME A LA ÉLITE AHORA
               </Button>
             </Link>
             
