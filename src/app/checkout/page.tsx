@@ -310,48 +310,35 @@ export default function CheckoutPage() {
   const isTestMode = isStripeTest || isPayPalSandbox
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white antialiased">
-      {isTestMode && (
-        <div className="border-b border-amber-500/30 bg-amber-500/10 py-2 px-4 text-center">
-          <p className="text-xs text-amber-400 font-medium">
-            Modo pruebas: {[isStripeTest && 'Stripe (test)', isPayPalSandbox && 'PayPal (sandbox)'].filter(Boolean).join(' · ')} — No se cobra dinero real
-          </p>
-        </div>
-      )}
-      {step === 'select' && reservationSeconds > 0 && reservationSeconds <= RESERVATION_MINUTES * 60 && (
-        <div className="border-b border-white/5 bg-white/[0.02] py-2 px-4 text-center">
-          <p className="text-xs text-gray-500">
-            Tu precio especial está reservado por{' '}
-            <span className="font-mono font-bold text-bear-blue">
-              {String(reservationM).padStart(2, '0')}:{String(reservationS).padStart(2, '0')}
-            </span>{' '}
-            minutos
-          </p>
-        </div>
-      )}
-
-      <header className="sticky top-0 z-40 border-b border-white/5 bg-[#050505]/95 backdrop-blur py-4 px-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <Image
-              src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png"
-              alt="Bear Beat"
-              width={40}
-              height={40}
-            />
-            <span className="font-bold text-bear-blue">BEAR BEAT</span>
-          </Link>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span className="w-7 h-7 rounded-full bg-bear-blue text-bear-black flex items-center justify-center font-bold text-xs">1</span>
-            <span className="text-bear-blue font-medium">Pagar</span>
-            <ChevronRight className="h-4 w-4 text-gray-600" />
-            <span className="w-7 h-7 rounded-full bg-zinc-700 text-zinc-400 flex items-center justify-center font-bold text-xs">2</span>
-            <span>Acceso</span>
+    <div className="min-h-screen bg-[#020202] text-white flex flex-col">
+      <header className="border-b border-white/10 bg-black py-4">
+        <div className="max-w-4xl mx-auto px-4 flex justify-center">
+          <div className="flex items-center gap-2">
+            <img src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png" className="h-10 w-auto" alt="Logo" />
+            <span className="font-bold text-xl tracking-tight">CHECKOUT SEGURO 🔒</span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8 md:py-12">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 md:py-12">
+        {isTestMode && (
+          <div className="border-b border-amber-500/30 bg-amber-500/10 py-2 px-4 text-center">
+            <p className="text-xs text-amber-400 font-medium">
+              Modo pruebas: {[isStripeTest && 'Stripe (test)', isPayPalSandbox && 'PayPal (sandbox)'].filter(Boolean).join(' · ')} — No se cobra dinero real
+            </p>
+          </div>
+        )}
+        {step === 'select' && reservationSeconds > 0 && reservationSeconds <= RESERVATION_MINUTES * 60 && (
+          <div className="border-b border-white/5 bg-white/[0.02] py-2 px-4 text-center">
+            <p className="text-xs text-gray-500">
+              Tu precio especial está reservado por{' '}
+              <span className="font-mono font-bold text-bear-blue">
+                {String(reservationM).padStart(2, '0')}:{String(reservationS).padStart(2, '0')}
+              </span>{' '}
+              minutos
+            </p>
+          </div>
+        )}
         <AnimatePresence mode="wait">
           {step === 'select' && (
             <motion.div
@@ -519,13 +506,6 @@ export default function CheckoutPage() {
                     <span className="text-xs text-gray-400">OXXO</span>
                   </div>
 
-                  {/* Alerta de email CRÍTICO – visible siempre */}
-                  <div className="mb-4 rounded-xl border-2 border-amber-500/60 bg-amber-500/15 px-4 py-3 text-center">
-                    <p className="text-sm font-bold text-amber-200">
-                      ⚠️ <strong>ATENCIÓN DJ:</strong> Aquí te enviaremos tu acceso y contraseña. Escribe tu mejor correo.
-                    </p>
-                  </div>
-
                   {/* Nombre (para el recibo) – pre-llenado desde ManyChat */}
                   <div className="mb-4">
                     <label htmlFor="checkout-name" className="block text-sm font-medium text-gray-400 mb-1.5">
@@ -539,6 +519,15 @@ export default function CheckoutPage() {
                       placeholder="Ej. Gustavo"
                       className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-lg text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
                     />
+                  </div>
+
+                  {/* Alerta amarilla justo antes del input de email */}
+                  <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4 mb-6 flex gap-3 items-start animate-pulse">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <h4 className="font-bold text-yellow-400 text-sm uppercase">Atención DJ</h4>
+                      <p className="text-yellow-200/80 text-sm">Tu acceso y contraseña llegarán a este correo. Escríbelo sin errores.</p>
+                    </div>
                   </div>
 
                   {/* Email: obligatorio para OXXO/SPEI; necesario para tarjeta/PayPal */}
@@ -726,7 +715,10 @@ export default function CheckoutPage() {
         </AnimatePresence>
       </main>
 
-      {/* Sin footer: solo foco en completar el pago (CRO: eliminar distracciones) */}
+      <footer className="py-6 text-center text-zinc-600 text-xs">
+        <p>🔒 Pagos encriptados con seguridad bancaria 256-bit SSL.</p>
+        <p className="mt-2">© 2026 Bear Beat. Todos los derechos reservados.</p>
+      </footer>
     </div>
   )
 }

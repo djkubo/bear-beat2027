@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Play, Download, Wifi } from 'lucide-react'
+import { Play, Download, Wifi, CheckCircle2 } from 'lucide-react'
 import { trackCTAClick } from '@/lib/tracking'
 
 interface HeroSectionProps {
@@ -17,97 +17,97 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ pack }: HeroSectionProps) {
-  const packName = pack?.name || 'Video Remixes Pack 2026'
-  const totalVideos = pack?.total_videos ?? 0
-  const priceМXN = pack?.price_mxn || 350
+  const totalVideos = pack?.total_videos ?? 3200
+  const priceMXN = 350
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-bear-blue/5 via-background to-bear-black/5 py-20 lg:py-32">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
-      
-      {/* Logo Bear Beat en background */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-5">
-        <img 
-          src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png" 
-          alt="Bear Beat Background" 
-          className="w-1/2 max-w-2xl"
-        />
-      </div>
-      
+    <section className="relative overflow-hidden bg-[#050505] py-16 lg:py-24">
+      {/* Fondo Premium */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-bear-blue/20 via-[#050505] to-[#050505]" />
+      <div className="absolute inset-0 bg-grid-white/[0.02]" />
+
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center text-center lg:text-left animate-fade-in">
-          {/* COLUMNA IZQUIERDA (VIDEO/VISUAL) - En Mobile va SEGUNDO (order-2) */}
-          <div className="order-2 lg:order-1 flex justify-center lg:justify-start relative group">
-            <Link href="/contenido" className="relative w-full max-w-md aspect-video bg-zinc-900 rounded-2xl border-2 border-bear-blue/30 flex items-center justify-center shadow-[0_0_30px_rgba(8,225,247,0.2)] overflow-hidden group-hover:shadow-[0_0_40px_rgba(8,225,247,0.3)] transition-shadow">
-              <Play className="w-20 h-20 text-bear-blue animate-pulse ml-1" />
-              <span className="absolute bottom-4 text-bear-blue font-mono text-sm">PREVIEW 2026</span>
-            </Link>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          
+          {/* COLUMNA 1: Visual (VIDEO A LA IZQUIERDA EN DESKTOP) */}
+          {/* En móvil usamos order-last para que quede abajo del texto, en desktop order-first */}
+          <div className="order-last lg:order-first relative group">
+            <div className="relative rounded-3xl overflow-hidden border border-bear-blue/30 shadow-[0_0_50px_-12px_rgba(8,225,247,0.3)] bg-zinc-900 aspect-video flex items-center justify-center">
+               {/* Efecto de 'Play' Gigante */}
+               <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/20 transition-all">
+                 <Link href="/contenido" className="transform group-hover:scale-110 transition-all duration-300">
+                   <div className="w-24 h-24 rounded-full bg-bear-blue flex items-center justify-center shadow-lg shadow-bear-blue/50 animate-pulse">
+                     <Play className="w-10 h-10 text-black fill-black ml-1" />
+                   </div>
+                 </Link>
+               </div>
+               {/* Texto flotante sobre el video */}
+               <div className="absolute bottom-4 left-0 right-0 text-center">
+                 <span className="text-white/80 text-sm font-mono bg-black/60 px-3 py-1 rounded-full backdrop-blur-md">
+                   🎬 MIRA LA CALIDAD HD
+                 </span>
+               </div>
+            </div>
+            {/* Elemento decorativo detrás */}
+            <div className="absolute -z-10 top-10 -left-10 w-full h-full bg-bear-blue/5 rounded-3xl blur-3xl" />
           </div>
 
-          {/* COLUMNA DERECHA (TEXTO) - En Mobile va PRIMERO (order-1) */}
-          <div className="order-1 lg:order-2 space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 border-2 border-orange-400/70 text-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.4)]">
-              <span className="text-2xl">🔥</span>
-              <span className="text-sm font-bold">ACCESO EXCLUSIVO: PACK ENERO 2026</span>
+          {/* COLUMNA 2: Venta (TEXTO A LA DERECHA) */}
+          <div className="space-y-8 text-center lg:text-left">
+            
+            {/* Badge de Urgencia */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/50 animate-in slide-in-from-bottom-4 fade-in duration-700">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+              </span>
+              <span className="text-sm font-bold text-orange-400 tracking-wide uppercase">
+                Acceso Exclusivo • Enero 2026
+              </span>
             </div>
 
-            <div className="flex justify-center lg:justify-start mb-4">
-              <img 
-                src="/logos/BBLOGOTIPOPOSITIVO_Mesa de trabajo 1.png" 
-                alt="Bear Beat" 
-                className="h-20 sm:h-28 lg:h-36 w-auto"
-              />
+            {/* Titular Agresivo */}
+            <div className="space-y-4">
+              <h1 className="text-5xl lg:text-7xl font-black text-white tracking-tight leading-[0.9]">
+                TU SET <span className="text-transparent bg-clip-text bg-gradient-to-r from-bear-blue to-cyan-400">PERFECTO</span><br />
+                EN 5 MINUTOS.
+              </h1>
+              <p className="text-xl text-zinc-400 max-w-xl mx-auto lg:mx-0 font-medium leading-relaxed">
+                Deja de perder horas editando. Descarga <strong className="text-white">+{totalVideos.toLocaleString()} Video Remixes</strong> organizados por Key & BPM. Listos para reventar la pista.
+              </p>
             </div>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
-              <span className="block text-foreground">Tu Set Perfecto, Listo en 5 Minutos.</span>
-            </h1>
-
-            <p className="text-lg md:text-xl text-muted-foreground max-w-xl">
-              Deja de perder horas editando. Descarga <strong className="text-foreground">3,000+ Video Remixes</strong> organizados por Key &amp; BPM. Intro/Outro listos para reventar la pista.
-            </p>
-
-            {/* Anclaje de precio */}
-            <div className="flex flex-wrap items-baseline gap-3">
-              <span className="text-sm text-muted-foreground line-through">$1,500</span>
-              <span className="text-4xl md:text-5xl font-black text-green-500 dark:text-cyan-400">$350 MXN</span>
+            {/* Oferta Irresistible (Precio Anclado) */}
+            <div className="bg-zinc-900/50 border border-white/10 rounded-2xl p-6 backdrop-blur-sm inline-block">
+              <div className="flex flex-col lg:flex-row items-center gap-6">
+                <div className="text-center lg:text-left">
+                  <p className="text-zinc-500 text-sm font-bold uppercase tracking-wider mb-1">Precio Regular</p>
+                  <p className="text-2xl text-zinc-600 line-through font-bold decoration-red-500/50">$1,500 MXN</p>
+                </div>
+                <div className="hidden lg:block w-px h-12 bg-white/10" />
+                <div className="text-center lg:text-left">
+                  <p className="text-bear-blue text-sm font-bold uppercase tracking-wider mb-1">Oferta Hoy</p>
+                  <p className="text-5xl font-black text-white tracking-tighter shadow-cyan-500/20 drop-shadow-lg">
+                    ${priceMXN} <span className="text-2xl text-zinc-400 font-medium">MXN</span>
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <p className="text-base md:text-lg text-muted-foreground">
-              ✅ Pago único • ✅ Sin mensualidades • ✅ Acceso inmediato
-            </p>
-
-            <div className="flex flex-col gap-3 max-w-xl">
-              <Link href="/checkout" className="w-full" onClick={() => trackCTAClick('DESCARGAR AHORA', 'hero')}>
-                <Button 
-                  size="xl" 
-                  className="w-full bg-bear-blue text-bear-black hover:bg-bear-blue/90 font-extrabold text-lg md:text-2xl py-7 md:py-9 shadow-cyan-500/50 shadow-lg rounded-2xl animate-pulse"
-                >
-                  DESCARGAR AHORA - ACCESO INMEDIATO ⚡
+            {/* CTA + Garantía */}
+            <div className="space-y-4 max-w-lg mx-auto lg:mx-0">
+              <Link href="/checkout" className="block" onClick={() => trackCTAClick('HERO_CTA', 'hero')}>
+                <Button className="w-full h-16 text-xl lg:text-2xl font-black bg-bear-blue hover:bg-cyan-400 text-black rounded-xl shadow-[0_0_40px_-10px_rgba(8,225,247,0.6)] hover:shadow-[0_0_60px_-10px_rgba(8,225,247,0.8)] transition-all transform hover:-translate-y-1">
+                  ⚡ DESCARGAR AHORA - ACCESO TOTAL
                 </Button>
               </Link>
-              <p className="text-sm text-muted-foreground">👆 Haz clic aquí para comprar</p>
-            </div>
-
-            <div className="flex flex-wrap gap-3 justify-center lg:justify-start pt-4">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/80 backdrop-blur border-2 border-bear-blue/30">
-                <span className="text-green-500">✅</span>
-                <span className="text-sm font-bold">Acceso inmediato</span>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/80 backdrop-blur border-2 border-bear-blue/30">
-                <Download className="h-4 w-4 text-bear-blue" />
-                <span className="text-sm font-bold">Descarga ilimitada</span>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/80 backdrop-blur border-2 border-bear-blue/30">
-                <Wifi className="h-4 w-4 text-bear-blue" />
-                <span className="text-sm font-bold">Acceso FTP</span>
+              <div className="flex items-center justify-center lg:justify-start gap-4 text-xs text-zinc-500 font-medium">
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> Pago Único</span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> Acceso Inmediato</span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> Servidores FTP</span>
               </div>
             </div>
 
-            <p className="text-sm text-muted-foreground">
-              🎉 Únete a la élite de <span className="font-bold text-foreground">+500 DJs</span> que ya usan Bear Beat
-            </p>
           </div>
         </div>
       </div>
