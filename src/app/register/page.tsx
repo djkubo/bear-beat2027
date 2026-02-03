@@ -226,7 +226,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white antialiased">
+    <div className="min-h-screen bg-gradient-to-br from-bear-blue/5 via-[#050505] to-[#050505] text-white antialiased">
       <div className="border-b border-white/5 bg-white/[0.02] py-2 text-center">
         <p className="text-xs font-medium text-gray-500">
           Registro gratis · Accede a demos y precios de miembro
@@ -235,7 +235,7 @@ export default function RegisterPage() {
 
       <div className="flex min-h-[calc(100vh-40px)] flex-col lg:flex-row">
         {/* Columna izquierda – Propuesta de valor y prueba social (solo desktop) */}
-        <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12 xl:px-16 bg-[#0a0a0a] border-r border-white/5">
+        <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12 xl:px-16 bg-[#0a0a0a]/80 border-r border-white/5">
           <motion.div
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
@@ -254,7 +254,7 @@ export default function RegisterPage() {
             </Link>
 
             <h2 className="text-3xl xl:text-4xl font-black text-white mb-10 leading-tight">
-              Únete a la comunidad de DJs profesionales
+              Activa tu Cuenta PRO.
             </h2>
 
             <ul className="space-y-4 mb-10">
@@ -322,9 +322,9 @@ export default function RegisterPage() {
                 >
                   <div className="text-center mb-8">
                     <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">
-                      Crea tu cuenta gratis
+                      Activa tu Cuenta PRO.
                     </h1>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-base text-gray-500">
                       En 2 minutos tendrás acceso
                     </p>
                   </div>

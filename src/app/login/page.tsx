@@ -79,7 +79,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white antialiased">
+    <div className="min-h-screen bg-gradient-to-br from-bear-blue/5 via-[#050505] to-[#050505] text-white antialiased">
       {/* Barra superior – badge sutil */}
       <div className="border-b border-white/5 bg-white/[0.02] py-2 text-center">
         <p className="text-xs font-medium text-gray-500">
@@ -89,7 +89,7 @@ export default function LoginPage() {
 
       <div className="flex min-h-[calc(100vh-40px)] flex-col lg:flex-row">
         {/* Columna izquierda – Refuerzo de marca (solo desktop) */}
-        <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12 xl:px-16 bg-[#0a0a0a] border-r border-white/5">
+        <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12 xl:px-16 bg-[#0a0a0a]/80 border-r border-white/5">
           <motion.div
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
@@ -180,9 +180,9 @@ export default function LoginPage() {
 
             <div className="text-center mb-8">
               <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">
-                Accede al Panel
+                Bienvenido de vuelta, Maestro.
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-base text-gray-500">
                 Entra a tu cuenta para acceder a tu biblioteca
               </p>
             </div>
@@ -255,7 +255,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-lg transition-all hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#050505] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-lg transition-all hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#050505] disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(8,225,247,0.3)]"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -282,7 +282,7 @@ export default function LoginPage() {
                       Entrando...
                     </span>
                   ) : (
-                    'ENTRAR A MI CUENTA →'
+                    'ENTRAR →'
                   )}
                 </button>
               </form>

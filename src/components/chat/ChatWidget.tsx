@@ -63,12 +63,15 @@ export default function ChatWidget() {
     setLoading(true);
 
     try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: userMsg, 
-          history: messages.slice(-4) // Enviamos contexto corto
+          history: messages.slice(-4),
+          userId: user?.id ?? undefined,
         })
       });
 

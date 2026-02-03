@@ -10,7 +10,7 @@ import { fbTrackViewContent, fbTrackSearch } from '@/components/analytics/MetaPi
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
-import { Folder, Music2, Search, Lock, ChevronRight, Check, Play, Download, Archive } from 'lucide-react'
+import { Folder, Music2, Search, Lock, ChevronRight, Check, Play, Download, Archive, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 // ==========================================
@@ -244,6 +244,17 @@ export default function ContenidoPage() {
         </div>
       </header>
 
+      {/* Banner de éxito (solo si tiene acceso – refuerzo post-compra) */}
+      {hasAccess && (
+        <div className="bg-gradient-to-r from-cyan-500/20 via-bear-blue/10 to-cyan-500/20 border-b border-cyan-500/30 px-4 py-4">
+          <div className="max-w-7xl mx-auto text-center">
+            <p className="text-base md:text-lg font-bold text-white">
+              🎉 ¡Felicidades! Ya eres parte de la élite. Aquí está tu arsenal.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* HEADER DE SECCIÓN – Título, stats, buscador */}
       <section className="px-4 py-8 border-b border-white/5">
         <div className="max-w-7xl mx-auto">
@@ -352,9 +363,10 @@ export default function ContenidoPage() {
                                 e.stopPropagation()
                                 handleDownloadFolderZip(genre)
                               }}
-                              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/20 text-cyan-400 font-bold text-sm hover:bg-cyan-500/30 transition border border-cyan-500/40 shrink-0"
+                              className="inline-flex items-center gap-2 min-h-[48px] px-4 py-3 rounded-lg bg-cyan-500/20 text-cyan-400 font-bold text-base hover:bg-cyan-500/30 transition border border-cyan-500/40 shrink-0"
                             >
-                              <Archive className="h-4 w-4 shrink-0" />
+                              <span className="text-lg">⬇️</span>
+                              <Archive className="h-5 w-5 shrink-0" />
                               <span className="hidden sm:inline">DESCARGAR CARPETA ZIP</span>
                               <span className="sm:hidden">ZIP</span>
                             </button>
@@ -402,14 +414,15 @@ export default function ContenidoPage() {
                                 e.stopPropagation()
                                 handleDownloadAttempt(video)
                               }}
-                              className={`p-2 rounded-lg transition shrink-0 ${
+                              className={`min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg transition shrink-0 ${
                                 hasAccess
                                   ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
                                   : 'bg-zinc-700/50 text-zinc-400 hover:bg-zinc-600/50'
                               }`}
                               aria-label="Descargar"
                             >
-                              <Download className="h-4 w-4" />
+                              <span className="text-lg mr-0.5">⬇️</span>
+                              <Download className="h-5 w-5" />
                             </button>
                           </div>
                         ))}
@@ -499,15 +512,23 @@ export default function ContenidoPage() {
                         <p className="text-sm font-mono font-medium text-zinc-400">{selectedVideo.sizeFormatted}</p>
                       </div>
                     </div>
-                    {/* Acción principal: descarga directa */}
+                    {/* Acción principal: descarga directa – grande, táctil */}
                     <button
                       type="button"
                       onClick={() => handleDownloadAttempt(selectedVideo)}
-                      className="w-full py-4 rounded-xl bg-cyan-500 text-black font-black text-base hover:bg-cyan-400 transition flex items-center justify-center gap-2"
+                      className="w-full min-h-[48px] py-4 rounded-xl bg-cyan-500 text-black font-black text-base hover:bg-cyan-400 transition flex items-center justify-center gap-2"
                     >
+                      <span className="text-xl">⬇️</span>
                       <Download className="h-5 w-5" />
                       DESCARGAR VIDEO
                     </button>
+                    <Link
+                      href="/comunidad"
+                      className="mt-4 w-full min-h-[48px] flex items-center justify-center gap-2 rounded-xl border-2 border-green-500/50 bg-green-500/10 text-green-400 font-bold text-base hover:bg-green-500/20 transition"
+                    >
+                      <MessageCircle className="h-5 w-5" />
+                      Unirse al Grupo VIP de WhatsApp
+                    </Link>
                   </div>
                 ) : (
                   /* Estado vacío Pro: icono + texto + tip FTP */

@@ -89,13 +89,13 @@ function CardPaymentForm({
       />
       <div className="flex flex-wrap items-center justify-center gap-2 py-3 text-xs text-gray-400">
         <Lock className="h-4 w-4 shrink-0" />
-        <span>🔒 Pago 100% Seguro y Encriptado</span>
+        <span>Transacción Encriptada 256-bit SSL</span>
         <span className="hidden sm:inline">·</span>
-        <span className="flex items-center gap-1.5">
-          <CreditCard className="h-3.5 w-3.5" /> Visa, MC
-          <span className="mx-0.5">·</span>
-          <Banknote className="h-3.5 w-3.5" /> OXXO
-        </span>
+        <CreditCard className="h-3.5 w-3.5" />
+        <span>Visa, Mastercard</span>
+        <span className="mx-0.5">·</span>
+        <Banknote className="h-3.5 w-3.5" />
+        <span>OXXO</span>
       </div>
       <button
         type="submit"
@@ -157,16 +157,11 @@ function StripeCardSection({
           onError={setError}
         />
       </Elements>
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500">
-        <span className="flex items-center gap-1.5">
-          <Lock className="h-3.5 w-3.5 text-gray-500" />
-          Pagos procesados de forma segura por Stripe
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="font-mono text-[10px] font-bold text-gray-500">Visa</span>
-          <span className="font-mono text-[10px] font-bold text-gray-500">MC</span>
-          <span className="font-mono text-[10px] font-bold text-gray-500">Amex</span>
-        </span>
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs text-gray-500">
+        <Lock className="h-3.5 w-3.5" />
+        <span>Transacción Encriptada 256-bit SSL</span>
+        <span className="hidden sm:inline">·</span>
+        <span className="font-mono text-[10px] font-bold text-gray-500">Visa · MC · OXXO</span>
       </div>
     </>
   )
@@ -356,7 +351,7 @@ export default function CheckoutPage() {
               <div className="space-y-8">
                 <div>
                   <h2 className="text-lg font-bold text-white mb-6">Resumen de tu Orden</h2>
-                  <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 flex gap-4">
+                  <div className="rounded-2xl border-2 border-cyan-500/30 bg-zinc-950 p-5 flex gap-4">
                     <div className="relative h-24 w-24 shrink-0 rounded-xl overflow-hidden bg-zinc-800">
                       <Image
                         src="/logos/BBLOGOTIPOPOSITIVO_Mesa de trabajo 1.png"
@@ -367,10 +362,23 @@ export default function CheckoutPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-bold text-white text-lg">Pack Enero 2026 - Video Remixes</h3>
-                      <p className="text-sm text-gray-500 mt-0.5">{totalVideos} videos HD · Descarga Ilimitada</p>
-                      <div className="flex items-baseline gap-2 mt-2">
-                        <span className="text-sm text-gray-500 line-through">$1,499</span>
-                        <span className="text-2xl font-black text-white">${price} {currencyLabel}</span>
+                      <ul className="mt-2 space-y-1 text-sm text-gray-300">
+                        <li className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-400 shrink-0" strokeWidth={2.5} />
+                          3,000+ Videos Intro/Outro
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-400 shrink-0" strokeWidth={2.5} />
+                          Acceso de por Vida
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-400 shrink-0" strokeWidth={2.5} />
+                          Garantía de Calidad
+                        </li>
+                      </ul>
+                      <div className="flex items-baseline gap-3 mt-3">
+                        <span className="text-sm text-gray-500 line-through">$1,500 MXN</span>
+                        <span className="text-2xl font-black text-cyan-400">$350 MXN</span>
                       </div>
                     </div>
                   </div>
@@ -429,9 +437,9 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Columna derecha – Pago (condicional: Tarjeta | PayPal | OXXO/SPEI) */}
+              {/* Columna derecha – Pago (Caja Fuerte: borde neón, fondo oscuro) */}
               <div>
-                <div className="rounded-2xl border border-zinc-800 bg-[#0a0a0a] p-6 md:p-8 sticky lg:top-24">
+                <div className="rounded-2xl border-2 border-cyan-500/30 bg-zinc-950 p-6 md:p-8 sticky lg:top-24 shadow-[0_0_40px_rgba(8,225,247,0.08)]">
                   <h2 className="text-lg font-bold text-white mb-6">Completa tu pago</h2>
                   <p className="text-sm text-gray-500 mb-4">Selecciona cómo quieres pagar</p>
                   <div className="grid grid-cols-2 gap-3 mb-6">
@@ -618,13 +626,16 @@ export default function CheckoutPage() {
                         PAGAR ${price} {currencyLabel} Y ACCEDER →
                       </button>
                       <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500">
-                        <span className="flex items-center gap-1.5">
-                          <Lock className="h-3.5 w-3.5 text-gray-500" />
-                          Pagos procesados de forma segura por Stripe
-                        </span>
+                        <Lock className="h-3.5 w-3.5" />
+                        <span>Transacción Encriptada 256-bit SSL · Visa, MC, OXXO</span>
                       </div>
                     </>
                   )}
+
+                  {/* Testimonio en punto de dolor (debajo de toda la zona de pago) */}
+                  <p className="mt-6 text-center text-sm text-gray-500 italic">
+                    &quot;La mejor inversión de mi carrera. Recuperé el dinero en un evento.&quot; — DJ Alex, CDMX
+                  </p>
 
                   {/* Sin método seleccionado: mensaje sutil */}
                   {!selectedMethod && (

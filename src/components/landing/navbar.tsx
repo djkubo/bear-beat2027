@@ -77,8 +77,11 @@ export function NavBar() {
               </Link>
             )}
             <Link href="/checkout">
-              <Button size="sm" className="bg-cyan-500 text-zinc-950 hover:bg-cyan-400 font-bold shadow-[0_0_16px_rgba(34,211,238,0.3)]">
-                Comprar $350 MXN
+              <Button
+                size="sm"
+                className={`bg-cyan-500 text-zinc-950 hover:bg-cyan-400 font-bold shadow-[0_0_16px_rgba(34,211,238,0.3)] ${!userHasAccess ? 'animate-pulse' : ''}`}
+              >
+                Acceso Total $350
               </Button>
             </Link>
           </div>

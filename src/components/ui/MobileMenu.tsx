@@ -48,7 +48,7 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
     }
   }, [isOpen])
 
-  /* Solo lo que genera dinero: Inicio, Comprar, Login. Sin Soporte/Ayuda. */
+  /* Solo lo que genera dinero: Inicio, Acceso Total $350, Login. Sin Soporte/Ayuda. */
   const menuItems = userHasAccess
     ? [
         { href: '/', label: 'Inicio', icon: '🏠' },
@@ -58,12 +58,12 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
     : isLoggedIn
       ? [
           { href: '/', label: 'Inicio', icon: '🏠' },
-          { href: '/checkout?pack=enero-2026', label: 'Comprar Acceso', icon: '💳', highlight: true },
+          { href: '/checkout?pack=enero-2026', label: 'Acceso Total $350', icon: '💳', highlight: true },
           { href: '/dashboard', label: 'Mi Panel', icon: '📊' },
         ]
       : [
           { href: '/', label: 'Inicio', icon: '🏠' },
-          { href: '/checkout?pack=enero-2026', label: 'Comprar Acceso', icon: '💳', highlight: true },
+          { href: '/checkout?pack=enero-2026', label: 'Acceso Total $350', icon: '💳', highlight: true },
           { href: '/login', label: 'Iniciar Sesión', icon: '👤' },
         ]
 
@@ -154,7 +154,7 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
                         className={`
                           flex items-center gap-4 px-4 py-3.5 rounded-xl text-lg font-medium transition-colors
                           ${item.highlight
-                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' + (!userHasAccess ? ' animate-pulse' : '')
                             : currentPath === item.href
                               ? 'bg-white/10 text-cyan-400'
                               : 'text-zinc-300 hover:bg-white/5 hover:text-white'
@@ -180,6 +180,7 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
                       ? 'bg-cyan-500 text-zinc-950 hover:bg-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
                       : 'bg-white/10 text-cyan-400 border border-cyan-500/50 hover:bg-white/15'
                     }
+                    ${ctaItem.primary && !userHasAccess ? 'animate-pulse' : ''}
                   `}
                 >
                   {ctaItem.label}
