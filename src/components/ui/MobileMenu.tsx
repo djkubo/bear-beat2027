@@ -48,28 +48,21 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
     }
   }, [isOpen])
 
+  /* Solo lo que genera dinero: Inicio, Comprar, Login. Sin Soporte/Ayuda. */
   const menuItems = userHasAccess
     ? [
-        { href: '/dashboard', label: 'Mi Panel', icon: '📊', highlight: true },
-        { href: '/portal', label: 'Portal', icon: '🚪' },
-        { href: '/contenido', label: 'Descargar Videos', icon: '⬇️' },
-        { href: '/comunidad', label: 'Comunidad VIP', icon: '💬' },
-        { href: '/mi-cuenta', label: 'Mi cuenta', icon: '👤' },
         { href: '/', label: 'Inicio', icon: '🏠' },
+        { href: '/dashboard', label: 'Mi Panel', icon: '📊', highlight: true },
+        { href: '/contenido', label: 'Descargar Videos', icon: '⬇️' },
       ]
     : isLoggedIn
       ? [
           { href: '/', label: 'Inicio', icon: '🏠' },
-          { href: '/contenido', label: 'Ver Contenido', icon: '👁️' },
           { href: '/checkout?pack=enero-2026', label: 'Comprar Acceso', icon: '💳', highlight: true },
           { href: '/dashboard', label: 'Mi Panel', icon: '📊' },
-          { href: '/portal', label: 'Portal', icon: '🚪' },
-          { href: '/comunidad', label: 'Comunidad VIP', icon: '💬' },
-          { href: '/mi-cuenta', label: 'Mi cuenta', icon: '👤' },
         ]
       : [
           { href: '/', label: 'Inicio', icon: '🏠' },
-          { href: '/contenido', label: 'Ver Contenido', icon: '👁️' },
           { href: '/checkout?pack=enero-2026', label: 'Comprar Acceso', icon: '💳', highlight: true },
           { href: '/login', label: 'Iniciar Sesión', icon: '👤' },
         ]
@@ -116,7 +109,7 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
               aria-hidden="true"
             />
 
-            {/* Drawer – pantalla completa en móvil, safe-area, scroll interno */}
+            {/* Drawer – sin desborde horizontal, safe-area, scroll interno */}
             <motion.div
               id="mobile-drawer"
               role="dialog"
@@ -126,7 +119,7 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 260 }}
-              className="fixed top-0 right-0 bottom-0 w-full max-w-[320px] min-h-[100dvh] bg-zinc-950 border-l border-white/10 shadow-[-8px_0_32px_rgba(0,0,0,0.6)] z-[105] md:hidden flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+              className="fixed top-0 right-0 bottom-0 w-full max-w-[320px] min-h-[100dvh] bg-zinc-950 border-l border-white/10 shadow-[-8px_0_32px_rgba(0,0,0,0.6)] z-[105] md:hidden flex flex-col overflow-x-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
             >
               {/* Header: logo + cerrar */}
               <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-4 border-b border-white/10">

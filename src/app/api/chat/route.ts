@@ -50,50 +50,59 @@ export async function POST(req: Request) {
       });
     }
 
-    const embedding = await openai.embeddings.create({
-      model: 'text-embedding-3-large',
-      input: message,
-    });
-
-    const { data: documents } = await supabase.rpc('match_documents', {
-      query_embedding: embedding.data[0].embedding,
-      match_threshold: 0.3,
-      match_count: 5,
-    });
-
-    const context = documents?.map((d: any) => d.content).join('\n\n') || '';
-
-    const response = await openai.chat.completions.create({
-      model: 'gpt-5.2', 
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'system', content: "CONTEXTO REAL DEL NEGOCIO:\n" + context },
-        ...(history || []).slice(-5),
-        { role: 'user', content: message }
-      ],
-      temperature: 0.7,
-      max_tokens: 300,
-    });
-
-    const reply = response.choices[0].message.content;
-
-    if (userId) {
-      await supabase.from('chat_messages').insert({
-        session_id: currentSessionId,
-        user_id: userId,
-        role: 'assistant',
-        content: reply,
-        is_bot: true,
+    let reply: string;
+    try {
+      const embedding = await openai.embeddings.create({
+        model: 'text-embedding-3-large',
+        input: message,
       });
+
+      const { data: documents } = await supabase.rpc('match_documents', {
+        query_embedding: embedding.data[0].embedding,
+        match_threshold: 0.3,
+        match_count: 5,
+      });
+
+      const context = documents?.map((d: any) => d.content).join('\n\n') || '';
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-5.2',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: "CONTEXTO REAL DEL NEGOCIO:\n" + context },
+          ...(history || []).slice(-5),
+          { role: 'user', content: message }
+        ],
+        temperature: 0.7,
+        max_tokens: 300,
+      });
+
+      reply = response.choices[0].message.content ?? '';
+
+      if (userId && reply) {
+        await supabase.from('chat_messages').insert({
+          session_id: currentSessionId,
+          user_id: userId,
+          role: 'assistant',
+          content: reply,
+          is_bot: true,
+        });
+      }
+    } catch (apiError) {
+      console.error('AI API Error:', apiError);
+      return NextResponse.json(
+        { role: 'assistant', content: 'Estoy actualizando mis sistemas de venta, dame un momento.' },
+        { status: 200 }
+      );
     }
 
     return NextResponse.json({ role: 'assistant', content: reply });
 
   } catch (error) {
-    console.error('AI Error:', error);
-    return NextResponse.json({ 
-      role: 'assistant', 
-      content: 'El cerebro está saturado de ventas. Intenta de nuevo en 5 seg. 🔥' 
-    }, { status: 500 });
+    console.error('Chat Error:', error);
+    return NextResponse.json(
+      { role: 'assistant', content: 'Estoy actualizando mis sistemas de venta, dame un momento.' },
+      { status: 200 }
+    );
   }
 }

@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Blindaje móvil: evita descuadre y scroll horizontal */
+html,
+body {
+  overflow-x: hidden !important;
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
+  overscroll-behavior-y: none;
+}
+
 @layer base {
   :root {
     /* Bear Beat Brand Colors */
