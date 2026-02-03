@@ -430,7 +430,7 @@ export default function ContenidoPage() {
                               <p className="font-medium text-white truncate">{video.artist}</p>
                               <p className="text-sm text-gray-500 truncate">{video.title}</p>
                             </div>
-                            <div className="hidden sm:flex gap-2 shrink-0">
+                            <div className="flex items-center gap-2 shrink-0">
                               {video.key && (
                                 <span className="px-2 py-0.5 rounded text-xs font-mono bg-purple-500/20 text-purple-300">
                                   {video.key}
@@ -440,6 +440,20 @@ export default function ContenidoPage() {
                                 <span className="px-2 py-0.5 rounded text-xs font-mono bg-green-500/20 text-green-300">
                                   {video.bpm}
                                 </span>
+                              )}
+                              {hasAccess && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDownloadAttempt(video)
+                                  }}
+                                  disabled={downloadingVideoId === video.id}
+                                  className="p-2 rounded-lg text-bear-blue hover:bg-bear-blue/20 transition shrink-0 disabled:opacity-60"
+                                  aria-label="Descargar video"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </button>
                               )}
                             </div>
                           </div>
