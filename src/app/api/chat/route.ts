@@ -81,7 +81,7 @@ export async function POST(req: Request) {
         max_tokens: 300,
       };
       if (chatModel.startsWith('gpt-5')) {
-        (createParams as Record<string, unknown>).reasoning_effort = 'none';
+        (createParams as unknown as Record<string, unknown>).reasoning_effort = 'none';
       }
       const response = await openai.chat.completions.create(createParams);
 

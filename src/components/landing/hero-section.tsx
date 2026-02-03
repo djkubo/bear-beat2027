@@ -36,22 +36,10 @@ export function HeroSection({ pack }: HeroSectionProps) {
       </div>
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Desktop: [ Video/Play izquierda ] | [ Texto derecha ]. Móvil: apilado (texto arriba, video abajo) */}
-        <div className="flex flex-col md:flex-row md:gap-12 lg:gap-16 items-center gap-8 animate-fade-in">
-          {/* Columna Video/Play – Desktop: izquierda. Móvil: abajo (order-2) */}
-          <div className="order-2 md:order-1 flex justify-center md:justify-start w-full md:max-w-lg">
-            <div className="w-full max-w-md aspect-video rounded-2xl bg-zinc-900/80 border-2 border-cyan-500/30 flex items-center justify-center overflow-hidden shadow-2xl">
-              <Link href="/contenido" className="flex flex-col items-center gap-3 p-8 group">
-                <span className="w-20 h-20 rounded-full bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center group-hover:bg-cyan-500/30 transition">
-                  <Play className="h-10 w-10 text-cyan-400 fill-cyan-400/30 ml-1" />
-                </span>
-                <span className="text-base md:text-lg font-bold text-cyan-400">Ver videos de ejemplo</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* Columna Texto + CTA – Móvil: arriba (order-1). Desktop: derecha */}
-          <div className="order-1 md:order-2 text-center md:text-left space-y-6 flex-1 min-w-0">
+        {/* Desktop: Video IZQUIERDA, Texto DERECHA (flex-row-reverse = texto 1º en DOM va a la derecha). Móvil: texto arriba, video abajo */}
+        <div className="flex flex-col md:flex-row-reverse md:gap-12 lg:gap-16 items-center gap-8 animate-fade-in">
+          {/* Columna Texto + CTA – En DOM primero: en desktop va a la DERECHA por flex-row-reverse. Móvil: arriba */}
+          <div className="order-1 text-center md:text-left space-y-6 flex-1 min-w-0">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bear-blue/10 border-2 border-bear-blue/30">
               <span className="text-2xl">🔥</span>
@@ -118,6 +106,18 @@ export function HeroSection({ pack }: HeroSectionProps) {
             <p className="text-sm text-muted-foreground">
               🎉 Más de <span className="font-bold text-foreground">500 DJs</span> ya compraron este pack
             </p>
+          </div>
+
+          {/* Columna Video/Play – En DOM segundo: en desktop va a la IZQUIERDA por flex-row-reverse. Móvil: abajo */}
+          <div className="order-2 flex justify-center md:justify-start w-full md:max-w-lg">
+            <div className="w-full max-w-md aspect-video rounded-2xl bg-zinc-900/80 border-2 border-cyan-500/30 flex items-center justify-center overflow-hidden shadow-2xl">
+              <Link href="/contenido" className="flex flex-col items-center gap-3 p-8 group">
+                <span className="w-20 h-20 rounded-full bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center group-hover:bg-cyan-500/30 transition">
+                  <Play className="h-10 w-10 text-cyan-400 fill-cyan-400/30 ml-1" />
+                </span>
+                <span className="text-base md:text-lg font-bold text-cyan-400">Ver videos de ejemplo</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

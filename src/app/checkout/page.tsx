@@ -476,16 +476,14 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                  {/* Banner crítico para OXXO/SPEI: no ignorar el email */}
-                  {(selectedMethod === 'oxxo' || selectedMethod === 'spei') && (
-                    <div className="mb-4 rounded-xl border-2 border-amber-500/60 bg-amber-500/15 px-4 py-3 text-center">
-                      <p className="text-sm font-bold text-amber-200">
-                        ⚠️ MUY IMPORTANTE: Tu acceso llegará a este correo. Escríbelo con cuidado.
-                      </p>
-                    </div>
-                  )}
+                  {/* Alerta de email SIEMPRE visible (Tarjeta, OXXO, SPEI, PayPal): la llave del acceso */}
+                  <div className="mb-4 rounded-xl border-2 border-amber-500/60 bg-amber-500/15 px-4 py-3 text-center">
+                    <p className="text-sm font-bold text-amber-200">
+                      ⚠️ MUY IMPORTANTE: Tu acceso llegará a este correo. Escríbelo con cuidado.
+                    </p>
+                  </div>
 
-                  {/* Email: necesario para OXXO/SPEI; recomendado para tarjeta/PayPal */}
+                  {/* Email: obligatorio para OXXO/SPEI; necesario para tarjeta/PayPal */}
                   <div className="mb-4">
                     <label htmlFor="checkout-email" className="block text-sm font-medium text-gray-400 mb-1.5">
                       Tu email
