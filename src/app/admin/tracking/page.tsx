@@ -152,6 +152,9 @@ function getEventIcon(eventType: string): string {
     'registration': '📝',
     'login': '🔐',
     'purchase_completed': '🎉',
+    'client_error': '❌',
+    'client_promise_rejection': '⚠️',
+    'react_error': '🔴',
   }
   return icons[eventType] || '📌'
 }
@@ -166,6 +169,9 @@ function getEventColor(eventType: string): string {
     'registration': 'border-pink-500/60 bg-pink-500/5',
     'login': 'border-indigo-500/60 bg-indigo-500/5',
     'purchase_completed': 'border-emerald-400/60 bg-emerald-400/5',
+    'client_error': 'border-red-500/60 bg-red-500/10',
+    'client_promise_rejection': 'border-amber-500/60 bg-amber-500/10',
+    'react_error': 'border-red-600/60 bg-red-600/10',
   }
   return colors[eventType] || 'border-white/10 bg-zinc-800/30'
 }

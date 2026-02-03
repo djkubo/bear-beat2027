@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import ChatWidget from '@/components/chat/ChatWidget' // <--- CORREGIDO (Importación por defecto)
+import ChatWidget from '@/components/chat/ChatWidget'
 import { Toaster } from 'sonner'
 import { TrackingScripts } from '@/components/tracking/TrackingScripts'
+import { ClientErrorLogger } from '@/components/tracking/ClientErrorLogger'
+import { GlobalErrorBoundary } from '@/components/tracking/GlobalErrorBoundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -23,9 +25,12 @@ export default function RootLayout({
         <TrackingScripts />
       </head>
       <body className={`${inter.className} relative min-w-0 overflow-x-hidden overflow-y-auto bg-black text-white antialiased`}>
-        <main className="relative min-w-0 overflow-x-hidden overflow-y-auto">
-          {children}
-        </main>
+        <GlobalErrorBoundary>
+          <main className="relative min-w-0 overflow-x-hidden overflow-y-auto">
+            {children}
+          </main>
+        </GlobalErrorBoundary>
+        <ClientErrorLogger />
         <ChatWidget />
         <Toaster position="top-center" theme="dark" />
       </body>

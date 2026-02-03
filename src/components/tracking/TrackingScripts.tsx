@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || ''
 const MANYCHAT_ID = process.env.NEXT_PUBLIC_MANYCHAT_ID || process.env.NEXT_PUBLIC_MANYCHAT_PAGE_ID || ''
+const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || ''
 const DISABLED = process.env.NEXT_PUBLIC_META_PIXEL_DISABLED === 'true'
 
 declare global {
@@ -61,6 +62,19 @@ export function TrackingScripts() {
           src={`https://widget.manychat.com/${MANYCHAT_ID}.js`}
           strategy="afterInteractive"
         />
+      )}
+
+      {/* Microsoft Clarity: mapas de calor + grabación de sesiones (gratis) */}
+      {CLARITY_ID && (
+        <Script id="clarity" strategy="afterInteractive">
+          {`
+            (function(c,l,a,r,i,t,y){
+              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "${CLARITY_ID}");
+          `}
+        </Script>
       )}
     </>
   )
