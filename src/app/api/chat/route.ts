@@ -42,6 +42,22 @@ export async function POST(req: Request) {
     const { message, history, userId, sessionId } = await req.json();
     const currentSessionId = sessionId || 'guest-' + Date.now();
 
+    let historyFromDb: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    if (userId) {
+      const { data: pastMessages } = await supabase
+        .from('chat_messages')
+        .select('role, content')
+        .eq('user_id', userId)
+        .in('role', ['user', 'assistant'])
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (pastMessages?.length) {
+        historyFromDb = [...pastMessages]
+          .reverse()
+          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content || '' }));
+      }
+    }
+
     if (userId) {
       await supabase.from('chat_messages').insert({
         session_id: currentSessionId,
@@ -50,6 +66,11 @@ export async function POST(req: Request) {
         content: message,
       });
     }
+
+    const conversationHistory = historyFromDb.length ? historyFromDb : (history || []).slice(-10).map((h: { role?: string; content?: string }) => ({
+      role: (h.role === 'assistant' ? 'assistant' : 'user') as 'user' | 'assistant',
+      content: h.content || '',
+    }));
 
     let reply: string;
     let contextText = '';
@@ -74,7 +95,7 @@ export async function POST(req: Request) {
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'system', content: "BASE DE CONOCIMIENTOS (USAR OBLIGATORIAMENTE):\n" + contextText },
-          ...(history || []).slice(-5),
+          ...conversationHistory,
           { role: 'user', content: message }
         ],
         temperature: 0.7,
@@ -107,7 +128,7 @@ export async function POST(req: Request) {
             messages: [
               { role: 'system', content: SYSTEM_PROMPT },
               { role: 'system', content: "BASE DE CONOCIMIENTOS (USAR OBLIGATORIAMENTE):\n" + contextText },
-              ...(history || []).slice(-5),
+              ...conversationHistory,
               { role: 'user', content: message }
             ],
             temperature: 0.7,
