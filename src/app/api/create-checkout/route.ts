@@ -83,14 +83,15 @@ export async function POST(req: NextRequest) {
     }
     const price = prices[currency] || pack.price_usd
     
-    // Configurar payment_method_types según método
+    // Configurar payment_method_types según método (MXN requiere al menos un tipo soportado por la moneda)
     let paymentMethodTypes: string[] = ['card']
     
     if (paymentMethod === 'oxxo') {
       paymentMethodTypes = ['oxxo']
     } else if (paymentMethod === 'spei') {
-      // SPEI es customer_balance en Stripe
-      paymentMethodTypes = ['customer_balance']
+      // SPEI = customer_balance (bank_transfer). Stripe exige al menos un método compatible con MXN:
+      // incluir 'card' para que la sesión sea válida; en Checkout el cliente puede elegir transferencia.
+      paymentMethodTypes = ['card', 'customer_balance']
     } else if (paymentMethod === 'paypal') {
       paymentMethodTypes = ['paypal']
     }
