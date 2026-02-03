@@ -14,17 +14,17 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const runtime = 'edge';
 
-/** Construye el system prompt con conciencia de usuario (perfil inyectado). */
+/** Construye el system prompt con conciencia de usuario (perfil inyectado). Cerebro bipolar: Ventas + Soporte. */
 function buildSystemPrompt(userContext: string): string {
   return `
-ERES: BearBot, el Asistente de Élite de Bear Beat (bearbeat.com).
+ERES: BearBot, el Asistente de Élite de Bear Beat.
 FECHA ACTUAL: ${new Date().toLocaleDateString('es-MX', { dateStyle: 'long' })}
 
 TU USUARIO ACTUAL:
 ${userContext}
 
 OBJETIVO DOBLE:
-1. 💰 VENTAS (Si el usuario duda o pregunta info): Usa Neuroventas. Aplica escasez ("El precio sube pronto"), autoridad ("Usado por +500 DJs") y prueba social. Tu meta es que vayan al Checkout.
+1. 💰 VENTAS (Si el usuario duda o pregunta info): Usa Neuroventas. Aplica escasez ("El precio sube pronto"), autoridad ("Usado por 10k DJs") y prueba social. Tu meta es que vayan al Checkout.
 2. 🛠 SOPORTE (Si el usuario reporta fallo): Cambia a modo "Ingeniero Empático". Sé breve, técnico y soluciona. No vendas si el usuario tiene problemas.
 
 PERSONALIDAD DJ:
@@ -38,7 +38,7 @@ REGLAS DE ORO (INFORMACIÓN REAL):
 - FORMATO: Video MP4 HD (1080p).
 - ORGANIZACIÓN: Carpetas por Género > Artista - Título (Key - BPM).
 - DESCARGA: Web (uno por uno) o FTP (Masivo/Veloz).
-- SOPORTE: Si algo falla grave, diles que escriban a soporte@bearbeat.com o WhatsApp.
+- SOPORTE: Si algo falla grave, diles que escriban a soporte@bearbeat.mx o WhatsApp.
 
 MODULACIÓN DE RESPUESTA:
 - Si pregunta "¿Cómo descargo?": Explica el FTP (es la mejor opción).
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     const { message, history, userId, sessionId } = await req.json();
     const currentSessionId = sessionId || 'guest-' + Date.now();
 
-    // —— Inyección de perfil de usuario (Conciencia de Usuario) ——
+    // —— Inyección de perfil de usuario (Conciencia de Usuario / Inteligencia Híbrida) ——
     let userContext = 'Usuario Anónimo (Tratar como Lead Frío).';
     if (userId) {
       const { data: profile } = await supabase
@@ -80,10 +80,20 @@ export async function POST(req: Request) {
         .eq('user_id', userId);
 
       const purchaseCount = purchases?.length ?? 0;
+      const lastPurchase = purchases?.length
+        ? purchases.reduce((prev, curr) =>
+            new Date((curr?.purchased_at) || 0) > new Date((prev?.purchased_at) || 0) ? curr : prev
+          )
+        : null;
+      const lastPurchaseDate = lastPurchase?.purchased_at
+        ? new Date(lastPurchase.purchased_at).toLocaleDateString('es-MX', { dateStyle: 'short' })
+        : 'N/A';
+
       userContext = `PERFIL DEL DJ:
 - Nombre: ${profile?.name || 'Colega'}
 - Estatus: ${purchaseCount ? 'CLIENTE VIP 💎' : 'VISITANTE 👀'}
 - Compras Previas: ${purchaseCount} Packs.
+- Última compra: ${lastPurchaseDate}
 - Tono a usar: ${purchaseCount ? 'Familiar, de respeto, agradecido.' : 'Persuasivo, energético, enfocado en cierre.'}`;
     }
 
@@ -141,7 +151,7 @@ export async function POST(req: Request) {
         model: chatModel,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'system', content: "BASE DE CONOCIMIENTOS (USAR OBLIGATORIAMENTE):\n" + contextText },
+          { role: 'system', content: "CONTEXTO RAG (USAR OBLIGATORIAMENTE):\n" + contextText },
           ...conversationHistory,
           { role: 'user', content: message }
         ],
@@ -174,7 +184,7 @@ export async function POST(req: Request) {
             model: CHAT_MODEL_FALLBACK,
             messages: [
               { role: 'system', content: SYSTEM_PROMPT },
-              { role: 'system', content: "BASE DE CONOCIMIENTOS (USAR OBLIGATORIAMENTE):\n" + contextText },
+              { role: 'system', content: "CONTEXTO RAG (USAR OBLIGATORIAMENTE):\n" + contextText },
               ...conversationHistory,
               { role: 'user', content: message }
             ],

@@ -157,10 +157,11 @@ export default function HomeLanding() {
 
   const loadData = async () => {
     try {
-      const res = await fetch(`/api/videos?pack=enero-2026&statsOnly=1`, { cache: 'no-store' })
+      // Misma fuente que /contenido: listado real del servidor para que el usuario vea qué está comprando
+      const res = await fetch(`/api/videos?pack=enero-2026`, { cache: 'no-store' })
       const data = await res.json()
       if (data.success) {
-        setGenres(data.genres)
+        setGenres(data.genres || [])
         setPackInfo(data.pack)
       }
     } catch (e) {
@@ -329,30 +330,39 @@ export default function HomeLanding() {
             </div>
           </section>
 
-          {/* DEMOS SECTION */}
+          {/* DEMOS SECTION – Mismos videos que en /contenido (del servidor) */}
           <section id="demo-section" className="py-20 px-4">
             <div className="max-w-6xl mx-auto">
               <div className="flex justify-between items-end mb-8">
                 <div>
                   <h2 className="text-3xl font-black text-white">Prueba la Calidad</h2>
-                  <p className="text-zinc-400">Escucha antes de comprar. 100% Transparencia.</p>
+                  <p className="text-zinc-400">Los mismos videos que en el pack. Escucha antes de comprar. 100% Transparencia.</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {genres.slice(0, 10).flatMap(g => g.videos?.slice(0, 1) ?? []).filter(Boolean).map((video, i) => (
-                  <div key={video.id || i} onClick={() => setSelectedVideo(video)} className="group cursor-pointer">
-                    <div className="aspect-video bg-zinc-800 rounded-lg overflow-hidden relative">
-                      {video.thumbnailUrl && <img src={video.thumbnailUrl} alt="" className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition" />}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-10 h-10 bg-bear-blue/90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition"><Play size={16} className="text-black ml-1" /></div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {genres
+                  .filter((g) => g.id !== 'preview')
+                  .flatMap((g) => (g.videos || []).slice(0, 2))
+                  .slice(0, 30)
+                  .map((video, i) => (
+                    <div key={video.id || i} onClick={() => setSelectedVideo(video)} className="group cursor-pointer">
+                      <div className="aspect-video bg-zinc-800 rounded-lg overflow-hidden relative">
+                        {video.thumbnailUrl && <img src={video.thumbnailUrl} alt="" className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition" />}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-10 h-10 bg-bear-blue/90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition"><Play size={16} className="text-black ml-1" /></div>
+                        </div>
                       </div>
+                      <p className="mt-2 text-xs font-bold truncate text-white group-hover:text-bear-blue transition">{video.artist} - {video.title}</p>
+                      <p className="text-[10px] text-zinc-500">{video.genre} • {video.bpm || '—'} BPM</p>
                     </div>
-                    <p className="mt-2 text-xs font-bold truncate text-white group-hover:text-bear-blue transition">{video.artist} - {video.title}</p>
-                    <p className="text-[10px] text-zinc-500">{video.genre} • {video.bpm || '—'} BPM</p>
-                  </div>
-                ))}
+                  ))}
               </div>
+              {genres.filter((g) => g.id !== 'preview').length > 0 && (
+                <p className="mt-6 text-center text-sm text-zinc-500">
+                  Mostrando una muestra por género. Al comprar tendrás acceso a todo el catálogo en <Link href="/contenido" className="text-bear-blue hover:underline">Contenido</Link>.
+                </p>
+              )}
             </div>
           </section>
 
