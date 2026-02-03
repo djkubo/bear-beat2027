@@ -55,10 +55,13 @@ export async function GET(req: NextRequest) {
     }
 
     const isZip = sanitizedPath.toLowerCase().endsWith('.zip')
+    const streamInline = req.nextUrl.searchParams.get('stream') === 'true' && !isZip
 
     const filename = sanitizedPath.split('/').pop() || 'download'
     const contentType = getContentType(sanitizedPath)
-    const disposition = `attachment; filename="${filename.replace(/"/g, '\\"')}"`
+    const disposition = streamInline
+      ? 'inline'
+      : `attachment; filename="${filename.replace(/"/g, '\\"')}"`
 
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
@@ -132,7 +135,7 @@ export async function GET(req: NextRequest) {
             headers: {
               'Content-Type': contentType,
               'Cache-Control': 'private, max-age=3600',
-              'Content-Disposition': `attachment; filename="${filename.replace(/"/g, '\\"')}"`,
+              'Content-Disposition': disposition,
             },
           })
         } catch (ftpErr) {
@@ -172,7 +175,7 @@ export async function GET(req: NextRequest) {
           headers: {
             'Content-Type': contentType,
             'Cache-Control': 'private, max-age=3600',
-            'Content-Disposition': `attachment; filename="${filename.replace(/"/g, '\\"')}"`,
+            'Content-Disposition': disposition,
           },
         })
       } catch (e) {
