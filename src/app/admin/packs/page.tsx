@@ -22,7 +22,7 @@ export default async function AdminPacksPage() {
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <Link href="/admin" className="text-sm text-bear-blue hover:text-cyan-400 mb-2 inline-block">
+          <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-2 inline-block font-medium">
             ← Volver al Panel
           </Link>
           <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">📦 Gestión de Packs</h1>
@@ -30,17 +30,17 @@ export default async function AdminPacksPage() {
             Total: {packs?.length || 0} packs
           </p>
         </div>
-        <button className="w-full sm:w-auto bg-bear-blue text-black px-6 py-3 rounded-xl font-bold hover:bg-cyan-400 transition shadow-[0_0_15px_rgba(8,225,247,0.2)]">
+        <button className="w-full sm:w-auto bg-bear-blue text-bear-black px-6 py-3 rounded-xl font-bold hover:bg-bear-blue/90 transition shadow-[0_0_15px_rgba(8,225,247,0.2)]">
           ➕ Crear Nuevo Pack
         </button>
       </div>
 
       {!packs || packs.length === 0 ? (
-        <div className="rounded-2xl p-12 border border-white/10 bg-zinc-900/50 text-center">
+        <div className="rounded-xl p-12 border border-white/5 bg-zinc-900/80 text-center">
           <p className="text-xl font-bold text-zinc-400 mb-4">
             No hay packs creados
           </p>
-          <button className="bg-bear-blue text-black px-8 py-4 rounded-xl font-bold hover:bg-cyan-400 transition">
+          <button className="bg-bear-blue text-bear-black px-8 py-4 rounded-xl font-bold hover:bg-bear-blue/90 transition">
             ➕ Crear Primer Pack
           </button>
         </div>
@@ -52,7 +52,7 @@ export default async function AdminPacksPage() {
             return (
               <div
                 key={pack.id}
-                className="rounded-2xl overflow-hidden border border-white/10 bg-zinc-900/80 shadow-xl hover:border-bear-blue/30 transition-all"
+                className="rounded-xl overflow-hidden border border-white/5 bg-zinc-900/80 shadow-xl hover:border-bear-blue/30 transition-all"
               >
                 <div className={`p-3 ${
                   pack.status === 'available' ? 'bg-bear-blue/20 border-b border-bear-blue/30' :
@@ -81,11 +81,11 @@ export default async function AdminPacksPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg p-3 border border-white/10 bg-zinc-800/50 text-center">
+                    <div className="rounded-lg p-3 border border-white/5 bg-zinc-800/50 text-center">
                       <div className="text-2xl font-black text-bear-blue">{pack.total_videos?.toLocaleString() || 0}</div>
                       <div className="text-xs text-zinc-500">Videos</div>
                     </div>
-                    <div className="rounded-lg p-3 border border-white/10 bg-zinc-800/50 text-center">
+                    <div className="rounded-lg p-3 border border-white/5 bg-zinc-800/50 text-center">
                       <div className="text-2xl font-black text-white">{pack.total_size_gb || 0} GB</div>
                       <div className="text-xs text-zinc-500">Tamaño</div>
                     </div>
@@ -103,10 +103,10 @@ export default async function AdminPacksPage() {
                   </div>
 
                   <div className="flex gap-2">
-                    <button className="flex-1 bg-bear-blue text-black py-2 rounded-lg font-bold hover:bg-cyan-400 text-sm transition">
+                    <button className="flex-1 bg-bear-blue text-bear-black py-2 rounded-lg font-bold hover:bg-bear-blue/90 text-sm transition">
                       ✏️ Editar
                     </button>
-                    <button className="flex-1 bg-zinc-700 text-white py-2 rounded-lg font-bold hover:bg-zinc-600 text-sm transition border border-white/10">
+                    <button className="flex-1 bg-zinc-800 text-white py-2 rounded-lg font-bold hover:bg-zinc-700 text-sm transition border border-white/5">
                       👁️ Ver
                     </button>
                   </div>

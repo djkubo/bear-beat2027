@@ -24,7 +24,7 @@ export function SyncVideosFtpButton() {
   }
 
   return (
-    <div className="rounded-xl p-4 border border-white/10 bg-zinc-900/50 shadow-lg">
+    <div className="rounded-xl p-4 border border-white/5 bg-zinc-900/80 shadow-lg">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <div className="font-bold text-sm text-white">📂 Sincronizar catálogo desde FTP</div>
@@ -36,7 +36,7 @@ export function SyncVideosFtpButton() {
           type="button"
           onClick={run}
           disabled={loading}
-          className="px-4 py-2 bg-bear-blue text-black rounded-lg font-bold hover:bg-cyan-400 disabled:opacity-50 shadow-[0_0_15px_rgba(8,225,247,0.2)]"
+          className="px-4 py-2 bg-bear-blue text-black rounded-lg font-bold hover:bg-bear-blue/90 disabled:opacity-50 shadow-[0_0_15px_rgba(8,225,247,0.2)]"
         >
           {loading ? 'Sincronizando…' : 'Ejecutar sync'}
         </button>

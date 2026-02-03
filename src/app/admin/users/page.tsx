@@ -44,7 +44,7 @@ export default async function AdminUsersPage({
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-white/10">
+          <tr className="border-b border-white/5">
             <th className="text-left py-4 px-4 font-bold text-zinc-400">Usuario</th>
             <th className="text-left py-4 px-4 font-bold text-zinc-400">Email</th>
             <th className="text-left py-4 px-4 font-bold text-zinc-400">Teléfono</th>
@@ -75,7 +75,7 @@ export default async function AdminUsersPage({
               <td className="py-4 px-4">
                 <a
                   href={`/admin/users/${user.id}`}
-                  className="text-bear-blue font-bold hover:text-cyan-400 transition"
+                  className="text-bear-blue font-bold hover:underline transition"
                 >
                   Ver detalles →
                 </a>
@@ -89,7 +89,7 @@ export default async function AdminUsersPage({
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
-      <Link href="/admin" className="text-sm text-bear-blue hover:text-cyan-400 mb-4 inline-block">
+      <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-4 inline-block font-medium">
         ← Volver al Panel
       </Link>
       <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-1">👥 Usuarios</h1>
@@ -98,7 +98,7 @@ export default async function AdminUsersPage({
           ? `${filteredUsers.length} resultado(s) para "${params?.search}"`
           : `Total: ${count || 0} usuarios`}
       </p>
-      <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/50 shadow-xl">
+      <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
         {cardContent}
       </div>
     </div>

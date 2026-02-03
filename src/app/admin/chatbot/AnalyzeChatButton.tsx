@@ -59,7 +59,7 @@ export function AnalyzeChatButton() {
       <button
         type="button"
         onClick={runAnalysis}
-        className="px-6 py-3 rounded-xl font-bold text-white shadow-lg bg-gradient-to-r from-purple-600 via-purple-500 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 transition-all"
+        className="px-6 py-3 rounded-xl font-bold text-bear-black bg-bear-blue hover:bg-bear-blue/90 shadow-[0_0_20px_rgba(8,225,247,0.25)] transition-all"
       >
         🧠 Generar Reporte AI
       </button>
@@ -78,7 +78,7 @@ export function AnalyzeChatButton() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: 'spring', damping: 25 }}
-              className="bg-bear-black border-2 border-purple-500/50 rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col"
+              className="bg-zinc-900 border border-bear-blue/30 rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6 border-b border-white/10 flex items-center justify-between">
@@ -95,7 +95,7 @@ export function AnalyzeChatButton() {
               <div className="p-6 overflow-y-auto flex-1">
                 {loading && (
                   <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                    <div className="w-12 h-12 border-2 border-purple-500/50 border-t-purple-400 rounded-full animate-spin mb-4" />
+                    <div className="w-12 h-12 border-2 border-bear-blue/30 border-t-bear-blue rounded-full animate-spin mb-4" />
                     <p>Analizando conversaciones...</p>
                   </div>
                 )}
@@ -124,7 +124,7 @@ export function AnalyzeChatButton() {
                           <button
                             type="button"
                             onClick={goToPendingChats}
-                            className="mt-3 px-4 py-2 bg-cyan-500/20 text-cyan-400 rounded-lg text-sm font-bold hover:bg-cyan-500/30"
+                            className="mt-3 px-4 py-2 bg-bear-blue/20 text-bear-blue rounded-lg text-sm font-bold hover:bg-bear-blue/30 border border-bear-blue/30"
                           >
                             Ir a esos chats →
                           </button>

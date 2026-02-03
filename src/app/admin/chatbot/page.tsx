@@ -89,16 +89,16 @@ export default async function AdminChatbotPage() {
   const statData = stats?.[0] || {}
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-bear-blue/5 via-background to-bear-black/5">
-      {/* Header */}
-      <div className="bg-card border-b-2 border-bear-blue/20 shadow-lg">
+    <div className="min-h-screen bg-[#050505] text-white">
+      {/* Header de sección – alineado con marca */}
+      <div className="border-b border-white/5 bg-zinc-950/80">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block">
+            <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block font-medium">
               ← Volver al Dashboard
             </Link>
-            <h1 className="text-3xl font-extrabold">🤖 Centro de Chatbot</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl md:text-3xl font-black text-white">🤖 Centro de Chatbot</h1>
+            <p className="text-gray-400 text-sm mt-1">
               Analytics, conversaciones y mejora del bot
             </p>
           </div>
@@ -107,82 +107,71 @@ export default async function AdminChatbotPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* KPIs */}
+        {/* KPIs – Bear Blue + acentos sutiles en dark */}
         <div className="grid md:grid-cols-5 gap-4">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
-            <div className="text-3xl font-extrabold">{statData.total_conversations || 0}</div>
-            <div className="text-sm opacity-90">Conversaciones (30d)</div>
+          <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80 bg-gradient-to-br from-bear-blue/15 to-transparent">
+            <div className="text-3xl font-black text-bear-blue">{statData.total_conversations || 0}</div>
+            <div className="text-sm text-gray-400 mt-1">Conversaciones (30d)</div>
           </div>
-          
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl">
-            <div className="text-3xl font-extrabold">{statData.resolved_conversations || 0}</div>
-            <div className="text-sm opacity-90">Resueltas</div>
+          <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80 bg-gradient-to-br from-emerald-500/15 to-transparent">
+            <div className="text-3xl font-black text-emerald-400">{statData.resolved_conversations || 0}</div>
+            <div className="text-sm text-gray-400 mt-1">Resueltas</div>
           </div>
-          
-          <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl p-6 text-white shadow-xl">
-            <div className="text-3xl font-extrabold">{pendingHuman?.length || 0}</div>
-            <div className="text-sm opacity-90">Esperando Humano</div>
+          <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80 bg-gradient-to-br from-amber-500/15 to-transparent">
+            <div className="text-3xl font-black text-amber-400">{pendingHuman?.length || 0}</div>
+            <div className="text-sm text-gray-400 mt-1">Esperando Humano</div>
           </div>
-          
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl">
-            <div className="text-3xl font-extrabold">{statData.total_messages || 0}</div>
-            <div className="text-sm opacity-90">Mensajes Totales</div>
+          <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80">
+            <div className="text-3xl font-black text-white">{statData.total_messages || 0}</div>
+            <div className="text-sm text-gray-400 mt-1">Mensajes Totales</div>
           </div>
-          
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-xl">
-            <div className="text-3xl font-extrabold">{statData.resolution_rate || 0}%</div>
-            <div className="text-sm opacity-90">Tasa Resolución</div>
+          <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80">
+            <div className="text-3xl font-black text-bear-blue">{statData.resolution_rate || 0}%</div>
+            <div className="text-sm text-gray-400 mt-1">Tasa Resolución</div>
           </div>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Conversaciones que necesitan humano */}
-          <div id="esperando-atencion-humana" className="bg-card rounded-2xl p-6 border-2 border-yellow-500/50 shadow-xl">
-            <h2 className="text-2xl font-extrabold mb-6 flex items-center gap-2">
+          {/* Esperando atención humana */}
+          <div id="esperando-atencion-humana" className="rounded-xl p-6 border border-white/5 bg-zinc-900/60 border-l-4 border-l-amber-500/60">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <span>👤</span> Esperando Atención Humana
               {pendingHuman && pendingHuman.length > 0 && (
-                <span className="bg-yellow-500 text-white px-2 py-1 rounded-full text-sm">
+                <span className="bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full text-sm font-bold border border-amber-500/30">
                   {pendingHuman.length}
                 </span>
               )}
             </h2>
-            
             {!pendingHuman || pendingHuman.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-gray-500">
                 <p className="text-4xl mb-2">✅</p>
                 <p>No hay conversaciones pendientes</p>
               </div>
             ) : (
               <div className="space-y-3 max-h-[400px] overflow-y-auto">
                 {pendingHuman.map((conv: any) => (
-                  <div key={conv.id} className="p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-lg">
+                  <div key={conv.id} className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="font-bold">{conv.name || conv.phone || 'Sin nombre'}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {conv.email || conv.phone}
-                        </div>
+                        <div className="font-bold text-white">{conv.name || conv.phone || 'Sin nombre'}</div>
+                        <div className="text-sm text-gray-400">{conv.email || conv.phone}</div>
                         {conv.current_intent && (
-                          <div className="mt-1 text-sm">
+                          <div className="mt-1 text-sm text-amber-300/90">
                             <span className="mr-1">{INTENT_ICONS[conv.current_intent] || '❓'}</span>
                             <span>{INTENT_NAMES[conv.current_intent] || conv.current_intent}</span>
                           </div>
                         )}
                       </div>
-                      <div className="text-right">
-                        <div className="text-xs text-muted-foreground">
-                          {conv.last_message_at && new Date(conv.last_message_at).toLocaleString('es-MX')}
-                        </div>
-                        <div className="text-sm font-bold">
-                          {conv.total_messages} msgs
-                        </div>
+                      <div className="text-right text-sm text-gray-400">
+                        {conv.last_message_at && new Date(conv.last_message_at).toLocaleString('es-MX')}
+                        <div className="font-bold text-white">{conv.total_messages} msgs</div>
                       </div>
                     </div>
                     <div className="mt-3 flex gap-2">
-                      <button className="px-3 py-1 bg-green-500 text-white rounded text-sm font-bold hover:bg-green-600">
+                      <button className="px-3 py-1.5 rounded-lg bg-bear-blue text-bear-black text-sm font-bold hover:bg-bear-blue/90 transition">
                         Atender
                       </button>
-                      <button className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300">
+                      <button className="px-3 py-1.5 rounded-lg border border-white/20 text-gray-300 text-sm hover:bg-white/5 transition">
                         Ver Chat
                       </button>
                     </div>
@@ -193,28 +182,23 @@ export default async function AdminChatbotPage() {
           </div>
 
           {/* Top Intenciones */}
-          <div className="bg-card rounded-2xl p-6 border-2 border-bear-blue/30 shadow-xl">
-            <h2 className="text-2xl font-extrabold mb-6">🎯 Top Intenciones (30d)</h2>
-            
+          <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/60">
+            <h2 className="text-xl font-bold text-white mb-6">🎯 Top Intenciones (30d)</h2>
             {sortedIntents.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No hay datos de intenciones aún</p>
-              </div>
+              <div className="text-center py-8 text-gray-500">No hay datos de intenciones aún</div>
             ) : (
               <div className="space-y-3">
-                {sortedIntents.map(([intent, count], index) => (
+                {sortedIntents.map(([intent, count]) => (
                   <div key={intent} className="flex items-center gap-4">
-                    <div className="text-2xl w-10 text-center">
-                      {INTENT_ICONS[intent] || '❓'}
-                    </div>
+                    <div className="text-2xl w-10 text-center">{INTENT_ICONS[intent] || '❓'}</div>
                     <div className="flex-1">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="font-medium">{INTENT_NAMES[intent] || intent}</span>
-                        <span className="font-bold">{count}</span>
+                        <span className="font-medium text-white">{INTENT_NAMES[intent] || intent}</span>
+                        <span className="font-bold text-bear-blue">{count}</span>
                       </div>
-                      <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
-                        <div 
-                          className="bg-bear-blue h-full rounded-full"
+                      <div className="rounded-full h-2 bg-zinc-800 overflow-hidden">
+                        <div
+                          className="bg-bear-blue h-full rounded-full transition-all"
                           style={{ width: `${(count / sortedIntents[0][1]) * 100}%` }}
                         />
                       </div>
@@ -226,26 +210,23 @@ export default async function AdminChatbotPage() {
           </div>
         </div>
 
-        {/* Mensajes sin respuesta (para mejorar el bot) */}
-        <div className="bg-card rounded-2xl p-6 border-2 border-red-500/30 shadow-xl">
-          <h2 className="text-2xl font-extrabold mb-6">🤔 Mensajes Sin Intención Detectada</h2>
-          <p className="text-muted-foreground mb-4">
-            Estos mensajes no fueron entendidos por el bot. Úsalos para agregar nuevas keywords.
+        {/* Mensajes sin intención */}
+        <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/60 border-l-4 border-l-red-500/50">
+          <h2 className="text-xl font-bold text-white mb-2">🤔 Mensajes Sin Intención Detectada</h2>
+          <p className="text-gray-400 text-sm mb-4">
+            Úsalos para agregar nuevas keywords al bot.
           </p>
-          
           {!unansweredMessages || unansweredMessages.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-gray-500">
               <p className="text-4xl mb-2">🎉</p>
               <p>¡El bot está entendiendo todo!</p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto">
               {unansweredMessages.map((msg: any, index: number) => (
-                <div key={index} className="p-3 bg-red-50 rounded-lg border border-red-200">
-                  <p className="text-sm">{msg.content}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(msg.created_at).toLocaleString('es-MX')}
-                  </p>
+                <div key={index} className="p-3 rounded-lg border border-red-500/20 bg-red-500/5">
+                  <p className="text-sm text-white">{msg.content}</p>
+                  <p className="text-xs text-gray-500 mt-1">{new Date(msg.created_at).toLocaleString('es-MX')}</p>
                 </div>
               ))}
             </div>
@@ -253,59 +234,50 @@ export default async function AdminChatbotPage() {
         </div>
 
         {/* Conversaciones Recientes */}
-        <div className="bg-card rounded-2xl p-6 border-2 border-bear-blue/30 shadow-xl">
-          <h2 className="text-2xl font-extrabold mb-6">💬 Conversaciones Recientes</h2>
-          
+        <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/60 overflow-hidden">
+          <h2 className="text-xl font-bold text-white mb-6">💬 Conversaciones Recientes</h2>
           {!recentConversations || recentConversations.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No hay conversaciones aún</p>
-            </div>
+            <div className="text-center py-8 text-gray-500">No hay conversaciones aún</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b-2 border-bear-blue/20">
-                    <th className="text-left py-3 px-4 font-bold">Usuario</th>
-                    <th className="text-left py-3 px-4 font-bold">Última Intención</th>
-                    <th className="text-center py-3 px-4 font-bold">Mensajes</th>
-                    <th className="text-center py-3 px-4 font-bold">Estado</th>
-                    <th className="text-left py-3 px-4 font-bold">Último Mensaje</th>
+                  <tr className="border-b border-white/5">
+                    <th className="text-left py-3 px-4 font-bold text-gray-300">Usuario</th>
+                    <th className="text-left py-3 px-4 font-bold text-gray-300">Última Intención</th>
+                    <th className="text-center py-3 px-4 font-bold text-gray-300">Mensajes</th>
+                    <th className="text-center py-3 px-4 font-bold text-gray-300">Estado</th>
+                    <th className="text-left py-3 px-4 font-bold text-gray-300">Último Mensaje</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentConversations.slice(0, 20).map((conv: any) => (
-                    <tr key={conv.id} className="border-b hover:bg-bear-blue/5">
+                    <tr key={conv.id} className="border-b border-white/5 hover:bg-white/5 transition">
                       <td className="py-3 px-4">
-                        <div className="font-medium">{conv.name || 'Sin nombre'}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {conv.phone || conv.email}
-                        </div>
+                        <div className="font-medium text-white">{conv.name || 'Sin nombre'}</div>
+                        <div className="text-xs text-gray-500">{conv.phone || conv.email}</div>
                       </td>
                       <td className="py-3 px-4">
                         {conv.current_intent ? (
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 text-sm text-gray-300">
                             <span>{INTENT_ICONS[conv.current_intent] || '❓'}</span>
-                            <span className="text-sm">{INTENT_NAMES[conv.current_intent] || conv.current_intent}</span>
+                            <span>{INTENT_NAMES[conv.current_intent] || conv.current_intent}</span>
                           </span>
                         ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
+                          <span className="text-gray-500 text-sm">-</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-center font-mono">
-                        {conv.total_messages}
-                      </td>
+                      <td className="py-3 px-4 text-center font-mono text-bear-blue">{conv.total_messages}</td>
                       <td className="py-3 px-4 text-center">
                         <span className={`px-2 py-1 rounded text-xs font-bold ${
-                          conv.status === 'resolved' ? 'bg-green-100 text-green-700' :
-                          conv.needs_human ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-blue-100 text-blue-700'
+                          conv.status === 'resolved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                          conv.needs_human ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                          'bg-bear-blue/20 text-bear-blue border border-bear-blue/30'
                         }`}>
-                          {conv.status === 'resolved' ? '✓ Resuelto' :
-                           conv.needs_human ? '👤 Pendiente' :
-                           '🤖 Activo'}
+                          {conv.status === 'resolved' ? '✓ Resuelto' : conv.needs_human ? '👤 Pendiente' : '🤖 Activo'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-sm text-muted-foreground">
+                      <td className="py-3 px-4 text-sm text-gray-500">
                         {conv.last_message_at && new Date(conv.last_message_at).toLocaleString('es-MX')}
                       </td>
                     </tr>
@@ -316,22 +288,22 @@ export default async function AdminChatbotPage() {
           )}
         </div>
 
-        {/* Configuración del Webhook */}
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-6 text-white">
-          <h2 className="text-2xl font-extrabold mb-4">⚙️ Configuración del Webhook</h2>
+        {/* Configuración Webhook – marca Bear Beat */}
+        <div className="rounded-xl p-6 border border-bear-blue/30 bg-gradient-to-br from-bear-blue/10 to-transparent">
+          <h2 className="text-xl font-bold text-white mb-4">⚙️ Configuración del Webhook</h2>
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <h3 className="font-bold mb-2">URL del Webhook:</h3>
-              <code className="bg-white/20 px-3 py-2 rounded block text-sm">
-                https://tudominio.com/api/manychat/webhook
+              <h3 className="font-bold text-gray-300 mb-2">URL del Webhook:</h3>
+              <code className="bg-black/40 border border-bear-blue/30 text-bear-blue px-3 py-2 rounded-lg block text-sm font-mono">
+                https://bear-beat2027.onrender.com/api/manychat/webhook
               </code>
-              <p className="text-sm mt-2 opacity-90">
-                Configura esta URL en ManyChat → Settings → API → Webhooks
+              <p className="text-sm text-gray-400 mt-2">
+                ManyChat → Settings → API → Webhooks
               </p>
             </div>
             <div>
-              <h3 className="font-bold mb-2">Intenciones Disponibles:</h3>
-              <div className="text-sm space-y-1 max-h-[150px] overflow-y-auto">
+              <h3 className="font-bold text-gray-300 mb-2">Intenciones Disponibles:</h3>
+              <div className="text-sm space-y-1 max-h-[150px] overflow-y-auto text-gray-300">
                 {Object.entries(INTENT_NAMES).map(([key, name]) => (
                   <div key={key} className="flex items-center gap-2">
                     <span>{INTENT_ICONS[key]}</span>

@@ -24,7 +24,7 @@ export default async function AdminPurchasesPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
-      <Link href="/admin" className="text-sm text-bear-blue hover:text-cyan-400 mb-4 inline-block">
+      <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-4 inline-block font-medium">
         ← Volver al Panel
       </Link>
       <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-1">💳 Compras</h1>
@@ -32,7 +32,7 @@ export default async function AdminPurchasesPage() {
         Total: {count || 0} compras • Ingresos: {formatPrice(totalRevenue, 'MXN')}
       </p>
 
-      <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/50 shadow-xl">
+      <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
         {!purchases || purchases.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-xl font-bold text-zinc-500">Aún no hay compras</p>
@@ -41,7 +41,7 @@ export default async function AdminPurchasesPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-white/5">
                   <th className="text-left py-4 px-4 font-bold text-zinc-400">ID</th>
                   <th className="text-left py-4 px-4 font-bold text-zinc-400">Fecha</th>
                   <th className="text-left py-4 px-4 font-bold text-zinc-400">Usuario</th>

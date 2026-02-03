@@ -5,157 +5,98 @@ import Link from 'next/link'
 
 export default async function AdminTrackingPage() {
   const supabase = await createServerClient()
-  
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  
-  // Obtener últimos 100 eventos
+
   const { data: events } = await supabase
     .from('user_events')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(100)
-  
-  // Obtener estadísticas del funnel
+
   const { data: funnelStats } = await supabase.rpc('get_funnel_stats')
+  const views = funnelStats?.page_views || 1
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-bear-blue/5 via-background to-bear-black/5">
-      {/* Header */}
-      <div className="bg-card border-b-2 border-bear-blue/20 shadow-lg">
+    <div className="min-h-screen bg-[#050505] text-white">
+      <div className="border-b border-white/5 bg-zinc-950/80">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block">
+          <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-2 block font-medium">
             ← Volver al Dashboard
           </Link>
-          <h1 className="text-3xl font-extrabold">📊 Tracking de Usuarios</h1>
-          <p className="text-muted-foreground">
-            Todos los eventos y acciones de usuarios
-          </p>
+          <h1 className="text-2xl md:text-3xl font-black text-white">📊 Tracking de Usuarios</h1>
+          <p className="text-gray-400 text-sm mt-1">Eventos y acciones de usuarios</p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* Funnel de Conversión */}
-        <div className="bg-card rounded-2xl p-6 border-2 border-bear-blue/30 shadow-xl">
-          <h2 className="text-2xl font-extrabold mb-6">🎯 Funnel de Conversión</h2>
-          
+        <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/60">
+          <h2 className="text-xl font-bold text-white mb-6">🎯 Funnel de Conversión</h2>
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="w-40 font-bold">Visitantes:</div>
-              <div className="flex-1 bg-gray-200 rounded-full h-8 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold">
-                  {funnelStats?.page_views || 0}
+            {[
+              { label: 'Visitantes', value: funnelStats?.page_views || 0, pct: 100, color: 'bg-bear-blue' },
+              { label: 'Click CTA', value: funnelStats?.clicked_cta || 0, pct: (views ? ((funnelStats?.clicked_cta || 0) / views) * 100 : 0), color: 'bg-purple-500' },
+              { label: 'Checkout', value: funnelStats?.started_checkout || 0, pct: (views ? ((funnelStats?.started_checkout || 0) / views) * 100 : 0), color: 'bg-amber-500' },
+              { label: 'Pagaron', value: funnelStats?.payment_success || 0, pct: (views ? ((funnelStats?.payment_success || 0) / views) * 100 : 0), color: 'bg-emerald-500' },
+            ].map(({ label, value, pct, color }) => (
+              <div key={label} className="flex items-center gap-4">
+                <div className="w-36 font-bold text-gray-300">{label}:</div>
+                <div className="flex-1 rounded-full h-8 bg-zinc-800 overflow-hidden relative">
+                  <div
+                    className={`absolute inset-y-0 left-0 ${color} flex items-center justify-center text-white font-bold text-sm min-w-[2rem]`}
+                    style={{ width: `${Math.max(pct, 0)}%` }}
+                  >
+                    {value > 0 ? value : ''}
+                  </div>
                 </div>
+                <div className="w-16 text-right font-bold text-bear-blue">{pct.toFixed(0)}%</div>
               </div>
-              <div className="w-20 text-right font-bold">100%</div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-40 font-bold">Click CTA:</div>
-              <div className="flex-1 bg-gray-200 rounded-full h-8 relative overflow-hidden">
-                <div 
-                  className="absolute inset-0 bg-gradient-to-r from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold"
-                  style={{ width: `${((funnelStats?.clicked_cta || 0) / (funnelStats?.page_views || 1)) * 100}%` }}
-                >
-                  {funnelStats?.clicked_cta || 0}
-                </div>
-              </div>
-              <div className="w-20 text-right font-bold">
-                {Math.round(((funnelStats?.clicked_cta || 0) / (funnelStats?.page_views || 1)) * 100)}%
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-40 font-bold">Checkout:</div>
-              <div className="flex-1 bg-gray-200 rounded-full h-8 relative overflow-hidden">
-                <div 
-                  className="absolute inset-0 bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold"
-                  style={{ width: `${((funnelStats?.started_checkout || 0) / (funnelStats?.page_views || 1)) * 100}%` }}
-                >
-                  {funnelStats?.started_checkout || 0}
-                </div>
-              </div>
-              <div className="w-20 text-right font-bold">
-                {Math.round(((funnelStats?.started_checkout || 0) / (funnelStats?.page_views || 1)) * 100)}%
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-40 font-bold">Pagaron:</div>
-              <div className="flex-1 bg-gray-200 rounded-full h-8 relative overflow-hidden">
-                <div 
-                  className="absolute inset-0 bg-gradient-to-r from-green-500 to-green-600 flex items-center justify-center text-white font-bold"
-                  style={{ width: `${((funnelStats?.payment_success || 0) / (funnelStats?.page_views || 1)) * 100}%` }}
-                >
-                  {funnelStats?.payment_success || 0}
-                </div>
-              </div>
-              <div className="w-20 text-right font-bold">
-                {Math.round(((funnelStats?.payment_success || 0) / (funnelStats?.page_views || 1)) * 100)}%
-              </div>
-            </div>
+            ))}
           </div>
-
           <div className="mt-6 text-center">
-            <p className="text-3xl font-extrabold text-green-600">
-              {funnelStats?.conversion_rate || 0}%
-            </p>
-            <p className="text-sm text-muted-foreground">Tasa de conversión total</p>
+            <p className="text-3xl font-black text-bear-blue">{funnelStats?.conversion_rate || 0}%</p>
+            <p className="text-sm text-gray-500">Tasa de conversión total</p>
           </div>
         </div>
 
-        {/* ManyChat Integration Info */}
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-6 shadow-xl text-white">
-          <h2 className="text-2xl font-extrabold mb-4">🤖 Integración ManyChat</h2>
-          <p className="mb-4">
-            Todos los eventos con email/teléfono se sincronizan automáticamente con ManyChat.
+        <div className="rounded-xl p-6 border border-bear-blue/30 bg-gradient-to-br from-bear-blue/10 to-transparent">
+          <h2 className="text-xl font-bold text-white mb-4">🤖 Integración ManyChat</h2>
+          <p className="text-gray-400 text-sm mb-4">
+            Los eventos con email/teléfono se sincronizan con ManyChat.
           </p>
-          
           <div className="grid md:grid-cols-3 gap-4">
-            <div className="bg-white/20 rounded-xl p-4">
-              <h3 className="font-bold mb-2">🏷️ Tags Activos</h3>
-              <ul className="text-sm space-y-1">
-                <li>• bb_visitor - Visitante</li>
-                <li>• bb_lead - Lead captado</li>
-                <li>• bb_customer - Cliente</li>
-                <li>• bb_payment_success - Pagó</li>
+            <div className="rounded-xl p-4 border border-white/5 bg-black/20">
+              <h3 className="font-bold text-white mb-2">🏷️ Tags</h3>
+              <ul className="text-sm text-gray-400 space-y-1">
+                <li>• bb_visitor</li>
+                <li>• bb_lead</li>
+                <li>• bb_customer</li>
+                <li>• bb_payment_success</li>
               </ul>
             </div>
-            
-            <div className="bg-white/20 rounded-xl p-4">
-              <h3 className="font-bold mb-2">📊 Custom Fields</h3>
-              <ul className="text-sm space-y-1">
-                <li>• bb_last_page - Última página</li>
-                <li>• bb_total_spent - Total gastado</li>
-                <li>• bb_last_pack - Último pack</li>
-                <li>• bb_country - País</li>
+            <div className="rounded-xl p-4 border border-white/5 bg-black/20">
+              <h3 className="font-bold text-white mb-2">📊 Custom Fields</h3>
+              <ul className="text-sm text-gray-400 space-y-1">
+                <li>• bb_last_page</li>
+                <li>• bb_total_spent</li>
+                <li>• bb_last_pack</li>
               </ul>
             </div>
-            
-            <div className="bg-white/20 rounded-xl p-4">
-              <h3 className="font-bold mb-2">🔄 Sincronización</h3>
-              <ul className="text-sm space-y-1">
-                <li>✅ Registro de usuarios</li>
-                <li>✅ Compras exitosas</li>
-                <li>✅ Eventos de navegación</li>
-                <li>✅ Clicks en CTAs</li>
+            <div className="rounded-xl p-4 border border-white/5 bg-black/20">
+              <h3 className="font-bold text-white mb-2">🔄 Sincronización</h3>
+              <ul className="text-sm text-gray-400 space-y-1">
+                <li>✅ Registro</li>
+                <li>✅ Compras</li>
+                <li>✅ Navegación</li>
               </ul>
             </div>
-          </div>
-          
-          <div className="mt-4 text-sm opacity-80">
-            💡 Los flujos automáticos en ManyChat se activan con los tags. Configura tus automations en el dashboard de ManyChat.
           </div>
         </div>
 
-        {/* Timeline de Eventos */}
-        <div className="bg-card rounded-2xl p-6 border-2 border-bear-blue/30 shadow-xl">
-          <h2 className="text-2xl font-extrabold mb-6">⏱️ Timeline de Eventos (Últimos 100)</h2>
-          
+        <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/60">
+          <h2 className="text-xl font-bold text-white mb-6">⏱️ Timeline (Últimos 100)</h2>
           {!events || events.length === 0 ? (
-            <p className="text-center py-12 text-muted-foreground">
-              Aún no hay eventos registrados
-            </p>
+            <p className="text-center py-12 text-gray-500">Aún no hay eventos</p>
           ) : (
             <div className="space-y-2 max-h-[600px] overflow-y-auto">
               {events.map((event: any) => (
@@ -167,40 +108,25 @@ export default async function AdminTrackingPage() {
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{getEventIcon(event.event_type)}</span>
                       <div>
-                        <div className="font-bold">{event.event_name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {event.event_type}
-                        </div>
+                        <div className="font-bold text-white">{event.event_name}</div>
+                        <div className="text-xs text-gray-500">{event.event_type}</div>
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground text-right">
-                      <div>{formatDate(event.created_at)}</div>
-                      <div>{new Date(event.created_at).toLocaleTimeString('es-MX')}</div>
+                    <div className="text-xs text-gray-500 text-right">
+                      {formatDate(event.created_at)} · {new Date(event.created_at).toLocaleTimeString('es-MX')}
                     </div>
                   </div>
-                  
                   <div className="ml-11 mt-2 text-sm space-y-1">
                     {event.session_id && (
-                      <div className="text-xs text-muted-foreground">
-                        Session: {event.session_id.slice(0, 20)}...
-                      </div>
+                      <div className="text-xs text-gray-500">Session: {event.session_id.slice(0, 20)}...</div>
                     )}
                     {event.user_id && (
-                      <div className="text-xs text-muted-foreground">
-                        Usuario: {event.user_id.slice(0, 8)}...
-                      </div>
-                    )}
-                    {event.ip_address && event.ip_address !== 'unknown' && (
-                      <div className="text-xs text-muted-foreground">
-                        IP: {event.ip_address}
-                      </div>
+                      <div className="text-xs text-gray-500">Usuario: {event.user_id.slice(0, 8)}...</div>
                     )}
                     {event.event_data && Object.keys(event.event_data).length > 0 && (
                       <details className="text-xs">
-                        <summary className="cursor-pointer text-bear-blue hover:underline">
-                          Ver datos del evento
-                        </summary>
-                        <pre className="mt-2 bg-gray-100 p-2 rounded overflow-x-auto">
+                        <summary className="cursor-pointer text-bear-blue hover:underline">Ver datos</summary>
+                        <pre className="mt-2 bg-zinc-900 p-2 rounded text-gray-400 overflow-x-auto">
                           {JSON.stringify(event.event_data, null, 2)}
                         </pre>
                       </details>
@@ -232,14 +158,14 @@ function getEventIcon(eventType: string): string {
 
 function getEventColor(eventType: string): string {
   const colors: Record<string, string> = {
-    'page_view': 'border-blue-500 bg-blue-50',
-    'click_cta': 'border-purple-500 bg-purple-50',
-    'start_checkout': 'border-orange-500 bg-orange-50',
-    'payment_intent': 'border-yellow-500 bg-yellow-50',
-    'payment_success': 'border-green-500 bg-green-50',
-    'registration': 'border-pink-500 bg-pink-50',
-    'login': 'border-indigo-500 bg-indigo-50',
-    'purchase_completed': 'border-green-600 bg-green-100',
+    'page_view': 'border-bear-blue/60 bg-bear-blue/5',
+    'click_cta': 'border-purple-500/60 bg-purple-500/5',
+    'start_checkout': 'border-amber-500/60 bg-amber-500/5',
+    'payment_intent': 'border-amber-400/60 bg-amber-400/5',
+    'payment_success': 'border-emerald-500/60 bg-emerald-500/5',
+    'registration': 'border-pink-500/60 bg-pink-500/5',
+    'login': 'border-indigo-500/60 bg-indigo-500/5',
+    'purchase_completed': 'border-emerald-400/60 bg-emerald-400/5',
   }
-  return colors[eventType] || 'border-gray-500 bg-gray-50'
+  return colors[eventType] || 'border-white/10 bg-zinc-800/30'
 }

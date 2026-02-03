@@ -33,7 +33,7 @@ export default async function AdminPendingPurchasesPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-8">
-      <Link href="/admin" className="text-sm text-bear-blue hover:text-cyan-400 mb-4 inline-block">
+      <Link href="/admin" className="text-sm text-bear-blue hover:underline mb-4 inline-block font-medium">
         ← Volver al Panel
       </Link>
       <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-1">⏳ Compras Pendientes</h1>
@@ -41,7 +41,7 @@ export default async function AdminPendingPurchasesPage() {
         Pagos exitosos que aún no completan datos
       </p>
 
-      <div className="rounded-2xl p-6 border border-amber-500/40 bg-zinc-900/50 shadow-xl">
+      <div className="rounded-xl p-6 border border-white/5 border-l-4 border-l-amber-500/60 bg-zinc-900/80 shadow-xl">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-black text-white">
             ⚠️ Pendientes de Completar ({pendingPurchases?.length || 0})
@@ -75,7 +75,7 @@ export default async function AdminPendingPurchasesPage() {
                     <p className="text-sm text-zinc-500">
                       Pagado: {formatDate(purchase.created_at)}
                     </p>
-                    <p className="text-xs text-zinc-600">
+                    <p className="text-xs text-gray-500">
                       Session ID: {purchase.stripe_session_id}
                     </p>
                   </div>
@@ -124,7 +124,7 @@ export default async function AdminPendingPurchasesPage() {
           )}
         </div>
 
-      <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/50 shadow-xl">
+      <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
         <h2 className="text-xl font-black text-white mb-6">
           ✅ Completadas Recientemente (20)
         </h2>
@@ -147,7 +147,7 @@ export default async function AdminPendingPurchasesPage() {
                     {formatPrice(purchase.amount_paid, purchase.currency as any)}
                   </div>
                   <div className="text-xs text-zinc-500">Completado: {formatDate(purchase.completed_at)}</div>
-                  <a href={`/admin/users/${purchase.user_id}`} className="text-xs text-bear-blue hover:text-cyan-400">
+                  <a href={`/admin/users/${purchase.user_id}`} className="text-xs text-bear-blue hover:underline">
                     Ver usuario →
                   </a>
                 </div>
@@ -157,7 +157,7 @@ export default async function AdminPendingPurchasesPage() {
         )}
       </div>
 
-      <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/50 shadow-xl">
+      <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
         <h2 className="text-xl font-black text-white mb-6">📝 Eventos Recientes</h2>
         {!events || events.length === 0 ? (
           <p className="text-center py-8 text-zinc-500">Aún no hay eventos</p>
@@ -165,7 +165,7 @@ export default async function AdminPendingPurchasesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-white/5">
                   <th className="text-left py-2 px-2 font-bold text-zinc-400">Fecha</th>
                   <th className="text-left py-2 px-2 font-bold text-zinc-400">Evento</th>
                   <th className="text-left py-2 px-2 font-bold text-zinc-400">Session</th>
@@ -188,7 +188,7 @@ export default async function AdminPendingPurchasesPage() {
                     <td className="py-2 px-2 font-mono text-xs text-zinc-400">{event.session_id?.slice(0, 12)}...</td>
                     <td className="py-2 px-2">
                       {event.user_id ? (
-                        <a href={`/admin/users/${event.user_id}`} className="text-bear-blue hover:text-cyan-400 text-xs">
+                        <a href={`/admin/users/${event.user_id}`} className="text-bear-blue hover:underline text-xs">
                           {event.user_id.slice(0, 8)}...
                         </a>
                       ) : (

@@ -15,13 +15,13 @@ export function AdminDashboardToolbar() {
   }
 
   return (
-    <div className="sticky top-0 z-10 border-b border-white/10 bg-zinc-950/95 backdrop-blur px-4 py-3">
+    <div className="sticky top-0 z-10 border-b border-white/5 bg-zinc-950/95 backdrop-blur px-4 py-3">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-3 sm:items-center">
         <input
           ref={inputRef}
           type="search"
           placeholder="Buscar usuario, email o pedido..."
-          className="flex-1 w-full min-w-0 rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-base text-white placeholder:text-zinc-500 focus:outline-none focus:border-bear-blue focus:ring-1 focus:ring-bear-blue/30"
+          className="flex-1 w-full min-w-0 rounded-xl border border-white/5 bg-zinc-900 px-4 py-3 text-base text-white placeholder:text-zinc-500 focus:outline-none focus:border-bear-blue focus:ring-1 focus:ring-bear-blue/30"
           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearch())}
           aria-label="Buscar"
         />

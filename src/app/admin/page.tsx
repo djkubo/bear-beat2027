@@ -140,7 +140,7 @@ export default async function AdminDashboardPage() {
 
         {/* KPIs - cards oscuras marca Bear Beat */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/80 shadow-xl">
+          <div className="rounded-2xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
             <div className="flex justify-between items-start mb-3">
               <Users className="h-7 w-7 text-bear-blue" />
               <span className="text-xs font-bold text-zinc-500 bg-white/5 px-2 py-1 rounded">
@@ -155,7 +155,7 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/80 shadow-xl">
+          <div className="rounded-2xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
             <div className="flex justify-between items-start mb-3">
               <DollarSign className="h-7 w-7 text-bear-blue" />
               <span className="text-xs font-bold text-zinc-500 bg-white/5 px-2 py-1 rounded">
@@ -170,7 +170,7 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/80 shadow-xl">
+          <div className="rounded-2xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
             <div className="flex justify-between items-start mb-3">
               <Package className="h-7 w-7 text-bear-blue" />
               <span className="text-xs font-bold text-zinc-500 bg-white/5 px-2 py-1 rounded">
@@ -185,7 +185,7 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/80 shadow-xl">
+          <div className="rounded-2xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
             <div className="flex justify-between items-start mb-3">
               <TrendingUp className="h-7 w-7 text-bear-blue" />
               <span className="text-xs font-bold text-zinc-500 bg-white/5 px-2 py-1 rounded">
@@ -203,7 +203,7 @@ export default async function AdminDashboardPage() {
 
         {/* Fuentes de Tráfico */}
         <div className="mb-8">
-          <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/50 shadow-xl">
+          <div className="rounded-2xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
             <h2 className="text-xl font-black text-white mb-4 tracking-tight">📊 Fuentes de Tráfico</h2>
             {sourceRows.length === 0 ? (
               <p className="text-zinc-500 text-sm">Aún no hay compras con atribución.</p>
@@ -243,7 +243,7 @@ export default async function AdminDashboardPage() {
             <a
               key={href}
               href={href}
-              className="rounded-xl p-4 border border-white/10 bg-zinc-900/50 hover:border-bear-blue/50 hover:bg-zinc-800/50 shadow-lg transition-all text-center min-h-[80px] flex flex-col items-center justify-center"
+              className="rounded-xl p-4 border border-white/5 bg-zinc-900/80 hover:border-bear-blue/50 hover:bg-zinc-800/50 shadow-lg transition-all text-center min-h-[80px] flex flex-col items-center justify-center"
             >
               <div className="text-3xl mb-1">{icon}</div>
               <div className="font-bold text-sm text-white whitespace-nowrap">{label}</div>
@@ -257,7 +257,7 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Últimas Compras */}
-        <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/50 shadow-xl">
+        <div className="rounded-2xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
           <h2 className="text-xl font-black text-white mb-6 tracking-tight">
             💳 Últimas Compras (10)
           </h2>
@@ -271,7 +271,7 @@ export default async function AdminDashboardPage() {
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-white/10">
+                    <tr className="border-b border-white/5">
                       <th className="text-left py-3 px-4 font-bold text-zinc-400 w-10" title="Fuente">Fuente</th>
                       <th className="text-left py-3 px-4 font-bold text-zinc-400">Fecha</th>
                       <th className="text-left py-3 px-4 font-bold text-zinc-400">Usuario</th>
@@ -315,7 +315,7 @@ export default async function AdminDashboardPage() {
                   return (
                     <div
                       key={purchase.id}
-                      className="flex gap-4 p-4 rounded-xl border border-white/10 bg-zinc-800/50"
+                      className="flex gap-4 p-4 rounded-xl border border-white/5 bg-zinc-800/50"
                     >
                       <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-bear-blue/10 border border-bear-blue/30 flex items-center justify-center text-3xl">
                         {icon}

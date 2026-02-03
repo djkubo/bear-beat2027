@@ -116,7 +116,7 @@ export default function AdminPushPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bear-black text-white p-6">
+    <div className="min-h-screen bg-[#050505] text-white p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -256,7 +256,7 @@ export default function AdminPushPage() {
                 <button
                   key={i}
                   onClick={() => applyTemplate(template)}
-                  className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 text-left transition-colors"
+                  className="w-full bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl p-4 text-left transition-colors"
                 >
                   <p className="font-bold mb-1">{template.name}</p>
                   <p className="text-sm text-gray-400 truncate">{template.body}</p>
