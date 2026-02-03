@@ -1,26 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateSignedUrl, isBunnyConfigured } from '@/lib/bunny'
+import { generateSignedUrl, isBunnyConfigured, getBunnyPackPrefix } from '@/lib/bunny'
 import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
 import { Readable } from 'stream'
 
-// Mismo prefijo que /api/download para consistencia con Bunny
-const BUNNY_PACK_PREFIX = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || 'packs/enero-2026').replace(/\/$/, '')
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/thumbnail-cdn?path=Genre/filename.jpg
- * Con Bunny: redirige a URL firmada. Sin Bunny o si Bunny falla: stream desde FTP (raíz: Genre/file.jpg).
+ * Bunny: redirige a URL firmada. Sin Bunny o si Bunny falla: stream desde FTP.
  */
 export async function GET(req: NextRequest) {
   const pathParam = req.nextUrl.searchParams.get('path')
   if (!pathParam || pathParam.includes('..')) {
     return NextResponse.json({ error: 'path required' }, { status: 400 })
   }
-  const sanitized = pathParam.replace(/^\//, '').trim()
+  let pathNorm: string
+  try {
+    pathNorm = decodeURIComponent(pathParam).replace(/^\//, '').trim()
+  } catch {
+    pathNorm = pathParam.replace(/^\//, '').trim()
+  }
 
   if (isBunnyConfigured()) {
     try {
-      const decoded = decodeURIComponent(sanitized)
-      const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${decoded}` : decoded
+      const prefix = getBunnyPackPrefix()
+      const bunnyPath = prefix ? `${prefix}/${pathNorm}` : pathNorm
       // Sin allowedReferrer para que las imágenes carguen desde cualquier origen (evita 403/502)
       const signedUrl = generateSignedUrl(bunnyPath, 3600)
       return NextResponse.redirect(signedUrl)
@@ -31,9 +35,9 @@ export async function GET(req: NextRequest) {
 
   if (isFtpConfigured()) {
     try {
-      const stream = await streamFileFromFtp(sanitized, 'thumb')
+      const stream = await streamFileFromFtp(pathNorm, 'thumb')
       const webStream = Readable.toWeb(stream) as ReadableStream
-      const contentType = getContentType(sanitized)
+      const contentType = getContentType(pathNorm)
       return new NextResponse(webStream, {
         headers: {
           'Content-Type': contentType,
@@ -41,7 +45,7 @@ export async function GET(req: NextRequest) {
         },
       })
     } catch (e) {
-      console.error('[thumbnail-cdn] FTP stream failed:', (e as Error)?.message || e, 'path:', sanitized)
+      console.error('[thumbnail-cdn] FTP stream failed:', (e as Error)?.message || e, 'path:', pathNorm)
       return NextResponse.json({ error: 'Portada no disponible' }, { status: 502 })
     }
   }

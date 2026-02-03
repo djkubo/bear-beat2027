@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateSignedUrl, isBunnyConfigured } from '@/lib/bunny'
+import { generateSignedUrl, isBunnyConfigured, getBunnyPackPrefix } from '@/lib/bunny'
 import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
 
-const BUNNY_PACK_PREFIX = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || '').replace(/\/$/, '')
+export const dynamic = 'force-dynamic'
+
 const DEMO_EXPIRY_SECONDS = 1800 // 30 min
 
 /**
@@ -16,12 +17,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'path required' }, { status: 400 })
   }
 
-  const sanitized = decodeURIComponent(pathParam).replace(/^\//, '').trim()
-  const pathNorm = sanitized.replace(/^Videos Enero 2026\/?/i, '').trim() || sanitized
+  let pathNorm: string
+  try {
+    pathNorm = decodeURIComponent(pathParam).replace(/^\//, '').trim()
+  } catch {
+    pathNorm = pathParam.replace(/^\//, '').trim()
+  }
+  pathNorm = pathNorm.replace(/^Videos Enero 2026\/?/i, '').trim() || pathNorm
 
   if (isBunnyConfigured()) {
     try {
-      const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${pathNorm}` : pathNorm
+      const prefix = getBunnyPackPrefix()
+      const bunnyPath = prefix ? `${prefix}/${pathNorm}` : pathNorm
       const signedUrl = generateSignedUrl(bunnyPath, DEMO_EXPIRY_SECONDS)
       // Redirect: el navegador carga el video desde Bunny directamente (evita 502 por timeout en Render)
       return NextResponse.redirect(signedUrl)

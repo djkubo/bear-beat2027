@@ -14,6 +14,12 @@ const BUNNY_CDN_URL = (
 ).trim().replace(/\/+$/, '')
 const BUNNY_TOKEN_KEY = process.env.BUNNY_TOKEN_KEY || ''
 
+/** Prefijo de ruta en el CDN (ej. packs/enero-2026). Mismo valor en demo-url, download y thumbnail-cdn. */
+export function getBunnyPackPrefix(): string {
+  const raw = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || '').trim()
+  return raw.replace(/\/+$/, '')
+}
+
 export function isBunnyConfigured(): boolean {
   return !!(BUNNY_CDN_URL && BUNNY_TOKEN_KEY)
 }

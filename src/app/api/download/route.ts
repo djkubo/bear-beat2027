@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { generateSignedUrl, isBunnyConfigured } from '@/lib/bunny'
+import { generateSignedUrl, isBunnyConfigured, getBunnyPackPrefix } from '@/lib/bunny'
 import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
 import { Readable } from 'stream'
 
-// Prefijo opcional en Bunny (ej. packs/enero-2026). file = Genre/video.mp4 o Banda.zip (raíz o bajo prefijo).
-const BUNNY_PACK_PREFIX = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || '').replace(/\/$/, '')
+export const dynamic = 'force-dynamic'
 
 const EXPIRY_VIDEO = 3600 // 1 h
 const EXPIRY_ZIP = 10800 // 3 h (los ZIP tardan más en bajar)
@@ -49,7 +48,12 @@ export async function GET(req: NextRequest) {
       }, { status: 403 })
     }
 
-    const sanitizedPath = filePath.replace(/\.\./g, '').replace(/^\//, '').trim()
+    let sanitizedPath: string
+    try {
+      sanitizedPath = decodeURIComponent(filePath || '').replace(/\.\./g, '').replace(/^\//, '').trim()
+    } catch {
+      sanitizedPath = (filePath || '').replace(/\.\./g, '').replace(/^\//, '').trim()
+    }
     if (!sanitizedPath) {
       return NextResponse.json({ error: 'Path inválido' }, { status: 400 })
     }
@@ -65,9 +69,10 @@ export async function GET(req: NextRequest) {
 
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
+      const prefix = getBunnyPackPrefix()
       let signedUrl: string
       try {
-        const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
+        const bunnyPath = prefix ? `${prefix}/${sanitizedPath}` : sanitizedPath
         signedUrl = generateSignedUrl(bunnyPath, expiresIn)
       } catch (e) {
         console.error('[download] Bunny signed URL failed:', (e as Error)?.message || e, 'path:', sanitizedPath)
