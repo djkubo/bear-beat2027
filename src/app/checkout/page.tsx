@@ -11,7 +11,6 @@ import { fbTrackInitiateCheckout, fbTrackAddPaymentInfo } from '@/components/ana
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Shield, Lock, CreditCard, Building2, Banknote, Wallet, ChevronRight } from 'lucide-react'
-import { getMessengerUrl } from '@/config/contact'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
@@ -88,6 +87,16 @@ function CardPaymentForm({
         options={{ layout: 'tabs' }}
         onReady={() => setElementReady(true)}
       />
+      <div className="flex flex-wrap items-center justify-center gap-2 py-3 text-xs text-gray-400">
+        <Lock className="h-4 w-4 shrink-0" />
+        <span>🔒 Pago 100% Seguro y Encriptado</span>
+        <span className="hidden sm:inline">·</span>
+        <span className="flex items-center gap-1.5">
+          <CreditCard className="h-3.5 w-3.5" /> Visa, MC
+          <span className="mx-0.5">·</span>
+          <Banknote className="h-3.5 w-3.5" /> OXXO
+        </span>
+      </div>
       <button
         type="submit"
         disabled={!canSubmit}
@@ -476,10 +485,10 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                  {/* Alerta de email SIEMPRE visible (Tarjeta, OXXO, SPEI, PayPal): la llave del acceso */}
+                  {/* Alerta de email CRÍTICO – visible siempre */}
                   <div className="mb-4 rounded-xl border-2 border-amber-500/60 bg-amber-500/15 px-4 py-3 text-center">
                     <p className="text-sm font-bold text-amber-200">
-                      ⚠️ MUY IMPORTANTE: Tu acceso llegará a este correo. Escríbelo con cuidado.
+                      ⚠️ <strong>ATENCIÓN DJ:</strong> Aquí te enviaremos tu acceso y contraseña. Escribe tu mejor correo.
                     </p>
                   </div>
 
@@ -591,6 +600,16 @@ export default function CheckoutPage() {
                           <p className="text-sm text-red-400">{error}</p>
                         </div>
                       )}
+                      <div className="flex flex-wrap items-center justify-center gap-2 py-3 text-xs text-gray-400 mb-2">
+                        <Lock className="h-4 w-4 shrink-0" />
+                        <span>🔒 Pago 100% Seguro y Encriptado</span>
+                        <span className="hidden sm:inline">·</span>
+                        <CreditCard className="h-3.5 w-3.5" />
+                        <span>Visa, MC</span>
+                        <span className="mx-0.5">·</span>
+                        <Banknote className="h-3.5 w-3.5" />
+                        <span>OXXO</span>
+                      </div>
                       <button
                         type="button"
                         onClick={handleOxxoSpeiPayment}
@@ -655,18 +674,7 @@ export default function CheckoutPage() {
         </AnimatePresence>
       </main>
 
-      <footer className="border-t border-white/5 py-6 px-4 text-center text-sm text-gray-500">
-        <p className="flex items-center justify-center gap-2">
-          <Lock className="h-4 w-4" />
-          Pagos procesados de forma segura (Stripe / PayPal)
-        </p>
-        <p className="mt-1">
-          ¿Problemas?{' '}
-          <a href={getMessengerUrl()} target="_blank" rel="noopener noreferrer" className="text-bear-blue hover:underline inline-flex items-center gap-1">
-            <span aria-hidden>💬</span> Ayuda en línea
-          </a>
-        </p>
-      </footer>
+      {/* Sin footer: solo foco en completar el pago (CRO: eliminar distracciones) */}
     </div>
   )
 }
