@@ -1,8 +1,12 @@
 import { OpenAI } from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { getOpenAIChatModel } from '@/lib/openai-config';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'dummy-key-for-build' });
+
+/** Modelo de chat: configurable por OPENAI_CHAT_MODEL; si no existe en API, usar gpt-4o */
+const CHAT_MODEL_FALLBACK = 'gpt-4o';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-key';
@@ -48,6 +52,7 @@ export async function POST(req: Request) {
     }
 
     let reply: string;
+    let contextText = '';
     try {
       const embedding = await openai.embeddings.create({
         model: 'text-embedding-3-large',
@@ -60,11 +65,12 @@ export async function POST(req: Request) {
         match_count: 5,
       });
 
-      const contextText = documents?.map((d: any) => d.content).join('\n\n') || '';
+      contextText = documents?.map((d: any) => d.content).join('\n\n') || '';
       console.log('Contexto recuperado:', contextText.substring(0, 200));
 
-      const response = await openai.chat.completions.create({
-        model: 'gpt-5.2',
+      const chatModel = getOpenAIChatModel();
+      const createParams: Parameters<typeof openai.chat.completions.create>[0] = {
+        model: chatModel,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'system', content: "BASE DE CONOCIMIENTOS (USAR OBLIGATORIAMENTE):\n" + contextText },
@@ -73,7 +79,11 @@ export async function POST(req: Request) {
         ],
         temperature: 0.7,
         max_tokens: 300,
-      });
+      };
+      if (chatModel.startsWith('gpt-5')) {
+        (createParams as Record<string, unknown>).reasoning_effort = 'none';
+      }
+      const response = await openai.chat.completions.create(createParams);
 
       reply = response.choices[0].message.content ?? '';
 
@@ -86,8 +96,40 @@ export async function POST(req: Request) {
           is_bot: true,
         });
       }
-    } catch (apiError) {
-      console.error('AI API Error:', apiError);
+    } catch (apiError: unknown) {
+      const errMsg = apiError instanceof Error ? apiError.message : String(apiError);
+      console.error('AI API Error:', errMsg, apiError);
+      if (errMsg.includes('model') || errMsg.includes('Invalid') || errMsg.includes('404')) {
+        try {
+          const fallbackParams: Parameters<typeof openai.chat.completions.create>[0] = {
+            model: CHAT_MODEL_FALLBACK,
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              { role: 'system', content: "BASE DE CONOCIMIENTOS (USAR OBLIGATORIAMENTE):\n" + contextText },
+              ...(history || []).slice(-5),
+              { role: 'user', content: message }
+            ],
+            temperature: 0.7,
+            max_tokens: 300,
+          };
+          const fallback = await openai.chat.completions.create(fallbackParams);
+          const fallbackReply = fallback.choices[0].message.content ?? '';
+          if (fallbackReply) {
+            if (userId) {
+              await supabase.from('chat_messages').insert({
+                session_id: currentSessionId,
+                user_id: userId,
+                role: 'assistant',
+                content: fallbackReply,
+                is_bot: true,
+              });
+            }
+            return NextResponse.json({ role: 'assistant', content: fallbackReply });
+          }
+        } catch (fallbackErr) {
+          console.error('Fallback model failed:', fallbackErr);
+        }
+      }
       return NextResponse.json(
         { role: 'assistant', content: 'Estoy actualizando mis sistemas de venta, dame un momento.' },
         { status: 200 }

@@ -51,8 +51,8 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-20 left-2 sm:left-4 z-40 flex flex-col items-start max-w-[100vw]">
-      {/* VENTANA DEL CHAT – ancho seguro en móvil, no tapa barra Comprar ni nav */}
+    <div className="fixed bottom-20 right-2 sm:right-4 z-40 flex flex-col items-end max-w-[100vw]">
+      {/* VENTANA DEL CHAT – mismo sitio pero lado derecho, ancho seguro en móvil */}
       {isOpen && (
         <div className="mb-3 w-[90vw] max-w-[350px] md:max-w-[400px] h-[500px] max-h-[70vh] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           
