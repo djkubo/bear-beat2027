@@ -118,7 +118,22 @@ export async function POST(req: NextRequest) {
                 limit: 1,
               })
               const first = list.data[0]
-              sessionFromPi = first ? (first as unknown as StripeSessionLike) : null
+              if (first) {
+                const cd = first.customer_details
+                sessionFromPi = {
+                  id: first.id,
+                  customer_details: cd
+                    ? {
+                        email: cd.email ?? undefined,
+                        name: cd.name ?? undefined,
+                        phone: cd.phone ?? undefined,
+                      }
+                    : undefined,
+                  metadata: first.metadata as StripeSessionLike['metadata'],
+                  amount_total: first.amount_total ?? undefined,
+                  currency: first.currency ?? undefined,
+                }
+              }
               if (sessionFromPi?.customer_details?.email) {
                 email = (sessionFromPi.customer_details.email || '').trim()
               }
