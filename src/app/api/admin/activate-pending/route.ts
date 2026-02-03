@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}))
     const sessionId = body.sessionId as string | undefined
     const pendingId = body.pendingId as number | undefined
-    if (!sessionId && (pendingId == null || pendingId === '')) {
+    if (!sessionId && pendingId == null) {
       return NextResponse.json(
         { error: 'Indica sessionId o pendingId' },
         { status: 400 }
