@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import ChatWidget from '@/components/chat/ChatWidget'
@@ -29,7 +30,9 @@ export default function RootLayout({
   return (
     <html lang="es" className="scroll-smooth">
       <head>
-        <TrackingScripts />
+        <Suspense fallback={null}>
+          <TrackingScripts />
+        </Suspense>
       </head>
       <body className={`${inter.className} relative min-w-0 overflow-x-hidden overflow-y-auto bg-black text-white antialiased`}>
         <GlobalErrorBoundary>

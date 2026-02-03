@@ -84,22 +84,22 @@ export default function ChatWidget() {
   // Anuncios globales proactivos (tabla opcional: si no existe en Supabase no romper)
   useEffect(() => {
     const supabase = createClient();
-    supabase
-      .from('global_announcements')
-      .select('id, message')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data: announcement, error }) => {
-        if (error || !announcement) return;
-        const dismissed = typeof window !== 'undefined' && localStorage.getItem(STORAGE_DISMISSED_PREFIX + announcement.id);
-        if (dismissed) return;
-        announcementIdRef.current = announcement.id;
-        setMessages(prev => [{ role: 'assistant', content: `📢 ${announcement.message}` }, ...prev]);
-        setIsOpen(true);
-      })
-      .catch(() => { /* tabla no existe (404) o red: ignorar */ });
+    void Promise.resolve(
+      supabase
+        .from('global_announcements')
+        .select('id, message')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    ).then(({ data: announcement, error }) => {
+      if (error || !announcement) return;
+      const dismissed = typeof window !== 'undefined' && localStorage.getItem(STORAGE_DISMISSED_PREFIX + announcement.id);
+      if (dismissed) return;
+      announcementIdRef.current = announcement.id;
+      setMessages(prev => [{ role: 'assistant', content: `📢 ${announcement.message}` }, ...prev]);
+      setIsOpen(true);
+    }).catch(() => { /* tabla no existe (404) o red: ignorar */ });
   }, []);
 
   // Al cerrar el chat, marcar anuncio como visto para no volver a abrirlo
