@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { generateSignedUrl } from '@/lib/bunny'
-import { generateStreamUrl, listFiles } from '@/lib/storage/bunny'
+import { generateSignedUrl, getBunnyPackPrefix } from '@/lib/bunny'
+import { generateStreamUrl, listFiles, listFilesRecursive } from '@/lib/storage/bunny'
 
-// Mismo prefijo que /api/download para que listado y descarga usen la misma carpeta en Bunny
-const BUNNY_PACK_PATH_PREFIX = process.env.BUNNY_PACK_PATH_PREFIX || 'packs/enero-2026'
-
-/**
- * Carpeta en Bunny Storage para el pack. Debe coincidir con BUNNY_PACK_PATH_PREFIX
- * para que listado y descarga apunten al mismo contenido.
- */
+/** Carpeta en Bunny Storage para el pack. Mismo valor que /api/download. */
 function getPackFolderPath(packId: string | null): string {
-  if (!packId || packId === '1') return BUNNY_PACK_PATH_PREFIX
+  if (!packId || packId === '1') return getBunnyPackPrefix()
   return `packs/${packId}`
 }
 
@@ -74,10 +68,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Listar archivos del pack (misma carpeta que usa /api/download)
+    // Listar archivos del pack de forma recursiva (misma carpeta que usa /api/download)
     const folderPath = getPackFolderPath(packId)
-    const files = await listFiles(folderPath).catch((err) => {
-      console.error('Bunny listFiles error:', err)
+    const files = await listFilesRecursive(folderPath).catch((err) => {
+      console.error('Bunny listFilesRecursive error:', err)
       return []
     })
 
@@ -146,8 +140,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Ruta en Bunny: si el cliente envía ruta relativa (Genre/video.mp4), usar prefijo del pack
-    const fullPath = filePath.startsWith('packs/') ? filePath : `${BUNNY_PACK_PATH_PREFIX}/${filePath.replace(/^\//, '')}`
+    // Ruta en Bunny: mismo prefijo que /api/download (getBunnyPackPrefix)
+    const prefix = getBunnyPackPrefix()
+    const fullPath = filePath.startsWith('packs/') || (prefix && filePath.startsWith(prefix + '/'))
+      ? filePath
+      : prefix
+        ? `${prefix}/${filePath.replace(/^\//, '')}`
+        : filePath.replace(/^\//, '')
     const signedUrl = generateSignedUrl(
       fullPath,
       3600, // 1 hora

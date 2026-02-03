@@ -115,30 +115,63 @@ export async function uploadFile(
 }
 
 /**
- * Listar archivos de una carpeta
+ * Listar archivos de una carpeta (un nivel).
  */
 export async function listFiles(
   folderPath: string = ''
 ): Promise<BunnyFile[]> {
   try {
-    const response = await fetch(
-      `https://storage.bunnycdn.com/${BUNNY_STORAGE_ZONE}/${folderPath}/`,
-      {
-        headers: {
-          'AccessKey': BUNNY_STORAGE_PASSWORD,
-          'Accept': 'application/json',
-        },
-      }
-    )
+    const pathNorm = (folderPath || '').replace(/\/+$/, '')
+    const url = pathNorm
+      ? `https://storage.bunnycdn.com/${BUNNY_STORAGE_ZONE}/${pathNorm}/`
+      : `https://storage.bunnycdn.com/${BUNNY_STORAGE_ZONE}/`
+    const response = await fetch(url, {
+      headers: {
+        'AccessKey': BUNNY_STORAGE_PASSWORD,
+        'Accept': 'application/json',
+      },
+    })
 
     if (!response.ok) {
       throw new Error(`List failed: ${response.status}`)
     }
 
     const files = await response.json()
-    return files
+    return Array.isArray(files) ? files : []
   } catch (error) {
     console.error('Error listing files:', error)
+    return []
+  }
+}
+
+/**
+ * Listar todos los archivos de una carpeta de forma recursiva (para descargas por carpeta).
+ * Devuelve la misma estructura que listFiles pero con todos los archivos en subcarpetas.
+ */
+export async function listFilesRecursive(folderPath: string = ''): Promise<BunnyFile[]> {
+  const pathNorm = (folderPath || '').replace(/\/+$/, '')
+  const result: BunnyFile[] = []
+
+  async function walk(currentPath: string): Promise<void> {
+    const items = await listFiles(currentPath)
+    for (const item of items) {
+      const fullPath = currentPath ? `${currentPath}/${item.ObjectName}` : item.ObjectName
+      if (item.IsDirectory) {
+        await walk(fullPath)
+      } else {
+        result.push({
+          ...item,
+          Path: currentPath,
+        })
+      }
+    }
+  }
+
+  try {
+    await walk(pathNorm)
+    return result
+  } catch (error) {
+    console.error('Error listing files recursively:', error)
     return []
   }
 }

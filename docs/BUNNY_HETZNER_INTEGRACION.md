@@ -16,6 +16,26 @@ Documento de referencia para que **demos**, **portadas**, **descargas**, **desca
 
 ---
 
+## 1.1 Cómo funciona la lógica del CDN (videos “aquí” vs CDN)
+
+Los videos pueden estar **solo en Hetzner FTP** (o en tu disco). Para que **se usen por CDN** tiene que cumplirse esto:
+
+1. **La app no sirve el archivo.** Cuando el usuario pide una descarga, `/api/download` comprueba sesión y compra y luego **redirige (302)** al navegador a una **URL firmada de Bunny CDN** (ej. `https://bearbeat.b-cdn.net/Videos%20Enero%202026/Genre/video.mp4?token=...&expires=...`).
+2. **El navegador descarga desde Bunny.** Esa URL apunta a la **Pull Zone** de Bunny, que a su vez sirve archivos desde la **Storage Zone**. Si el archivo **no está en Bunny Storage**, Bunny devuelve **404** al usuario (la app ya no puede “cambiar” la respuesta).
+3. **Conclusión:** Para que el CDN se use, **los archivos (videos, ZIPs, etc.) tienen que existir en Bunny Storage**, en la ruta que usa la app: `BUNNY_PACK_PATH_PREFIX` + ruta relativa (ej. `Videos Enero 2026/Genre/video.mp4`).
+
+**Si los videos están solo “aquí” (Hetzner FTP):**
+
+- **Opción A – Usar CDN:** Tienes que **copiar/sincronizar** los videos (y ZIPs si aplica) desde FTP (o desde tu disco) **a Bunny Storage**. Los scripts actuales ya suben a Bunny:
+  - **Portadas:** `node scripts/generate-thumbnails-from-videos.js --all` (lee FTP, genera .jpg y los sube a Bunny).
+  - **ZIPs por género:** `node scripts/create-genre-zips-hetzner.js` (crea ZIPs desde FTP y los sube a Bunny).
+  - **Videos:** No hay script que suba videos de FTP → Bunny; si quieres descargas por CDN, hay que subirlos a Bunny (por panel de Bunny, por API, o con un script que lea FTP y suba a Storage).
+- **Opción B – Sin CDN para ese archivo:** Si Bunny está configurado pero el archivo no está en Storage, la app igual redirige a la URL firmada y el usuario recibe 404 de Bunny. Solo si **Bunny no está configurado** (o falla la firma), la app hace **fallback a streaming desde FTP** (Hetzner); en ese caso el archivo sí se sirve desde “aquí” (FTP), pero sin CDN y con riesgo de timeout en Render en archivos grandes.
+
+**Resumen:** CDN = archivos en Bunny Storage. Videos “aquí” (FTP) → para usar CDN hay que **subirlos/sincronizarlos a Bunny Storage**; si no, la descarga por CDN dará 404 o tendrás que depender del fallback FTP.
+
+---
+
 ## 2. Bunny.net – Variables y estructura
 
 ### 2.1 Variables de entorno (producción)

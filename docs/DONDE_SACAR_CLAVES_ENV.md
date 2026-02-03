@@ -29,7 +29,7 @@ Lista de todas las variables que usa el proyecto, con enlaces y pasos para obten
 | **PAYPAL_CLIENT_SECRET** | Misma app → "Secret". |
 | **PAYPAL_USE_SANDBOX** | `true` para pruebas, `false` en producción. |
 | **NEXT_PUBLIC_PAYPAL_USE_SANDBOX** | Mismo valor que arriba (para ocultar banner "Modo pruebas" en front). |
-| **SUPABASE_ACCESS_TOKEN** | [Supabase](https://supabase.com/dashboard/account/tokens) → **Account** → **Access Tokens** → "Generate new token". Se usa solo para el script `npm run supabase:set-auth-urls` (configurar Site URL y Redirect URLs por API). Opcional si configuras Auth a mano en el dashboard. |
+| **SUPABASE_ACCESS_TOKEN** | [Supabase](https://supabase.com/dashboard/account/tokens) → **Account** → **Access Tokens** → "Generate new token". Se usa solo para el script `npm run supabase:set-auth-urls` (configurar Site URL y Redirect URLs por API). **Opcional:** si no lo usas, configura las URLs a mano: ver [SUPABASE_AUTH_URLS_PASOS.md](SUPABASE_AUTH_URLS_PASOS.md). |
 
 ---
 
@@ -113,6 +113,20 @@ Lista de todas las variables que usa el proyecto, con enlaces y pasos para obten
 | **BUNNY_PULL_ZONE** | Hostname de la Pull Zone para descargas (puede ser un subdominio propio, ej. `cdn.bearbeat.mx`). |
 | **BUNNY_SECURITY_KEY** | Si usas "Signed URL" en la Pull Zone, esta es la clave de firma (puede ser la misma que Token Key según configuración). |
 | **BUNNY_STREAM_LIBRARY_ID** / **BUNNY_STREAM_API_KEY** | Solo si usas Bunny Stream para video streaming; en **Stream** → tu biblioteca → API. |
+
+#### Bunny Storage → FTP & API Access (qué copiar)
+
+En tu Storage Zone → **FTP & API Access** verás algo como:
+
+| En la pantalla | Para qué sirve | Variable en .env.local |
+|----------------|----------------|------------------------|
+| **Username** | Nombre de la zona (ej. `bear-beat`) | **BUNNY_STORAGE_ZONE** (si no lo tienes ya) |
+| **Hostname** | Para conectar por FTP (FileZilla, etc.) | No la usa la app; solo si subes archivos por FTP manual |
+| **Connection type** / **Port** | FTP o SFTP | Solo para cliente FTP |
+| **Password** | Contraseña principal (lectura/escritura) — **esta es la que usa la API** | **BUNNY_STORAGE_PASSWORD** ← **la que necesitas** |
+| **Read-only password** | Solo lectura (opcional) | No la usa el proyecto |
+
+**Resumen:** Lo único que tienes que copiar para que los scripts y la app suban/lean desde Bunny es **Password** → pegarlo en **BUNNY_STORAGE_PASSWORD** en `.env.local`.
 
 ### FTP / Hetzner (catálogo y sync)
 
