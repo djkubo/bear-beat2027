@@ -54,6 +54,14 @@ function CardPaymentForm({
   const [loading, setLoading] = useState(false)
   const [elementReady, setElementReady] = useState(false)
 
+  // Fallback: si onReady no dispara (red lenta), habilitar botón tras 12s para que el usuario pueda intentar
+  useEffect(() => {
+    if (!elementReady && stripe && elements) {
+      const t = setTimeout(() => setElementReady(true), 12000)
+      return () => clearTimeout(t)
+    }
+  }, [elementReady, stripe, elements])
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
@@ -229,7 +237,7 @@ export default function CheckoutPage() {
     return () => clearInterval(t)
   }, [step, reservationSeconds])
 
-  // Al elegir Tarjeta, obtener clientSecret para Stripe Elements (email para OXXO/SPEI en tabs)
+  // Al elegir Tarjeta, obtener clientSecret UNA vez (no refetch al cambiar email para no remontar el form y desbloquear el botón)
   useEffect(() => {
     if (selectedMethod !== 'card') {
       setCardClientSecret(null)
@@ -251,7 +259,8 @@ export default function CheckoutPage() {
       })
       .catch(() => setError('Error de conexión. Intenta de nuevo.'))
       .finally(() => setCardClientSecretLoading(false))
-  }, [selectedMethod, packSlug, currency, checkoutEmail])
+    // Solo al cambiar a "card" o moneda/pack; NO al cambiar email (el email se envía en confirmPayment y evita remontar el PaymentElement)
+  }, [selectedMethod, packSlug, currency])
 
   const price = currency === 'mxn' ? 350 : 19
   const currencyLabel = currency === 'mxn' ? 'MXN' : 'USD'
