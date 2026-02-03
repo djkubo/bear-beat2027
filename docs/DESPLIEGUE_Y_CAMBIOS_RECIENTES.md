@@ -111,4 +111,15 @@ Ver [CONFIGURACION_IA_Y_PRODUCCION.md](./CONFIGURACION_IA_Y_PRODUCCION.md) para 
 
 ---
 
-*Última actualización: GPT-5.2 como modelo de chat, openai-config centralizado, subida a producción documentada.*
+## 9. Fixes consola (404/502) – anuncios, logos, hero, demo/thumbnail
+
+- **API anuncios:** `GET /api/announcements` (servidor); el chat ya no consulta `global_announcements` desde el cliente (evita 404).
+- **Logos landing:** Placeholder único `/public/logos/compatible-placeholder.svg`; sin 404 por PNG inexistentes.
+- **Hero:** Imagen de fondo del hero apunta a miniatura existente en `public/thumbnails-cache/`.
+- **Demo y thumbnail CDN:** Try/catch y validación de URL en `/api/demo-url` y `/api/thumbnail-cdn`; respuesta 503 JSON en lugar de 502.
+
+Detalle: [FIXES_CONSOLA_Y_APIS.md](./FIXES_CONSOLA_Y_APIS.md).
+
+---
+
+*Última actualización: fixes consola (announcements, logos, hero, demo/thumbnail-cdn); ver FIXES_CONSOLA_Y_APIS.md.*

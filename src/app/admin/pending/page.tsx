@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { formatDate, formatPrice } from '@/lib/utils'
 import { ActivatePendingButton } from '../ActivatePendingButton'
+import { ActivateByStripeIdForm } from '../ActivateByStripeIdForm'
 
 export default async function AdminPendingPurchasesPage() {
   const supabase = await createServerClient()
@@ -40,6 +41,8 @@ export default async function AdminPendingPurchasesPage() {
       <p className="text-zinc-500 text-sm mb-6">
         Pagos exitosos que aún no completan datos
       </p>
+
+      <ActivateByStripeIdForm />
 
       <div className="rounded-xl p-6 border border-white/5 border-l-4 border-l-amber-500/60 bg-zinc-900/80 shadow-xl">
         <div className="flex justify-between items-center mb-6">

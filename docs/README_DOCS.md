@@ -6,6 +6,8 @@
 
 **Cambios recientes y despliegue:** [DESPLIEGUE_Y_CAMBIOS_RECIENTES.md](./DESPLIEGUE_Y_CAMBIOS_RECIENTES.md) — descargas 307, push admin, chat RAG + chat_messages, analyze-chat, migraciones.
 
+**Fixes consola y APIs (404/502):** [FIXES_CONSOLA_Y_APIS.md](./FIXES_CONSOLA_Y_APIS.md) — API announcements, logos placeholder, thumbnail hero, demo/thumbnail-cdn.
+
 **IA (OpenAI) y subida a producción:** [CONFIGURACION_IA_Y_PRODUCCION.md](./CONFIGURACION_IA_Y_PRODUCCION.md) — GPT-5.2, openai-config, variables, proceso git push + deploy:env.
 
 ---

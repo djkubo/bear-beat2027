@@ -1,13 +1,15 @@
 /**
  * POST: Activar una compra pendiente (cobrada en Stripe pero sin completar /complete-purchase).
  * Body: { sessionId?: string, pendingId?: number }
- * Solo admin. Busca o crea usuario por customer_email y llama a la lógica de activación.
+ * Solo admin. Busca en pending_purchases; si no hay fila (webhook no corrió), obtiene datos desde Stripe
+ * (Checkout Session cs_xxx o Payment Intent pi_xxx) y activa igual.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
+import { stripe } from '@/lib/stripe'
 
 function randomPassword(): string {
   const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -65,6 +67,69 @@ export async function POST(req: NextRequest) {
         .eq('payment_status', 'paid')
         .maybeSingle()
       pending = data
+
+      // Si no hay fila (webhook no llegó o falló), obtener datos desde Stripe y activar igual
+      if (!pending && (sessionId.startsWith('cs_') || sessionId.startsWith('pi_'))) {
+        try {
+          if (sessionId.startsWith('cs_')) {
+            const session = await stripe.checkout.sessions.retrieve(sessionId, {
+              expand: ['payment_intent', 'line_items'],
+            })
+            if (session.payment_status !== 'paid') {
+              return NextResponse.json(
+                { error: 'La sesión de Stripe no está pagada' },
+                { status: 400 }
+              )
+            }
+            const packId = Math.max(1, parseInt((session.metadata?.pack_id as string) || '1', 10))
+            pending = {
+              id: 0,
+              stripe_session_id: session.id,
+              customer_email: session.customer_details?.email ?? session.customer_email ?? null,
+              customer_name: session.customer_details?.name ?? null,
+              customer_phone: session.customer_details?.phone ?? null,
+              pack_id: packId,
+              amount_paid: (session.amount_total ?? 0) / 100,
+              currency: (session.currency ?? 'MXN').toUpperCase(),
+              payment_provider: 'stripe',
+            }
+          } else {
+            const pi = await stripe.paymentIntents.retrieve(sessionId)
+            if (pi.status !== 'succeeded') {
+              return NextResponse.json(
+                { error: 'El pago en Stripe no está completado' },
+                { status: 400 }
+              )
+            }
+            const email = (pi.receipt_email || (pi.metadata?.customer_email as string) || '').trim()
+            if (!email || !email.includes('@')) {
+              return NextResponse.json(
+                { error: 'El pago en Stripe no tiene email (receipt_email o metadata.customer_email)' },
+                { status: 400 }
+              )
+            }
+            const packId = Math.max(1, parseInt((pi.metadata?.pack_id as string) || '1', 10))
+            pending = {
+              id: 0,
+              stripe_session_id: sessionId,
+              customer_email: email,
+              customer_name: (pi.metadata?.customer_name as string) || null,
+              customer_phone: (pi.metadata?.customer_phone as string) || null,
+              pack_id: packId,
+              amount_paid: (pi.amount ?? 0) / 100,
+              currency: (pi.currency ?? 'MXN').toUpperCase(),
+              payment_provider: 'stripe',
+            }
+          }
+        } catch (stripeErr: unknown) {
+          const msg = stripeErr instanceof Error ? stripeErr.message : 'Stripe error'
+          console.error('activate-pending Stripe fetch:', msg)
+          return NextResponse.json(
+            { error: `No se pudo obtener el pago en Stripe: ${msg}. Comprueba que el ID sea correcto (cs_xxx o pi_xxx).` },
+            { status: 400 }
+          )
+        }
+      }
     } else if (pendingId != null) {
       const { data } = await (admin as any)
         .from('pending_purchases')
@@ -77,7 +142,7 @@ export async function POST(req: NextRequest) {
 
     if (!pending?.stripe_session_id) {
       return NextResponse.json(
-        { error: 'No se encontró pago pendiente con ese session_id o id' },
+        { error: 'No se encontró pago pendiente con ese session_id o id. Si el pago está en Stripe, usa el Session ID (cs_...) o Payment Intent (pi_...) desde el panel de Stripe.' },
         { status: 404 }
       )
     }

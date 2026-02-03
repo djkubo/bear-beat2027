@@ -637,7 +637,7 @@ Cada card muestra:
 
 1. ✅ `supabase/schema_tracking.sql` - Tablas de tracking
 2. ✅ `src/lib/tracking.ts` - Funciones de tracking
-3. ✅ `src/components/tracking/page-view-tracker.tsx` - Tracker de páginas
+3. ✅ Page views: `trackPageView()` en `src/lib/tracking.ts`; llamado desde cada página y desde `TrackingScripts` (el componente page-view-tracker.tsx fue eliminado por redundante).
 4. ✅ `src/app/api/track-event/route.ts` - API de tracking
 5. ✅ `src/app/api/create-checkout/route.ts` - Crear checkout sin auth
 6. ✅ `src/app/api/webhooks/stripe/route.ts` - Webhook actualizado

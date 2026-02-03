@@ -120,7 +120,7 @@ Protegido por layout que verifica rol admin. Rutas bajo `src/app/admin/`.
 - **Layout principal** (`layout.tsx`): MetaPixel, ManyChat, AttributionTracker, ChatWidget, PushPrompt, Toaster. Sin datos hardcoded de conteo ni precios.
 - **Landing** (`page.tsx`): Contenido inline (no usa componentes en `src/components/landing/` en la versión actual). Banner según acceso, navbar, hero, stats (useVideoInventory), preview de videos, géneros, pain points, precio, CTA sticky móvil.
 - **Navegación:** `MobileMenu` para menú móvil; enlaces a Contenido, Login, Mi Panel, Portal, Mi cuenta, Comunidad según sesión y acceso.
-- **Video:** `ProtectedPlayer`, `VideoCounter` (conteo dinámico cuando aplica). `FileExplorer` en contenido.
+- **Video:** `ProtectedPlayer`, `VideoCounter` (conteo dinámico cuando aplica). Page views: `trackPageView()` desde cada página y desde `TrackingScripts`.
 
 ---
 

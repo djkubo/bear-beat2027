@@ -37,3 +37,21 @@ Si prefieres no tocar Render a mano:
 1. Haz un pago de prueba (OXXO o SPEI en modo Test).
 2. En Stripe → **Developers → Webhooks** → tu destino → pestaña **Eventos** deberías ver el evento enviado y la respuesta (200).
 3. En la app, el pago debería aparecer como pendiente de completar en `/complete-purchase`.
+
+---
+
+## Pago correcto en Stripe pero el cliente no tiene acceso
+
+Si un cliente pagó (Stripe muestra “Pago efectuado con éxito”) pero no se le activó la descarga, suele ser porque el webhook no llegó o falló (timeout, URL incorrecta, servicio dormido, etc.).
+
+**Qué hacer:**
+
+1. Entra como admin a **Panel → Compras pendientes** (`/admin/pending`).
+2. Si el pago **sí aparece** en la lista “Pendientes de completar”: pulsa **Activar** en esa fila. Se crea el usuario si no existe y se activa el pack.
+3. Si el pago **no aparece** (no hay fila en la base de datos):
+   - En **Stripe Dashboard** abre ese pago.
+   - En **Eventos** busca “Se completó una sesión de Checkout” y copia el **Session ID** (`cs_...`), o copia el **ID de pago** (`pi_...`) que ves en el resumen.
+   - En `/admin/pending`, en el bloque **“Activar por ID de Stripe”**, pega ese ID (`cs_...` o `pi_...`) y pulsa **Activar compra**.
+   - La app consulta Stripe, crea o localiza al usuario por email y activa la compra (acceso al pack y credenciales FTP si aplica).
+
+Así puedes dar acceso manualmente sin reembolsar ni volver a cobrar.

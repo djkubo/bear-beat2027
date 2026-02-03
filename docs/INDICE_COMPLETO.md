@@ -37,6 +37,7 @@ Documentación maestra: todo lo que hay en el proyecto, dónde está y cómo usa
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/videos` | Listado géneros y videos (Supabase). |
+| GET | `/api/announcements` | Anuncio activo para el chat (global_announcements). Si la tabla no existe, devuelve `{ announcement: null }`. Ver [FIXES_CONSOLA_Y_APIS.md](./FIXES_CONSOLA_Y_APIS.md). |
 | GET | `/api/download?file=...&stream=true` | 307 redirect a URL firmada Bunny CDN (Token Auth); sin fs/fetch en servidor. |
 | GET | `/api/demo-url?path=...` | Redirect a CDN firmado o proxy `/api/demo/...`. |
 | GET | `/api/demo/[...path]` | Streaming demo (disco o FTP). |
@@ -124,6 +125,8 @@ Ver `.env.example` y DOCUMENTACION_COMPLETA.md §16.
 | Tema | Documentos |
 |------|------------|
 | **Deploy / producción** | [DEPLOY_PRODUCCION.md](./DEPLOY_PRODUCCION.md), [DESPLIEGUE_Y_CAMBIOS_RECIENTES.md](./DESPLIEGUE_Y_CAMBIOS_RECIENTES.md), [CONFIGURACION_IA_Y_PRODUCCION.md](./CONFIGURACION_IA_Y_PRODUCCION.md), [RENDER_DEPLOY.md](../RENDER_DEPLOY.md), [AUDITORIA_PRODUCCION_Y_RUNBOOK.md](./AUDITORIA_PRODUCCION_Y_RUNBOOK.md) |
+| **Fixes consola y APIs** | [FIXES_CONSOLA_Y_APIS.md](./FIXES_CONSOLA_Y_APIS.md) – Anuncios API, logos placeholder, thumbnail hero, demo/thumbnail-cdn (404/502). |
+| **Limpieza y referencias** | [LIMPIEZA_Y_REFERENCIAS.md](./LIMPIEZA_Y_REFERENCIAS.md) – Código eliminado (page-view-tracker, FileExplorer), APIs sin uso en UI, docs actualizados. |
 | **Pagos (Stripe, PayPal)** | [PRUEBAS_STRIPE_Y_PAYPAL_SANDBOX.md](./PRUEBAS_STRIPE_Y_PAYPAL_SANDBOX.md), [WEBHOOK_STRIPE_CONFIG.md](./WEBHOOK_STRIPE_CONFIG.md) |
 | **Embudo / CRO** | [EMBUDO_Y_SECCIONES_A_FONDO.md](./EMBUDO_Y_SECCIONES_A_FONDO.md), [CRO_EMBUDO_COPY.md](./CRO_EMBUDO_COPY.md) |
 | **Bunny / Hetzner / FTP** | [BUNNY_HETZNER_INTEGRACION.md](./BUNNY_HETZNER_INTEGRACION.md), [BUNNY_PULL_ZONE_SETUP.md](./BUNNY_PULL_ZONE_SETUP.md), [HETZNER_FTP_REAL.md](./HETZNER_FTP_REAL.md) |
@@ -144,4 +147,4 @@ Ver `.env.example` y DOCUMENTACION_COMPLETA.md §16.
 
 ---
 
-*Última actualización: GPT-5.2 como modelo de chat, [CONFIGURACION_IA_Y_PRODUCCION.md](./CONFIGURACION_IA_Y_PRODUCCION.md) para IA y subida a producción.*
+*Última actualización: API announcements, fixes consola (logos, hero, demo/thumbnail-cdn), [FIXES_CONSOLA_Y_APIS.md](./FIXES_CONSOLA_Y_APIS.md).*
