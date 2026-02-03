@@ -95,16 +95,28 @@ export async function POST(req: NextRequest) {
       paymentMethodTypes = ['paypal']
     }
     
-    // OXXO/SPEI (customer_balance) requieren customer; resolver si tenemos email (logueado o body)
+    // OXXO/SPEI (customer_balance) requieren customer; email obligatorio
     const emailForCustomer =
       typeof bodyEmail === 'string' && bodyEmail.trim()
         ? bodyEmail.trim()
         : loggedUser?.email ?? null
+    if (paymentMethod === 'oxxo' || paymentMethod === 'spei') {
+      if (!emailForCustomer || !emailForCustomer.includes('@')) {
+        return NextResponse.json(
+          { error: 'Para pagar con OXXO o SPEI necesitas ingresar tu email en el checkout.' },
+          { status: 400 }
+        )
+      }
+    }
     let stripeCustomerId: string | null = null
     if (emailForCustomer && (paymentMethod === 'oxxo' || paymentMethod === 'spei')) {
       stripeCustomerId = await getOrCreateStripeCustomer(emailForCustomer)
     }
 
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || (process.env.NODE_ENV === 'production' ? 'https://bear-beat2027.onrender.com' : '')
+    if (!baseUrl) {
+      return NextResponse.json({ error: 'NEXT_PUBLIC_APP_URL no configurada' }, { status: 500 })
+    }
     // Configuración base de la sesión
     const sessionConfig: any = {
       mode: 'payment',
@@ -116,15 +128,15 @@ export async function POST(req: NextRequest) {
             product_data: {
               name: `Bear Beat - ${pack.name}`,
               description: `${pack.total_videos} videos HD/4K organizados por género. Pago único, acceso permanente.`,
-              images: [`${process.env.NEXT_PUBLIC_APP_URL}/logos/BBLOGOTIPOPOSITIVO_Mesa%20de%20trabajo%201.png`],
+              images: [`${baseUrl}/logos/BBLOGOTIPOPOSITIVO_Mesa%20de%20trabajo%201.png`],
             },
             unit_amount: Math.round(price * 100), // En centavos
           },
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/complete-purchase?session_id={CHECKOUT_SESSION_ID}${emailForCustomer ? `&email=${encodeURIComponent(emailForCustomer)}` : ''}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout?canceled=true&pack=${pack.slug}`,
+      success_url: `${baseUrl}/complete-purchase?session_id={CHECKOUT_SESSION_ID}${emailForCustomer ? `&email=${encodeURIComponent(emailForCustomer)}` : ''}`,
+      cancel_url: `${baseUrl}/checkout?canceled=true&pack=${pack.slug}`,
       metadata: {
         pack_id: pack.id.toString(),
         pack_slug: pack.slug,

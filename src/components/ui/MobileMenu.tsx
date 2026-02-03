@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
-import { getMessengerUrl } from '@/config/contact'
-
 // ==========================================
 // MENÚ MÓVIL – App Nativa Premium
 // Dark (zinc-950), acentos cyan neon, glassmorphism
@@ -20,7 +18,7 @@ interface MobileMenuProps {
 export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedIn = false }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
 
-  // Evitar scroll del body cuando el drawer está abierto
+  // Bloquear scroll del body cuando el drawer está abierto; limpiar al cerrar o al desmontar (navegación)
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -31,6 +29,13 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
       document.body.style.overflow = ''
     }
   }, [isOpen])
+
+  // Limpieza garantizada al desmontar (p. ej. cambio de ruta) para evitar body con overflow hidden
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
 
   // Cerrar con tecla Escape
   useEffect(() => {
@@ -171,8 +176,8 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
                 </ul>
               </nav>
 
-              {/* CTA y ayuda – fijo abajo */}
-              <div className="shrink-0 p-4 pt-4 border-t border-white/10 space-y-3">
+              {/* CTA – solo navegación y conversión */}
+              <div className="shrink-0 p-4 pt-4 border-t border-white/10">
                 <Link
                   href={ctaItem.href}
                   onClick={() => setIsOpen(false)}
@@ -186,25 +191,6 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
                 >
                   {ctaItem.label}
                 </Link>
-                <p className="text-center text-xs text-zinc-500">¿Necesitas ayuda?</p>
-                <div className="flex gap-2">
-                  <a
-                    href={getMessengerUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 py-2.5 rounded-lg bg-blue-600/90 text-white text-center font-semibold text-sm hover:bg-blue-500 transition"
-                  >
-                    💬 Chat
-                  </a>
-                  <a
-                    href="https://wa.me/5215512345678?text=Hola%2C%20necesito%20ayuda%20con%20Bear%20Beat"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 py-2.5 rounded-lg bg-green-600/90 text-white text-center font-semibold text-sm hover:bg-green-500 transition"
-                  >
-                    📱 WhatsApp
-                  </a>
-                </div>
               </div>
             </motion.div>
           </>

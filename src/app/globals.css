@@ -58,8 +58,14 @@
   * {
     @apply border-border;
   }
+  html {
+    width: 100%;
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground;
+    width: 100%;
+    overflow-x: hidden;
   }
 }
 

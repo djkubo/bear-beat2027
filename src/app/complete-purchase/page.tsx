@@ -117,11 +117,10 @@ export default function CompletePurchasePage() {
   // Cargar datos de la compra (session_id para Stripe Checkout/PayPal, payment_intent para Stripe Elements)
   useEffect(() => {
     if (!sessionId && !paymentIntentId) {
-      setError('No se encontró la sesión de pago')
+      setError('No se encontró la sesión de pago. Si acabas de pagar, no cierres la ventana y espera a ser redirigido. Si el problema continúa, vuelve al checkout.')
       setState('error')
       return
     }
-    
     loadPurchaseData()
   }, [sessionId, paymentIntentId, provider])
 

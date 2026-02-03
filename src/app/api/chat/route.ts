@@ -2,9 +2,7 @@ import { OpenAI } from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// --- CONFIGURACIÓN SEGURA PARA BUILD ---
-const openaiKey = process.env.OPENAI_API_KEY || 'dummy-key';
-const openai = new OpenAI({ apiKey: openaiKey });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'dummy-key-for-build' });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-key';
@@ -12,7 +10,6 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const runtime = 'edge';
 
-// SYSTEM PROMPT (Concatenado para evitar errores de sintaxis en terminal)
 const SYSTEM_PROMPT = "Eres BearBot, el Vendedor Estrella de Bear Beat (bearbeat.com).\n" +
 "FECHA ACTUAL: " + new Date().toLocaleDateString() + "\n" +
 "TU MOTOR: OpenAI GPT-5.2 (Nivel Dios).\n\n" +
@@ -29,11 +26,16 @@ const SYSTEM_PROMPT = "Eres BearBot, el Vendedor Estrella de Bear Beat (bearbeat
 "4. SOPORTE: Si la web falla, mándalos al FTP (FileZilla) o Google Drive.\n\n" +
 "SI NO SABES ALGO: 'Ese dato no lo tengo, escribe AGENTE para hablar con un humano.'";
 
+const DUMMY_KEY = 'dummy-key-for-build';
+
 export async function POST(req: Request) {
   try {
-    // Si estamos en build (dummy key), no ejecutar nada real
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ role: 'assistant', content: 'Mantenimiento del sistema. 🔧' });
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || apiKey === DUMMY_KEY) {
+      return NextResponse.json(
+        { role: 'assistant', content: 'Sistema de IA reiniciando, intenta en breve.' },
+        { status: 503 }
+      );
     }
 
     const { message, history, userId, sessionId } = await req.json();

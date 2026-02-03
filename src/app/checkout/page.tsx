@@ -550,8 +550,16 @@ export default function CheckoutPage() {
                             }}
                             onApprove={async (data) => {
                               if (!data.orderID) return
-                              const origin = typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || ''
-                              window.location.href = `${origin}/complete-purchase?session_id=PAYPAL_${data.orderID}&provider=paypal`
+                              const origin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || '')
+                              if (!origin) {
+                                toast.error('No se pudo determinar la URL. Recarga la página e intenta de nuevo.')
+                                return
+                              }
+                              window.location.href = `${origin}/complete-purchase?session_id=PAYPAL_${encodeURIComponent(data.orderID)}&provider=paypal`
+                            }}
+                            onCancel={() => {
+                              toast.info('Pago con PayPal cancelado. Puedes elegir otro método de pago.')
+                              setError(null)
                             }}
                             onError={(err) => {
                               const msg = typeof err?.message === 'string' ? err.message : 'Error al procesar con PayPal. Intenta con tarjeta u otro método.'
