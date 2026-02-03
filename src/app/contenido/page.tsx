@@ -247,10 +247,17 @@ export default function ContenidoPage() {
       {/* Banner de éxito (solo si tiene acceso – refuerzo post-compra) */}
       {hasAccess && (
         <div className="bg-gradient-to-r from-cyan-500/20 via-bear-blue/10 to-cyan-500/20 border-b border-cyan-500/30 px-4 py-4">
-          <div className="max-w-7xl mx-auto text-center">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left">
             <p className="text-base md:text-lg font-bold text-white">
               🎉 ¡Felicidades! Ya eres parte de la élite. Aquí está tu arsenal.
             </p>
+            <Link
+              href="/comunidad"
+              className="shrink-0 inline-flex items-center gap-2 min-h-[48px] px-5 py-3 rounded-xl bg-green-500/20 text-green-400 font-bold border border-green-500/40 hover:bg-green-500/30 transition"
+            >
+              <MessageCircle className="h-5 w-5" />
+              Unirse al Grupo VIP de WhatsApp
+            </Link>
           </div>
         </div>
       )}
