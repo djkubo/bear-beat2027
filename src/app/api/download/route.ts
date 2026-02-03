@@ -9,6 +9,12 @@ export const dynamic = 'force-dynamic'
 const EXPIRY_VIDEO = 3600 // 1 h
 const EXPIRY_ZIP = 10800 // 3 h (los ZIP tardan más en bajar)
 
+/** Nombre de archivo seguro para Content-Disposition (evita caracteres problemáticos). */
+function safeDownloadFilename(name: string): string {
+  const base = (name || 'download').replace(/[\x00-\x1f\x7f"\\<>|*?]/g, '').trim() || 'download'
+  return base.length > 200 ? base.slice(0, 200) : base
+}
+
 /**
  * GET /api/download?file=Genre/video.mp4 | Banda.zip
  * Solo usuarios con compras activas.
@@ -63,7 +69,7 @@ export async function GET(req: NextRequest) {
     const isZip = sanitizedPath.toLowerCase().endsWith('.zip')
     const streamInline = req.nextUrl.searchParams.get('stream') === 'true' && !isZip
 
-    const filename = sanitizedPath.split('/').pop() || 'download'
+    const filename = safeDownloadFilename(sanitizedPath.split('/').pop() || 'download')
     const contentType = getContentType(sanitizedPath)
     const disposition = streamInline
       ? 'inline'
@@ -117,6 +123,7 @@ export async function GET(req: NextRequest) {
               'Content-Type': contentType,
               'Cache-Control': 'private, max-age=3600',
               'Content-Disposition': disposition,
+              'X-Content-Type-Options': 'nosniff',
             },
           })
         } catch (ftpErr) {
@@ -157,6 +164,7 @@ export async function GET(req: NextRequest) {
             'Content-Type': contentType,
             'Cache-Control': 'private, max-age=3600',
             'Content-Disposition': disposition,
+            'X-Content-Type-Options': 'nosniff',
           },
         })
       } catch (e) {

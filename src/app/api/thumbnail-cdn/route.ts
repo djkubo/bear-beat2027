@@ -34,7 +34,11 @@ export async function GET(req: NextRequest) {
           const webStream = Readable.toWeb(stream) as ReadableStream
           const contentType = getContentType(pathNorm)
           return new NextResponse(webStream, {
-            headers: { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400' },
+            headers: {
+              'Content-Type': contentType,
+              'Cache-Control': 'public, max-age=86400',
+              'X-Content-Type-Options': 'nosniff',
+            },
           })
         } catch (e) {
           console.error('[thumbnail-cdn] FTP stream failed:', (e as Error)?.message || e, 'path:', pathNorm)
@@ -64,6 +68,7 @@ export async function GET(req: NextRequest) {
           headers: {
             'Content-Type': contentType,
             'Cache-Control': 'public, max-age=86400',
+            'X-Content-Type-Options': 'nosniff',
           },
         })
       } catch (e) {

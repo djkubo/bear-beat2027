@@ -35,7 +35,12 @@ export async function GET(req: NextRequest) {
           const webStream = Readable.toWeb(stream) as ReadableStream
           const contentType = getContentType(pathNorm)
           return new NextResponse(webStream, {
-            headers: { 'Content-Type': contentType, 'Cache-Control': 'private, max-age=300', 'Accept-Ranges': 'bytes' },
+            headers: {
+              'Content-Type': contentType,
+              'Cache-Control': 'private, max-age=300',
+              'Accept-Ranges': 'bytes',
+              'X-Content-Type-Options': 'nosniff',
+            },
           })
         } catch (e) {
           console.error('demo-url FTP:', e)

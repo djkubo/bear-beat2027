@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { generateSignedUrl, isBunnyConfigured } from '@/lib/bunny'
+import { generateSignedUrl, isBunnyConfigured, getBunnyPackPrefix } from '@/lib/bunny'
 import { uploadFile } from '@/lib/storage/bunny'
 import fs from 'fs'
 import path from 'path'
@@ -9,7 +9,6 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 
 const execAsync = promisify(exec)
-const BUNNY_PACK_PREFIX = process.env.BUNNY_PACK_PATH_PREFIX || 'packs/enero-2026'
 const MAX_VIDEO_CHUNK = 12 * 1024 * 1024 // 12 MB para poder extraer frame ~1s
 const MAX_CONCURRENT_GENERATIONS = 3 // Evitar saturar el server con muchas peticiones ffmpeg a la vez
 
@@ -65,7 +64,9 @@ export async function GET(req: NextRequest) {
 
     // 2) ¿Existe ya el .jpg en Bunny? (mismo path que el video, extensión .jpg) → usar sin ffmpeg
     if (isBunnyConfigured()) {
-      const jpgSignedUrl = generateSignedUrl(`${BUNNY_PACK_PREFIX}/${pathJpg}`, 300)
+      const prefix = getBunnyPackPrefix()
+      const bunnyJpgPath = prefix ? `${prefix}/${pathJpg}` : pathJpg
+      const jpgSignedUrl = generateSignedUrl(bunnyJpgPath, 300)
       const headRes = await fetch(jpgSignedUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) })
       if (headRes.ok) {
         await (admin as any)
@@ -88,7 +89,9 @@ export async function GET(req: NextRequest) {
     activeGenerations.count += 1
 
     try {
-      const signedUrl = generateSignedUrl(`${BUNNY_PACK_PREFIX}/${sanitized}`, 300)
+      const prefix = getBunnyPackPrefix()
+      const bunnyVideoPath = prefix ? `${prefix}/${sanitized}` : sanitized
+      const signedUrl = generateSignedUrl(bunnyVideoPath, 300)
       const res = await fetch(signedUrl, {
         headers: { Range: `bytes=0-${MAX_VIDEO_CHUNK - 1}` },
         signal: AbortSignal.timeout(18000),
@@ -112,7 +115,7 @@ export async function GET(req: NextRequest) {
 
       if (!fs.existsSync(tmpThumb)) throw new Error('No se generó thumbnail')
       const thumbBuffer = await fs.promises.readFile(tmpThumb)
-      const bunnyThumbPath = `${BUNNY_PACK_PREFIX}/${pathJpg}`
+      const bunnyThumbPath = prefix ? `${prefix}/${pathJpg}` : pathJpg
       const upload = await uploadFile(bunnyThumbPath, thumbBuffer)
       if (!upload.success) throw new Error(upload.error || 'Upload failed')
 

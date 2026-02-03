@@ -65,7 +65,7 @@ function getBaseUrlForThumbnails(): string {
   return ''
 }
 
-/** Construye URL de portada. En producción sin thumbnail en DB usamos thumbnail-from-video (extrae frame del video en el server); si falla, esa ruta redirige al placeholder. */
+/** Construye URL de portada. Con thumbnail en DB → thumbnail-cdn. En producción sin thumb: thumbnail-from-video (genera on-demand y guarda en DB). Local: thumbnail desde disco. */
 function buildThumbnailUrl(
   thumbnailUrlFromDb: string | null,
   relativePath: string,
@@ -80,8 +80,11 @@ function buildThumbnailUrl(
     }
     urlPath = `/api/thumbnail-cdn?path=${encodeURIComponent(thumbnailUrlFromDb)}`
   } else if (process.env.NODE_ENV === 'production') {
-    const pathJpg = relativePath.replace(/\.(mp4|mov|avi|mkv)$/i, '.jpg')
-    urlPath = `/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`
+    // Sin portada en DB: generar on-demand (descarga video, extrae frame, sube a Bunny, guarda en DB)
+    urlPath = `/api/thumbnail-from-video?path=${encodeURIComponent(relativePath)}`
+    if (artist || title) {
+      urlPath += `&artist=${encodeURIComponent(artist || '')}&title=${encodeURIComponent(title || '')}`
+    }
   } else {
     urlPath = `/api/thumbnail/${encodeURIComponent(relativePath)}`
   }

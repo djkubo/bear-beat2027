@@ -26,9 +26,6 @@ ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
 COPY package.json package-lock.json* ./
 RUN npm ci --legacy-peer-deps
 
-# Cache bust: invalida caché para que COPY use siempre el código del commit actual
-RUN echo "Build at $(date -Iseconds)"
-
 # Código y build
 COPY . .
 RUN npm run build
