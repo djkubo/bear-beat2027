@@ -23,6 +23,7 @@ import {
  */
 export async function POST(req: NextRequest) {
   try {
+    console.log('ManyChat Key Presente:', !!process.env.MANYCHAT_API_KEY)
     const body = await req.json().catch(() => ({}))
     const action = body.action || 'all'
     
