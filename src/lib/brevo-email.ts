@@ -30,6 +30,7 @@ export async function sendWelcomeEmail(params: {
   name?: string
   password: string
   loginUrl?: string
+  subject?: string
 }): Promise<SendWelcomeEmailResult> {
   if (!isBrevoEmailConfigured()) {
     return { success: false, error: 'Brevo email not configured' }
@@ -37,15 +38,16 @@ export async function sendWelcomeEmail(params: {
 
   const displayName = (params.name || params.to.split('@')[0] || 'Cliente').trim()
   const loginUrl = params.loginUrl || (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') + '/login'
+  const subject = params.subject || 'Bear Beat – Tu acceso está listo'
 
   const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 560px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #0ea5e9;">¡Bienvenido a Bear Beat!</h2>
+  <h2 style="color: #0ea5e9;">🔓 Tus accesos están listos</h2>
   <p>Hola <strong>${escapeHtml(displayName)}</strong>,</p>
-  <p>Tu pago se ha confirmado y tu acceso ya está activo. Aquí tienes tus credenciales para entrar:</p>
+  <p>Tu pago se ha confirmado. Aquí tienes tus credenciales para el <strong>Pack Video Remixes 2026</strong>:</p>
   <table style="width: 100%; border-collapse: collapse; background: #f1f5f9; border-radius: 8px; margin: 16px 0;">
     <tr><td style="padding: 12px 16px;">
       <strong>Email:</strong> ${escapeHtml(params.to)}<br>
@@ -53,7 +55,7 @@ export async function sendWelcomeEmail(params: {
     </td></tr>
   </table>
   <p><a href="${escapeHtml(loginUrl)}" style="display: inline-block; background: #0ea5e9; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold;">Entrar a mi cuenta →</a></p>
-  <p style="color: #64748b; font-size: 14px;">Guarda este correo. Si olvidas tu contraseña, puedes restablecerla desde la página de inicio de sesión.</p>
+  <p style="color: #64748b; font-size: 14px;">Guarda este correo. Si olvidas tu contraseña, restablecela desde la página de login.</p>
   <p>— El equipo Bear Beat</p>
 </body>
 </html>
@@ -87,7 +89,7 @@ export async function sendWelcomeEmail(params: {
           email: BREVO_SENDER_EMAIL,
         },
         to: [{ email: params.to, name: displayName }],
-        subject: 'Bear Beat – Tu acceso está listo',
+        subject,
         htmlContent,
         textContent,
         tags: ['welcome', 'credentials'],
@@ -115,6 +117,48 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+}
+
+/**
+ * Envía un email transaccional con HTML libre (Neuroventas / copy agresivo).
+ * Para credenciales de acceso, ofertas, etc.
+ */
+export async function sendEmail(
+  to: string,
+  subject: string,
+  htmlContent: string,
+  options?: { name?: string; tags?: string[] }
+): Promise<SendWelcomeEmailResult> {
+  if (!isBrevoEmailConfigured()) {
+    return { success: false, error: 'Brevo email not configured' }
+  }
+  const displayName = (options?.name || to.split('@')[0] || 'Cliente').trim()
+  const textContent = htmlContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 500)
+  try {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'api-key': BREVO_API_KEY,
+      },
+      body: JSON.stringify({
+        sender: { name: BREVO_SENDER_NAME, email: BREVO_SENDER_EMAIL },
+        to: [{ email: to, name: displayName }],
+        subject,
+        htmlContent,
+        textContent,
+        tags: options?.tags || ['transactional'],
+      }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (res.ok && (data.messageId ?? data.message_id)) {
+      return { success: true, messageId: String(data.messageId ?? data.message_id ?? '') }
+    }
+    return { success: false, error: data.message ?? data.code ?? `HTTP ${res.status}` }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) }
+  }
 }
 
 /** Resultado genérico para envío de email */

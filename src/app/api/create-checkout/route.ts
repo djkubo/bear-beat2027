@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerClient } from '@/lib/supabase/server'
 import { parseAttributionCookie } from '@/lib/attribution'
+import { upsertSubscriber, addTagByName } from '@/lib/manychat'
 
 /** OXXO/SPEI (customer_balance) requieren customer en Stripe. Buscar o crear por email. */
 async function getOrCreateStripeCustomer(email: string): Promise<string> {
@@ -134,6 +135,25 @@ export async function POST(req: NextRequest) {
     if (!baseUrl) {
       return NextResponse.json({ error: 'NEXT_PUBLIC_APP_URL no configurada' }, { status: 500 })
     }
+
+    // ManyChat: etiquetar "inició_checkout_web" para flujo de recuperación de carrito (30 min)
+    if (emailForCustomer && emailForCustomer.includes('@')) {
+      try {
+        const nameParts = (loggedUser?.name || '').split(' ')
+        const subscriber = await upsertSubscriber({
+          email: emailForCustomer,
+          first_name: nameParts[0] || 'Cliente',
+          last_name: nameParts.slice(1).join(' ') || '',
+        })
+        if (subscriber) {
+          await addTagByName(subscriber.id, 'inició_checkout_web')
+          console.log('ManyChat: inició_checkout_web tagged for', emailForCustomer)
+        }
+      } catch (mcErr) {
+        console.warn('ManyChat inició_checkout_web (non-critical):', (mcErr as Error)?.message)
+      }
+    }
+
     // Configuración base de la sesión
     const sessionConfig: any = {
       mode: 'payment',

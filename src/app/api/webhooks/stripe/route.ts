@@ -10,8 +10,8 @@ import {
   isHetznerFtpConfigured,
 } from '@/lib/hetzner-robot'
 import { isFtpConfigured } from '@/lib/ftp-stream'
-import { sendWelcomeEmail, sendPaymentFailedRecoveryEmail } from '@/lib/brevo-email'
-import { sendBrevoSms } from '@/lib/brevo-sms'
+import { sendEmail, sendPaymentFailedRecoveryEmail } from '@/lib/brevo-email'
+import { sendSms } from '@/lib/brevo-sms'
 
 function generateRandomPassword(): string {
   const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -117,9 +117,9 @@ export async function POST(req: NextRequest) {
 
     if (customerPhone && customerPhone.length >= 10) {
       try {
-        await sendBrevoSms(
+        await sendSms(
           customerPhone,
-          `BearBeat: Tu pago falló, pero te guardé los videos 10 mins más. Intenta con otra tarjeta aquí: ${recoveryLink}`,
+          'BearBeat: 🛑 Tu banco rechazó el pago. Te guardé el precio de $350 por 15 mins. Intenta aquí: https://bear-beat2027.onrender.com/checkout',
           undefined,
           { tag: 'payment_failed' }
         )
@@ -295,25 +295,38 @@ export async function POST(req: NextRequest) {
                 name: customerName || null,
               })
               if (!existingPending) console.log('Usuario Auth creado (email confirmado):', customerEmail)
-              // Email de bienvenida con credenciales INMEDIATAMENTE (no esperar al frontend)
+              // Email de éxito (Neuroventas): copy de élite + credenciales
+              const loginUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || 'https://bear-beat2027.onrender.com/login'
+              const customerDisplayName = (customerName || customerEmail.split('@')[0] || 'DJ').trim()
+              const emailHtml = `
+  <h1>¡Bienvenido a la Élite, ${customerDisplayName}! 💿</h1>
+  <p>Tu pago entró perfecto. Ya eres parte del 1% de DJs que invierten en su carrera.</p>
+  <p><strong>Tus Credenciales de Acceso:</strong></p>
+  <ul>
+    <li>Usuario: <strong>${customerEmail}</strong></li>
+    <li>Contraseña: <strong>${tempPassword}</strong></li>
+  </ul>
+  <p><a href="${loginUrl}" style="background:#00f2ea; color:black; padding:10px 20px; text-decoration:none; font-weight:bold; border-radius:5px;">👉 ENTRAR AL PANEL AHORA</a></p>
+  <p><em>PD: Guarda este correo. Tienes garantía total.</em></p>
+              `.trim()
               try {
-                const emailResult = await sendWelcomeEmail({
-                  to: customerEmail,
-                  name: customerName || undefined,
-                  password: tempPassword,
-                })
+                const emailResult = await sendEmail(
+                  customerEmail,
+                  '⚠️ TUS ACCESOS: Pack Video Remixes 2026 (IMPORTANTE)',
+                  emailHtml,
+                  { name: customerDisplayName, tags: ['welcome', 'credentials'] }
+                )
                 if (emailResult.success) {
-                  console.log('Email de bienvenida enviado a', customerEmail)
+                  console.log('Email de acceso (Neuroventas) enviado a', customerEmail)
                 } else {
-                  console.warn('Email de bienvenida no enviado:', emailResult.error)
+                  console.warn('Email de acceso no enviado:', emailResult.error)
                 }
               } catch (e) {
-                console.warn('sendWelcomeEmail (non-critical):', e)
+                console.warn('sendEmail (non-critical):', e)
               }
-              // SMS de respaldo con credenciales (opcional, si hay teléfono y Brevo SMS configurado)
               if (customerPhone && typeof customerPhone === 'string' && customerPhone.trim()) {
                 try {
-                  await sendBrevoSms(
+                  await sendSms(
                     customerPhone.trim(),
                     `Bear Beat: Tu acceso está listo. Revisa tu correo (${customerEmail}) para usuario y contraseña.`,
                     undefined,

@@ -80,3 +80,9 @@ export async function sendBrevoSms(
     return { success: false, error: err }
   }
 }
+
+/** Alias para uso tipo sendSms(phone, body) en copy de Neuroventas */
+export const sendSms = sendBrevoSms
+
+/** Re-export: email transaccional (Brevo SMTP) para credenciales / ofertas */
+export { sendEmail } from './brevo-email'

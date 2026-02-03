@@ -36,8 +36,11 @@ function useVisualViewportHeight() {
   return height;
 }
 
-export default function ChatWidget() {
+const CHECKOUT_CLOSER_MESSAGE = '¿Problemas con el pago? 💳 Escríbeme y te paso mi cuenta para Transferencia u OXXO.';
+
+export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoOpenOnCheckout?: boolean } = {}) {
   const pathname = usePathname();
+  const autoOpenOnCheckout = autoOpenProp ?? pathname?.startsWith('/checkout') ?? false;
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{role: string, content: string}[]>([
     { role: 'assistant', content: DEFAULT_GREETING }
@@ -49,6 +52,7 @@ export default function ChatWidget() {
   const inputRef = useRef<HTMLInputElement>(null);
   const announcementIdRef = useRef<number | null>(null);
   const viewportHeight = useVisualViewportHeight();
+  const checkoutAutoOpenDone = useRef(false);
 
   // ManyChat: saludo personalizado y auto-apertura si vienen del chat
   useEffect(() => {
@@ -82,6 +86,33 @@ export default function ChatWidget() {
       inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   }, []);
+
+  // Closer en checkout: a los 45s si no abrió el chat, abrirlo y mostrar mensaje de rescate
+  useEffect(() => {
+    if (!autoOpenOnCheckout || checkoutAutoOpenDone.current) return;
+    const t = setTimeout(() => {
+      if (checkoutAutoOpenDone.current) return;
+      checkoutAutoOpenDone.current = true;
+      setMessages(prev => prev.length === 1 && prev[0].role === 'assistant'
+        ? [{ role: 'assistant', content: CHECKOUT_CLOSER_MESSAGE }]
+        : [...prev, { role: 'assistant', content: CHECKOUT_CLOSER_MESSAGE }]);
+      setIsOpen(true);
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 800;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+      } catch (_) {}
+    }, 45000);
+    return () => clearTimeout(t);
+  }, [autoOpenOnCheckout]);
 
   // Anuncios globales proactivos (API evita 404 si la tabla no existe en Supabase)
   useEffect(() => {
