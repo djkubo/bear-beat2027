@@ -22,8 +22,8 @@ export default function RootLayout({
       <head>
         <TrackingScripts />
       </head>
-      <body className={`${inter.className} relative min-w-0 overflow-x-hidden bg-black text-white antialiased`}>
-        <main className="relative min-w-0 overflow-x-hidden">
+      <body className={`${inter.className} relative min-w-0 overflow-x-hidden overflow-y-auto bg-black text-white antialiased`}>
+        <main className="relative min-w-0 overflow-x-hidden overflow-y-auto">
           {children}
         </main>
         <ChatWidget />

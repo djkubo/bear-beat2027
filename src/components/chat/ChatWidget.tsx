@@ -119,7 +119,7 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 flex flex-col items-start w-[calc(100vw-32px)] max-w-[350px] pointer-events-none [&>*]:pointer-events-auto">
+    <div className="fixed bottom-6 right-4 z-40 flex flex-col items-end w-[calc(100vw-32px)] max-w-[350px] pointer-events-none [&>*]:pointer-events-auto">
       {/* VENTANA DEL CHAT – ancho seguro móvil, anti-zoom input 16px */}
       {isOpen && (
         <div className="mb-3 w-full h-[500px] max-h-[70vh] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">

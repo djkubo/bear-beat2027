@@ -2,10 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Blindaje móvil: evita descuadre y scroll horizontal */
+/* Blindaje móvil: evita descuadre y scroll horizontal; scroll vertical siempre permitido */
 html,
 body {
   overflow-x: hidden !important;
+  overflow-y: auto !important;
   width: 100%;
   max-width: 100vw;
   position: relative;
@@ -71,11 +72,13 @@ body {
   html {
     width: 100%;
     overflow-x: hidden;
+    overflow-y: auto;
   }
   body {
     @apply bg-background text-foreground;
     width: 100%;
     overflow-x: hidden;
+    overflow-y: auto;
   }
 }
 
@@ -145,14 +148,16 @@ body {
   animation: pulse-glow 2s infinite;
 }
 
-/* Candado final: nada se sale de la pantalla */
+/* Candado final: nada se sale de la pantalla; scroll vertical permitido */
 html,
 body {
   overflow-x: hidden !important;
+  overflow-y: auto !important;
   max-width: 100vw !important;
   position: relative;
 }
-/* Evitar scroll horizontal en contenedores flexibles */
-* {
+/* Evitar scroll horizontal solo en contenedores principales (no en * para no romper modales/dropdowns) */
+body,
+main {
   max-width: 100vw;
 }

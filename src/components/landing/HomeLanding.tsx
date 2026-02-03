@@ -9,6 +9,8 @@ import { trackCTAClick, trackPageView } from '@/lib/tracking'
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
+import { StatsSection } from '@/components/landing/stats-section'
+import { CompatibleLogos } from '@/components/landing/compatible-logos'
 import { Play, CheckCircle2, Download, Wifi } from 'lucide-react'
 
 // ==========================================
@@ -54,10 +56,11 @@ interface UserState {
 // COMPONENTES AUXILIARES
 // ==========================================
 
-function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl }: { video: Video; onClose: () => void; hasAccess?: boolean; cdnBaseUrl?: string | null }) {
+function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl, totalVideos = 0 }: { video: Video; onClose: () => void; hasAccess?: boolean; cdnBaseUrl?: string | null; totalVideos?: number }) {
   const [downloading, setDownloading] = useState(false)
   const [demoError, setDemoError] = useState(false)
   const demoSrc = hasAccess ? `/api/download?file=${encodeURIComponent(video.path)}&stream=true` : `/api/demo-url?path=${encodeURIComponent(video.path)}`
+  const moreLabel = totalVideos > 0 ? totalVideos.toLocaleString() : '3,000+'
 
   const handleDownload = async () => {
     setDownloading(true)
@@ -115,7 +118,7 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl }: { video: 
             ) : (
               <Link href="/checkout?pack=enero-2026">
                 <button className="bg-bear-blue hover:bg-cyan-400 text-black font-black py-3 px-8 rounded-full transition shadow-[0_0_20px_rgba(8,225,247,0.4)]">
-                  DESBLOQUEAR ESTE Y 3,000+ MÁS
+                  DESBLOQUEAR ESTE Y {moreLabel} MÁS
                 </button>
               </Link>
             )}
@@ -171,7 +174,9 @@ export default function HomeLanding() {
     }
   }
 
-  const totalVideos = packInfo?.totalVideos ?? inventory.count ?? 3200
+  // Solo datos reales del servidor (API /api/videos). Sin fallback inventado.
+  const totalVideos = packInfo?.totalVideos ?? inventory.count ?? 0
+  const totalPurchases = packInfo?.totalPurchases ?? inventory.totalPurchases ?? 0
   const priceMXN = 350
 
   return (
@@ -255,12 +260,10 @@ export default function HomeLanding() {
                     PREVIEW 2026 • HD 1080P
                   </div>
                 </div>
-                {/* Logos debajo del video en móvil */}
-                <div className="mt-6 flex flex-wrap justify-center lg:justify-start gap-6 opacity-60 grayscale">
-                  <span className="text-xs font-bold tracking-widest text-white">COMPATIBLE:</span>
-                  <span className="font-bold text-white">SERATO</span>
-                  <span className="font-bold text-white">REKORDBOX</span>
-                  <span className="font-bold text-white">VIRTUALDJ</span>
+                {/* Logos oficiales: añade en /public/logos/ serato.png, rekordbox.png, virtualdj.png (o .svg) */}
+                <div className="mt-6 flex flex-col items-center lg:items-start gap-3">
+                  <span className="text-xs font-bold tracking-widest text-zinc-500">COMPATIBLE CON</span>
+                  <CompatibleLogos variant="hero" logoHeight={36} subtle />
                 </div>
               </div>
 
@@ -277,7 +280,11 @@ export default function HomeLanding() {
                 </h1>
 
                 <p className="text-xl text-zinc-400 max-w-lg mx-auto lg:mx-0">
-                  Deja de perder horas editando. Descarga <strong className="text-white">+{totalVideos.toLocaleString()} Video Remixes</strong> organizados por Key & BPM. Listos para reventar la pista.
+                  Deja de perder horas editando. Descarga{' '}
+                  <strong className="text-white">
+                    +{totalVideos > 0 ? totalVideos.toLocaleString() : loading ? '…' : 'miles de'} Video Remixes
+                  </strong>{' '}
+                  organizados por Key & BPM. Listos para reventar la pista.
                 </p>
 
                 {/* PRECIO ANCLADO */}
@@ -309,6 +316,9 @@ export default function HomeLanding() {
             </div>
           </section>
 
+          {/* PRUEBA SOCIAL: datos reales (compras y catálogo) */}
+          <StatsSection totalPurchases={totalPurchases} totalVideos={totalVideos > 0 ? totalVideos : undefined} />
+
           {/* BENEFICIOS / CARACTERÍSTICAS */}
           <section className="py-16 bg-zinc-900/30 border-y border-white/5">
             <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -330,38 +340,56 @@ export default function HomeLanding() {
             </div>
           </section>
 
-          {/* DEMOS SECTION – Mismos videos que en /contenido (del servidor) */}
+          {/* DEMOS SECTION – Mismos videos que en /contenido (datos reales del servidor) */}
           <section id="demo-section" className="py-20 px-4">
             <div className="max-w-6xl mx-auto">
               <div className="flex justify-between items-end mb-8">
                 <div>
                   <h2 className="text-3xl font-black text-white">Prueba la Calidad</h2>
-                  <p className="text-zinc-400">Los mismos videos que en el pack. Escucha antes de comprar. 100% Transparencia.</p>
+                  <p className="text-zinc-400">Los mismos videos del Pack Enero 2026. Escucha antes de comprar. 100% transparencia.</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {genres
-                  .filter((g) => g.id !== 'preview')
-                  .flatMap((g) => (g.videos || []).slice(0, 2))
-                  .slice(0, 30)
-                  .map((video, i) => (
-                    <div key={video.id || i} onClick={() => setSelectedVideo(video)} className="group cursor-pointer">
-                      <div className="aspect-video bg-zinc-800 rounded-lg overflow-hidden relative">
-                        {video.thumbnailUrl && <img src={video.thumbnailUrl} alt="" className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition" />}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-10 h-10 bg-bear-blue/90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition"><Play size={16} className="text-black ml-1" /></div>
-                        </div>
-                      </div>
-                      <p className="mt-2 text-xs font-bold truncate text-white group-hover:text-bear-blue transition">{video.artist} - {video.title}</p>
-                      <p className="text-[10px] text-zinc-500">{video.genre} • {video.bpm || '—'} BPM</p>
-                    </div>
+              {loading && genres.length === 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <div key={i} className="aspect-video bg-zinc-800/50 rounded-lg animate-pulse" />
                   ))}
-              </div>
-              {genres.filter((g) => g.id !== 'preview').length > 0 && (
-                <p className="mt-6 text-center text-sm text-zinc-500">
-                  Mostrando una muestra por género. Al comprar tendrás acceso a todo el catálogo en <Link href="/contenido" className="text-bear-blue hover:underline">Contenido</Link>.
-                </p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {genres
+                      .filter((g) => g.id !== 'preview')
+                      .flatMap((g) => (g.videos || []).slice(0, 2))
+                      .slice(0, 30)
+                      .map((video, i) => (
+                        <div key={video.id || i} onClick={() => setSelectedVideo(video)} className="group cursor-pointer">
+                          <div className="aspect-video bg-zinc-800 rounded-lg overflow-hidden relative">
+                            {video.thumbnailUrl ? (
+                              <img src={video.thumbnailUrl} alt="" className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition" />
+                            ) : (
+                              <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                                <Play size={24} className="text-zinc-600" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-10 h-10 bg-bear-blue/90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition"><Play size={16} className="text-black ml-1" /></div>
+                            </div>
+                          </div>
+                          <p className="mt-2 text-xs font-bold truncate text-white group-hover:text-bear-blue transition">{video.artist} - {video.title}</p>
+                          <p className="text-[10px] text-zinc-500">{video.genre} • {video.bpm || '—'} BPM</p>
+                        </div>
+                      ))}
+                  </div>
+                  {genres.filter((g) => g.id !== 'preview').length > 0 ? (
+                    <p className="mt-6 text-center text-sm text-zinc-500">
+                      Muestra por género. Al comprar tendrás acceso a todo el catálogo en <Link href="/contenido" className="text-bear-blue hover:underline">Contenido</Link>.
+                    </p>
+                  ) : !loading && genres.length === 0 ? (
+                    <p className="mt-6 text-center text-sm text-zinc-500">El catálogo se está actualizando. Vuelve pronto o revisa <Link href="/contenido" className="text-bear-blue hover:underline">Contenido</Link>.</p>
+                  ) : null}
+                </>
               )}
             </div>
           </section>
@@ -388,6 +416,7 @@ export default function HomeLanding() {
             onClose={() => setSelectedVideo(null)}
             hasAccess={userState.hasAccess}
             cdnBaseUrl={cdnBaseUrl}
+            totalVideos={totalVideos}
           />
         )}
       </AnimatePresence>
