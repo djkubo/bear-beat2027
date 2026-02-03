@@ -101,23 +101,41 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
               )
             }
-            const email = (pi.receipt_email || (pi.metadata?.customer_email as string) || '').trim()
+            let email = (pi.receipt_email || (pi.metadata?.customer_email as string) || '').trim()
+            let sessionFromPi: { id: string; customer_details?: { email?: string; name?: string; phone?: string }; metadata?: { pack_id?: string }; amount_total?: number; currency?: string } | null = null
+
+            if (!email || !email.includes('@')) {
+              const list = await stripe.checkout.sessions.list({
+                payment_intent: sessionId,
+                limit: 1,
+              })
+              sessionFromPi = list.data[0] as typeof sessionFromPi
+              if (sessionFromPi?.customer_details?.email) {
+                email = (sessionFromPi.customer_details.email || '').trim()
+              }
+            }
             if (!email || !email.includes('@')) {
               return NextResponse.json(
-                { error: 'El pago en Stripe no tiene email (receipt_email o metadata.customer_email)' },
+                { error: 'El pago en Stripe no tiene email. Usa el Session ID (cs_...) del evento "Se completó una sesión de Checkout" en Stripe.' },
                 { status: 400 }
               )
             }
-            const packId = Math.max(1, parseInt((pi.metadata?.pack_id as string) || '1', 10))
+            const packId = sessionFromPi
+              ? Math.max(1, parseInt((sessionFromPi.metadata?.pack_id as string) || '1', 10))
+              : Math.max(1, parseInt((pi.metadata?.pack_id as string) || '1', 10))
+            const amountPaid = sessionFromPi
+              ? (sessionFromPi.amount_total ?? 0) / 100
+              : (pi.amount ?? 0) / 100
+            const currency = (sessionFromPi?.currency ?? pi.currency ?? 'MXN').toUpperCase()
             pending = {
               id: 0,
-              stripe_session_id: sessionId,
+              stripe_session_id: sessionFromPi?.id ?? sessionId,
               customer_email: email,
-              customer_name: (pi.metadata?.customer_name as string) || null,
-              customer_phone: (pi.metadata?.customer_phone as string) || null,
+              customer_name: (sessionFromPi?.customer_details?.name as string) || (pi.metadata?.customer_name as string) || null,
+              customer_phone: (sessionFromPi?.customer_details?.phone as string) || (pi.metadata?.customer_phone as string) || null,
               pack_id: packId,
-              amount_paid: (pi.amount ?? 0) / 100,
-              currency: (pi.currency ?? 'MXN').toUpperCase(),
+              amount_paid: amountPaid,
+              currency,
               payment_provider: 'stripe',
             }
           }
