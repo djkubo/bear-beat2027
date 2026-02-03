@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const userAgent = headersList.get('user-agent') || 'unknown'
     const referer = headersList.get('referer') || '(direct)'
     
-    // Insertar evento (campos acotados para evitar 400 por schema/RLS)
+    const att = eventData?.attribution || {}
     const payload: Record<string, unknown> = {
       session_id: (sessionId || '').slice(0, 255),
       user_id: userId || null,
@@ -38,6 +38,17 @@ export async function POST(req: NextRequest) {
       referrer: (referer || '').slice(0, 2048),
       user_agent: (userAgent || '').slice(0, 512),
       ip_address: (ip.split(',')[0] || '').trim().slice(0, 45),
+      utm_source: (eventData?.utm_source ?? att?.source ?? '').toString().slice(0, 100) || null,
+      utm_medium: (eventData?.utm_medium ?? att?.medium ?? '').toString().slice(0, 100) || null,
+      utm_campaign: (eventData?.utm_campaign ?? att?.campaign ?? '').toString().slice(0, 255) || null,
+      utm_content: (eventData?.utm_content ?? '').toString().slice(0, 255) || null,
+      utm_term: (eventData?.utm_term ?? '').toString().slice(0, 255) || null,
+      fbclid: (eventData?.fbclid ?? '').toString().slice(0, 255) || null,
+      gclid: (eventData?.gclid ?? '').toString().slice(0, 255) || null,
+      ttclid: (eventData?.ttclid ?? '').toString().slice(0, 255) || null,
+      device_type: (eventData?.device_type ?? eventData?.deviceType ?? '').toString().slice(0, 20) || null,
+      browser: (eventData?.browser ?? '').toString().slice(0, 50) || null,
+      os: (eventData?.os ?? '').toString().slice(0, 50) || null,
     }
     const { error } = await supabase.from('user_events').insert(payload)
 

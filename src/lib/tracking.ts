@@ -112,6 +112,7 @@ export async function trackEvent({
     const trafficSource = getTrafficSource()
     const mcId = getMcIdCookie()
 
+    const attributionApi = getAttributionForAPI()
     const baseEventData = {
       ...(typeof eventData === 'object' && eventData !== null ? eventData : {}),
       ...(mcId ? { mc_id: mcId } : {}),
@@ -122,6 +123,14 @@ export async function trackEvent({
         is_ad: trafficSource?.isAd,
         display_name: trafficSource?.displayName,
       },
+      utm_source: attributionApi.utm_source,
+      utm_medium: attributionApi.utm_medium,
+      utm_campaign: attributionApi.utm_campaign,
+      utm_content: attributionApi.utm_content,
+      utm_term: attributionApi.utm_term,
+      fbclid: attributionApi.fbclid,
+      gclid: attributionApi.gclid,
+      ttclid: attributionApi.ttclid,
       pageUrl: browserInfo.pageUrl,
       referrer: browserInfo.referrer,
     }
