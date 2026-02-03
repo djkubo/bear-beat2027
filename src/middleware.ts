@@ -12,25 +12,45 @@ function looksLikeBypassCookie(value: string | undefined): boolean {
 }
 
 const BB_MC_ID_COOKIE = 'bb_mc_id'
+const BB_USER_NAME_COOKIE = 'bb_user_name'
 const MC_ID_MAX_AGE_DAYS = 30
+const COOKIE_OPTS = { path: '/', sameSite: 'lax' as const, httpOnly: false }
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+  const url = request.nextUrl.clone()
+  const mcId = url.searchParams.get('mc_id')
+  const fname = url.searchParams.get('fname')
+
+  // ManyChat: capturar mc_id y fname, guardar en cookies y redirigir a URL limpia
+  if (mcId != null || (fname != null && fname.trim() !== '')) {
+    const isProd = process.env.NODE_ENV === 'production'
+    const maxAge = MC_ID_MAX_AGE_DAYS * 24 * 60 * 60
+    const redirectUrl = new URL(pathname, url.origin)
+    url.searchParams.forEach((value, key) => {
+      if (key !== 'mc_id' && key !== 'fname') redirectUrl.searchParams.set(key, value)
+    })
+    const response = NextResponse.redirect(redirectUrl, 307)
+    if (mcId) {
+      response.cookies.set(BB_MC_ID_COOKIE, mcId, {
+        ...COOKIE_OPTS,
+        maxAge,
+        ...(isProd && { secure: true }),
+      })
+    }
+    if (fname != null && fname.trim() !== '') {
+      response.cookies.set(BB_USER_NAME_COOKIE, fname.trim(), {
+        ...COOKIE_OPTS,
+        maxAge,
+        ...(isProd && { secure: true }),
+      })
+    }
+    return response
+  }
+
   const response = NextResponse.next({
     request: { headers: request.headers },
   })
-
-  const mcId = request.nextUrl.searchParams.get('mc_id')
-  if (mcId) {
-    const isProd = process.env.NODE_ENV === 'production'
-    response.cookies.set(BB_MC_ID_COOKIE, mcId, {
-      maxAge: MC_ID_MAX_AGE_DAYS * 24 * 60 * 60,
-      path: '/',
-      sameSite: 'lax',
-      ...(isProd && { secure: true }),
-    })
-  }
-
-  const pathname = request.nextUrl.pathname
 
   // En producción /fix-admin no existe (404)
   if (pathname === '/fix-admin' && process.env.NODE_ENV === 'production') {

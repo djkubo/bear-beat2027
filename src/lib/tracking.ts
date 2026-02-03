@@ -57,6 +57,15 @@ function getUserPhone(): string | null {
   return localStorage.getItem('bear_user_phone') || null
 }
 
+const BB_MC_ID_COOKIE = 'bb_mc_id'
+
+// Obtener ID ManyChat desde cookie (tráfico desde ManyChat)
+function getMcIdCookie(): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + BB_MC_ID_COOKIE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'))
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 // Guardar info del usuario para tracking (llamar después de login/registro)
 export function setUserTrackingInfo(email?: string, phone?: string) {
   if (typeof window === 'undefined') return
@@ -101,6 +110,21 @@ export async function trackEvent({
     const browserInfo = getBrowserInfo()
     const attribution = getAttributionForAPI()
     const trafficSource = getTrafficSource()
+    const mcId = getMcIdCookie()
+
+    const baseEventData = {
+      ...(typeof eventData === 'object' && eventData !== null ? eventData : {}),
+      ...(mcId ? { mc_id: mcId } : {}),
+      attribution: {
+        source: trafficSource?.source,
+        medium: trafficSource?.medium,
+        campaign: trafficSource?.campaign,
+        is_ad: trafficSource?.isAd,
+        display_name: trafficSource?.displayName,
+      },
+      pageUrl: browserInfo.pageUrl,
+      referrer: browserInfo.referrer,
+    }
 
     // 1. Guardar evento vía API (evita 400 directo a Supabase desde el cliente)
     fetch('/api/track-event', {
@@ -109,18 +133,7 @@ export async function trackEvent({
       body: JSON.stringify({
         eventType,
         eventName,
-        eventData: {
-          ...(typeof eventData === 'object' && eventData !== null ? eventData : {}),
-          attribution: {
-            source: trafficSource?.source,
-            medium: trafficSource?.medium,
-            campaign: trafficSource?.campaign,
-            is_ad: trafficSource?.isAd,
-            display_name: trafficSource?.displayName,
-          },
-          pageUrl: browserInfo.pageUrl,
-          referrer: browserInfo.referrer,
-        },
+        eventData: baseEventData,
         userId: userId || undefined,
       }),
     }).catch(() => {})
@@ -134,10 +147,9 @@ export async function trackEvent({
       sendToManyChat({
         eventType,
         eventData: {
-          ...eventData,
+          ...baseEventData,
           page: browserInfo.pageUrl,
           referrer: browserInfo.referrer,
-          // Enviar atribución a ManyChat también
           traffic_source: trafficSource?.displayName,
           utm_source: attribution.utm_source,
           utm_campaign: attribution.utm_campaign,

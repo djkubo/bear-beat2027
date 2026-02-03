@@ -7,16 +7,47 @@ import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 
 const STORAGE_DISMISSED_PREFIX = 'bb_announcement_dismissed_';
+const BB_USER_NAME_COOKIE = 'bb_user_name';
+const BB_MC_ID_COOKIE = 'bb_mc_id';
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+const DEFAULT_GREETING = 'Hey! 👋 ¿Quieres ver la lista de tracks del Pack 2026 antes de que suba de precio?';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{role: string, content: string}[]>([
-    { role: 'assistant', content: 'Hey! 👋 ¿Quieres ver la lista de tracks del Pack 2026 antes de que suba de precio?' }
+    { role: 'assistant', content: DEFAULT_GREETING }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fromManyChat, setFromManyChat] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const announcementIdRef = useRef<number | null>(null);
+
+  // ManyChat: saludo personalizado y auto-apertura si vienen del chat
+  useEffect(() => {
+    const userName = getCookie(BB_USER_NAME_COOKIE);
+    const mcId = getCookie(BB_MC_ID_COOKIE);
+    if (userName && userName.trim()) {
+      const greeting = `¡Hola ${userName.trim()}! 👋 Veo que vienes del chat. Tu Pack 2026 está reservado. ¿Te ayudo a activar tu cuenta ahora mismo?`;
+      setMessages(prev => prev.length === 1 && prev[0].role === 'assistant'
+        ? [{ role: 'assistant', content: greeting }]
+        : prev);
+    }
+    if (mcId) {
+      setFromManyChat(true);
+      const t = setTimeout(() => {
+        setIsOpen(true);
+        setFromManyChat(false);
+      }, 4000);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -143,10 +174,13 @@ export default function ChatWidget() {
         </div>
       )}
 
-      {/* BOTÓN FLOTANTE */}
+      {/* BOTÓN FLOTANTE (rebote si viene de ManyChat hasta que se abre) */}
       <Button 
         onClick={() => setIsOpen(!isOpen)}
-        className="h-14 w-14 rounded-full bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-900/20"
+        className={cn(
+          'h-14 w-14 rounded-full bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-900/20',
+          fromManyChat && !isOpen && 'animate-bounce'
+        )}
       >
         {isOpen ? <X size={24} /> : <MessageSquare size={24} />}
       </Button>

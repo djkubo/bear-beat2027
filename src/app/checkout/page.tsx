@@ -23,8 +23,15 @@ type PaymentMethod = 'card' | 'paypal' | 'oxxo' | 'spei'
 type Step = 'select' | 'processing' | 'redirect'
 
 const RESERVATION_MINUTES = 15
+const BB_USER_NAME_COOKIE = 'bb_user_name'
 const stripePk = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ?? ''
 const stripePromise = stripePk ? loadStripe(stripePk) : null
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'))
+  return match ? decodeURIComponent(match[1]) : null
+}
 
 // —— Formulario de pago con tarjeta (Stripe Elements) ——
 function CardPaymentForm({
@@ -181,6 +188,7 @@ export default function CheckoutPage() {
   const [cardClientSecret, setCardClientSecret] = useState<string | null>(null)
   const [cardClientSecretLoading, setCardClientSecretLoading] = useState(false)
   const [checkoutEmail, setCheckoutEmail] = useState<string | null>(null)
+  const [checkoutName, setCheckoutName] = useState<string>('')
 
   // Email para Stripe Customer (OXXO/SPEI requieren customer): usuario logueado o invitado
   useEffect(() => {
@@ -188,6 +196,12 @@ export default function CheckoutPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) setCheckoutEmail(user.email)
     })
+  }, [])
+
+  // ManyChat: pre-llenar nombre desde cookie bb_user_name
+  useEffect(() => {
+    const name = getCookie(BB_USER_NAME_COOKIE)
+    if (name && name.trim()) setCheckoutName(name.trim())
   }, [])
 
   // HARDCODED FOR TESTING: forzar MX para ver OXXO/SPEI desde cualquier país (ej. USA)
@@ -498,6 +512,21 @@ export default function CheckoutPage() {
                     <p className="text-sm font-bold text-amber-200">
                       ⚠️ <strong>ATENCIÓN DJ:</strong> Aquí te enviaremos tu acceso y contraseña. Escribe tu mejor correo.
                     </p>
+                  </div>
+
+                  {/* Nombre (para el recibo) – pre-llenado desde ManyChat */}
+                  <div className="mb-4">
+                    <label htmlFor="checkout-name" className="block text-sm font-medium text-gray-400 mb-1.5">
+                      Tu nombre (para el recibo)
+                    </label>
+                    <input
+                      id="checkout-name"
+                      type="text"
+                      value={checkoutName}
+                      onChange={(e) => setCheckoutName(e.target.value)}
+                      placeholder="Ej. Gustavo"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-lg text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
+                    />
                   </div>
 
                   {/* Email: obligatorio para OXXO/SPEI; necesario para tarjeta/PayPal */}
