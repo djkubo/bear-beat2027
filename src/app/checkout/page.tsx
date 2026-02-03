@@ -476,7 +476,16 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                  {/* Email: necesario para OXXO/SPEI; recomendado para tarjeta/PayPal para poder iniciar sesión después */}
+                  {/* Banner crítico para OXXO/SPEI: no ignorar el email */}
+                  {(selectedMethod === 'oxxo' || selectedMethod === 'spei') && (
+                    <div className="mb-4 rounded-xl border-2 border-amber-500/60 bg-amber-500/15 px-4 py-3 text-center">
+                      <p className="text-sm font-bold text-amber-200">
+                        ⚠️ MUY IMPORTANTE: Tu acceso llegará a este correo. Escríbelo con cuidado.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Email: necesario para OXXO/SPEI; recomendado para tarjeta/PayPal */}
                   <div className="mb-4">
                     <label htmlFor="checkout-email" className="block text-sm font-medium text-gray-400 mb-1.5">
                       Tu email
@@ -490,7 +499,7 @@ export default function CheckoutPage() {
                       value={checkoutEmail ?? ''}
                       onChange={(e) => setCheckoutEmail(e.target.value.trim() || null)}
                       placeholder="tu@email.com"
-                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-lg text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Con este correo podrás iniciar sesión después de pagar (invitado o ya registrado).

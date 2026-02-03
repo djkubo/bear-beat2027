@@ -1,30 +1,30 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-
-// ==========================================
-// NAVBAR – Sticky, glassmorphism, drawer móvil premium
-// ==========================================
+import { MobileMenu } from '@/components/ui/MobileMenu'
 
 export function NavBar() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [userHasAccess, setUserHasAccess] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setIsLoggedIn(!!user))
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsLoggedIn(!!user)
+      if (!user) {
+        setUserHasAccess(false)
+        return
+      }
+      supabase.from('purchases').select('id').eq('user_id', user.id).limit(1).maybeSingle().then(({ data }) => {
+        setUserHasAccess(!!data)
+      })
+    })
   }, [])
-
-  useEffect(() => {
-    if (mobileMenuOpen) document.body.style.overflow = 'hidden'
-    else document.body.style.overflow = ''
-    return () => { document.body.style.overflow = '' }
-  }, [mobileMenuOpen])
 
   const navLinks = [
     { href: '#generos', label: 'Géneros' },
@@ -83,94 +83,16 @@ export function NavBar() {
             </Link>
           </div>
 
-          {/* Botón hamburger – min 48px touch, siempre visible en móvil */}
-          <button
-            type="button"
-            className="md:hidden shrink-0 min-w-[48px] min-h-[48px] flex items-center justify-center rounded-xl bg-zinc-900 border border-cyan-500/40 hover:bg-zinc-800 hover:border-cyan-400/60 active:scale-95 transition-all touch-manipulation"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
-            aria-expanded={mobileMenuOpen}
-          >
-            {mobileMenuOpen ? <X className="h-6 w-6 text-cyan-400" /> : <Menu className="h-6 w-6 text-cyan-400" />}
-          </button>
+          {/* Menú móvil – componente único, botón alineado a la derecha, z-index coherente */}
+          <div className="md:hidden flex items-center justify-end shrink-0" style={{ zIndex: 60 }}>
+            <MobileMenu
+              currentPath={pathname ?? '/'}
+              userHasAccess={userHasAccess}
+              isLoggedIn={isLoggedIn}
+            />
+          </div>
         </div>
       </div>
-
-      {/* Mobile Drawer – overlay + panel */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[55] md:hidden"
-              aria-hidden="true"
-            />
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              className="fixed top-0 right-0 h-full w-full max-w-sm bg-zinc-950/95 backdrop-blur-xl border-l border-cyan-500/20 shadow-[-20px_0_60px_rgba(0,0,0,0.5)] z-[58] md:hidden flex flex-col"
-            >
-              <div className="shrink-0 p-6 pb-4 border-b border-white/10 flex items-center justify-between">
-                <span className="font-bold text-xl text-cyan-400">Menú</span>
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-zinc-400 hover:text-white hover:bg-white/10"
-                  aria-label="Cerrar"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <nav className="flex-1 overflow-y-auto py-6 px-6">
-                <ul className="space-y-1">
-                  {navLinks.map((link) => (
-                    <li key={link.href}>
-                      <Link
-                        href={link.href}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-4 px-5 py-4 rounded-2xl text-2xl font-medium text-zinc-300 hover:bg-white/5 hover:text-white transition-all"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-8 pt-6 border-t border-white/10 space-y-3">
-                  {isLoggedIn ? (
-                    <>
-                      <Link href="/dashboard" className="block" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="outline" className="w-full py-4 text-lg rounded-2xl border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10">
-                          Mi Panel
-                        </Button>
-                      </Link>
-                      <Link href="/mi-cuenta" className="block" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="outline" className="w-full py-4 text-lg rounded-2xl border-white/20 text-zinc-300 hover:bg-white/5">
-                          Mi cuenta
-                        </Button>
-                      </Link>
-                    </>
-                  ) : (
-                    <Link href="/login" className="block" onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="outline" className="w-full py-4 text-lg rounded-2xl border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10">
-                        Iniciar Sesión
-                      </Button>
-                    </Link>
-                  )}
-                  <Link href="/checkout" className="block" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full py-4 text-xl font-bold rounded-2xl bg-cyan-500 text-zinc-950 hover:bg-cyan-400 shadow-[0_0_24px_rgba(34,211,238,0.4)]">
-                      Comprar $350 MXN
-                    </Button>
-                  </Link>
-                </div>
-              </nav>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </nav>
   )
 }

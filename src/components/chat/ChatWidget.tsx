@@ -51,7 +51,7 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end">
+    <div className="fixed bottom-4 left-4 z-50 flex flex-col items-start">
       {/* VENTANA DEL CHAT */}
       {isOpen && (
         <div className="mb-4 w-[350px] md:w-[400px] h-[500px] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
