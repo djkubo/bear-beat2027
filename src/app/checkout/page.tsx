@@ -271,7 +271,9 @@ export default function CheckoutPage() {
       )
     }
   }, [selectedMethod, packSlug, price, currencyLabel, checkoutEmail])
-  const totalVideos = inventory.loading ? '...' : (inventory.count ?? 0).toLocaleString()
+  const totalVideosStr = inventory.loading ? '...' : (inventory.count ?? 0).toLocaleString()
+  const totalSizeStr = inventory.totalSizeFormatted || '...'
+  const genreCountNum = inventory.genreCount ?? 0
   const reservationM = Math.floor(reservationSeconds / 60)
   const reservationS = reservationSeconds % 60
 
@@ -352,7 +354,7 @@ export default function CheckoutPage() {
               <div className="space-y-8">
                 <div>
                   <h2 className="text-lg font-bold text-white mb-6">Resumen de tu Orden</h2>
-                  <div className="rounded-2xl border-2 border-cyan-500/30 bg-zinc-950 p-5 flex gap-4">
+                  <div className="rounded-2xl border-2 border-bear-blue/30 bg-zinc-950 p-5 flex gap-4">
                     <div className="relative h-24 w-24 shrink-0 rounded-xl overflow-hidden bg-zinc-800">
                       <Image
                         src="/logos/BBLOGOTIPOPOSITIVO_Mesa de trabajo 1.png"
@@ -362,24 +364,28 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-bold text-white text-lg">Pack Enero 2026 - Video Remixes</h3>
+                      <h3 className="font-bold text-white text-lg">Pack Enero 2026 · Video Remixes</h3>
                       <ul className="mt-2 space-y-1 text-sm text-gray-300">
                         <li className="flex items-center gap-2">
                           <Check className="h-4 w-4 text-green-400 shrink-0" strokeWidth={2.5} />
-                          3,000+ Videos Intro/Outro
+                          {totalVideosStr} videos HD
                         </li>
                         <li className="flex items-center gap-2">
                           <Check className="h-4 w-4 text-green-400 shrink-0" strokeWidth={2.5} />
-                          Acceso de por Vida
+                          {totalSizeStr} · {genreCountNum > 0 ? `${genreCountNum} géneros` : 'organizado por género'}
                         </li>
                         <li className="flex items-center gap-2">
                           <Check className="h-4 w-4 text-green-400 shrink-0" strokeWidth={2.5} />
-                          Garantía de Calidad
+                          Acceso de por vida
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-400 shrink-0" strokeWidth={2.5} />
+                          Garantía 30 días
                         </li>
                       </ul>
                       <div className="flex items-baseline gap-3 mt-3">
                         <span className="text-sm text-gray-500 line-through">$1,500 MXN</span>
-                        <span className="text-2xl font-black text-cyan-400">$350 MXN</span>
+                        <span className="text-2xl font-black text-bear-blue">$350 MXN</span>
                       </div>
                     </div>
                   </div>
@@ -440,7 +446,7 @@ export default function CheckoutPage() {
 
               {/* Columna derecha – Pago (Caja Fuerte: borde neón, fondo oscuro) */}
               <div>
-                <div className="rounded-2xl border-2 border-cyan-500/30 bg-zinc-950 p-6 md:p-8 sticky lg:top-24 shadow-[0_0_40px_rgba(8,225,247,0.08)]">
+                <div className="rounded-2xl border-2 border-bear-blue/30 bg-zinc-950 p-6 md:p-8 sticky lg:top-24 shadow-[0_0_40px_rgba(8,225,247,0.08)]">
                   <h2 className="text-lg font-bold text-white mb-6">Completa tu pago</h2>
                   <p className="text-sm text-gray-500 mb-4">Selecciona cómo quieres pagar</p>
                   <div className="grid grid-cols-2 gap-3 mb-6">
@@ -495,8 +501,8 @@ export default function CheckoutPage() {
                   </div>
 
                   {/* Franja seguridad: candado + tarjetas + SSL */}
-                  <div className="mb-4 flex flex-wrap items-center justify-center gap-2 py-3 px-4 rounded-xl border border-cyan-500/30 bg-zinc-950/80 text-center">
-                    <Lock className="h-4 w-4 shrink-0 text-cyan-400" />
+                  <div className="mb-4 flex flex-wrap items-center justify-center gap-2 py-3 px-4 rounded-xl border border-bear-blue/30 bg-zinc-950/80 text-center">
+                    <Lock className="h-4 w-4 shrink-0 text-bear-blue" />
                     <span className="text-sm font-bold text-white">Transacción Encriptada 256-bit SSL</span>
                     <span className="hidden sm:inline text-gray-500">·</span>
                     <CreditCard className="h-3.5 w-3.5 text-gray-400" />

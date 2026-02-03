@@ -246,7 +246,7 @@ export default function ContenidoPage() {
 
       {/* Banner de éxito (solo si tiene acceso – refuerzo post-compra) */}
       {hasAccess && (
-        <div className="bg-gradient-to-r from-cyan-500/20 via-bear-blue/10 to-cyan-500/20 border-b border-cyan-500/30 px-4 py-4">
+        <div className="bg-gradient-to-r from-bear-blue/20 via-bear-blue/10 to-bear-blue/20 border-b border-bear-blue/30 px-4 py-4">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left">
             <p className="text-base md:text-lg font-bold text-white">
               🎉 ¡Felicidades! Ya eres parte de la élite. Aquí está tu arsenal.
@@ -370,7 +370,7 @@ export default function ContenidoPage() {
                                 e.stopPropagation()
                                 handleDownloadFolderZip(genre)
                               }}
-                              className="inline-flex items-center gap-2 min-h-[48px] px-4 py-3 rounded-lg bg-cyan-500/20 text-cyan-400 font-bold text-base hover:bg-cyan-500/30 transition border border-cyan-500/40 shrink-0"
+                              className="inline-flex items-center gap-2 min-h-[48px] px-4 py-3 rounded-lg bg-bear-blue/20 text-bear-blue font-bold text-base hover:bg-bear-blue/30 transition border border-bear-blue/40 shrink-0"
                             >
                               <span className="text-lg">⬇️</span>
                               <Archive className="h-5 w-5 shrink-0" />
@@ -505,13 +505,13 @@ export default function ContenidoPage() {
                       {selectedVideo.bpm != null && selectedVideo.bpm !== '' && (
                         <div className="rounded-lg bg-zinc-800/80 px-3 py-2 text-center">
                           <p className="text-xs text-zinc-500 uppercase tracking-wide">BPM</p>
-                          <p className="text-sm font-mono font-bold text-cyan-400">{selectedVideo.bpm}</p>
+                          <p className="text-sm font-mono font-bold text-bear-blue">{selectedVideo.bpm}</p>
                         </div>
                       )}
                       {selectedVideo.key != null && selectedVideo.key !== '' && (
                         <div className="rounded-lg bg-zinc-800/80 px-3 py-2 text-center">
                           <p className="text-xs text-zinc-500 uppercase tracking-wide">Key</p>
-                          <p className="text-sm font-mono font-bold text-cyan-400">{selectedVideo.key}</p>
+                          <p className="text-sm font-mono font-bold text-bear-blue">{selectedVideo.key}</p>
                         </div>
                       )}
                       <div className="rounded-lg bg-zinc-800/80 px-3 py-2 text-center">
@@ -523,7 +523,7 @@ export default function ContenidoPage() {
                     <button
                       type="button"
                       onClick={() => handleDownloadAttempt(selectedVideo)}
-                      className="w-full min-h-[48px] py-4 rounded-xl bg-cyan-500 text-black font-black text-base hover:bg-cyan-400 transition flex items-center justify-center gap-2"
+                      className="w-full min-h-[48px] py-4 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 transition flex items-center justify-center gap-2"
                     >
                       <span className="text-xl">⬇️</span>
                       <Download className="h-5 w-5" />

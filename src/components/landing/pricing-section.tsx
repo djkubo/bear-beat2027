@@ -11,20 +11,25 @@ interface PricingSectionProps {
     price_mxn: number
     price_usd: number
   } | null
+  /** Datos en tiempo real del catálogo (prioridad sobre pack). */
+  totalVideos?: number
+  totalSizeFormatted?: string
+  genreCount?: number
 }
 
-export function PricingSection({ pack }: PricingSectionProps) {
-  const packName = pack?.name || 'Video Remixes Pack 2026'
-  const slug = pack?.slug || 'pack-enero-2026'
-  const totalVideos = pack?.total_videos ?? 0
-  const totalSize = pack?.total_size_gb || 500
-  const priceMXN = pack?.price_mxn || 350
-  const priceUSD = pack?.price_usd || 18
+export function PricingSection({ pack, totalVideos: totalVideosProp, totalSizeFormatted, genreCount: genreCountProp }: PricingSectionProps) {
+  const packName = pack?.name || 'Pack Enero 2026'
+  const slug = pack?.slug || 'enero-2026'
+  const totalVideos = totalVideosProp ?? pack?.total_videos ?? 0
+  const sizeLabel = totalSizeFormatted ?? (pack?.total_size_gb ? `${pack.total_size_gb} GB` : null)
+  const genreLabel = genreCountProp != null && genreCountProp > 0 ? `Organizados por ${genreCountProp} géneros` : 'Organizados por género'
+  const priceMXN = pack?.price_mxn ?? 350
+  const priceUSD = pack?.price_usd ?? 19
 
   const features = [
-    `${totalVideos.toLocaleString()} videos HD/4K`,
-    `${totalSize} GB de contenido`,
-    'Organizados por 20+ géneros',
+    totalVideos > 0 ? `${totalVideos.toLocaleString()} videos HD` : 'Videos HD',
+    sizeLabel ? `${sizeLabel} de contenido` : 'Contenido listo para descargar',
+    genreLabel,
     'Descarga por carpetas',
     'Acceso FTP (FileZilla, Air Explorer)',
     'Acceso web (navegador)',

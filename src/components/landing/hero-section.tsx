@@ -14,11 +14,15 @@ interface HeroSectionProps {
     price_mxn: number
     cover_image_url?: string
   } | null
+  /** Datos en tiempo real del catálogo (cuando no hay pack o para sobreescribir). */
+  totalVideos?: number
+  totalSizeFormatted?: string
 }
 
-export function HeroSection({ pack }: HeroSectionProps) {
-  const totalVideos = pack?.total_videos ?? 3200
-  const priceMXN = 350
+export function HeroSection({ pack, totalVideos: totalVideosProp }: HeroSectionProps) {
+  const totalVideos = totalVideosProp ?? pack?.total_videos ?? 0
+  const priceMXN = pack?.price_mxn ?? 350
+  const videoLabel = totalVideos > 0 ? totalVideos.toLocaleString() : 'miles de'
 
   return (
     <section className="relative overflow-hidden bg-[#050505] py-16 lg:py-24">
@@ -73,7 +77,7 @@ export function HeroSection({ pack }: HeroSectionProps) {
                 EN 5 MINUTOS.
               </h1>
               <p className="text-xl text-zinc-400 max-w-xl mx-auto lg:mx-0 font-medium leading-relaxed">
-                Deja de perder horas editando. Descarga <strong className="text-white">+{totalVideos.toLocaleString()} Video Remixes</strong> organizados por Key & BPM. Listos para reventar la pista.
+                Deja de perder horas editando. Descarga <strong className="text-white">+{videoLabel} Video Remixes</strong> organizados por Key & BPM. Listos para reventar la pista.
               </p>
             </div>
 
@@ -87,7 +91,7 @@ export function HeroSection({ pack }: HeroSectionProps) {
                 <div className="hidden lg:block w-px h-12 bg-white/10" />
                 <div className="text-center lg:text-left">
                   <p className="text-bear-blue text-sm font-bold uppercase tracking-wider mb-1">Oferta Hoy</p>
-                  <p className="text-5xl font-black text-white tracking-tighter shadow-cyan-500/20 drop-shadow-lg">
+                  <p className="text-5xl font-black text-white tracking-tighter shadow-bear-blue/20 drop-shadow-lg">
                     ${priceMXN} <span className="text-2xl text-zinc-400 font-medium">MXN</span>
                   </p>
                 </div>
@@ -97,7 +101,7 @@ export function HeroSection({ pack }: HeroSectionProps) {
             {/* CTA + Garantía */}
             <div className="space-y-4 max-w-lg mx-auto lg:mx-0">
               <Link href="/checkout" className="block" onClick={() => trackCTAClick('HERO_CTA', 'hero')}>
-                <Button className="w-full h-16 text-xl lg:text-2xl font-black bg-bear-blue hover:bg-cyan-400 text-black rounded-xl shadow-[0_0_40px_-10px_rgba(8,225,247,0.6)] hover:shadow-[0_0_60px_-10px_rgba(8,225,247,0.8)] transition-all transform hover:-translate-y-1">
+                <Button className="w-full h-16 text-xl lg:text-2xl font-black bg-bear-blue hover:brightness-110 text-bear-black rounded-xl shadow-[0_0_40px_-10px_rgba(8,225,247,0.6)] hover:shadow-[0_0_60px_-10px_rgba(8,225,247,0.8)] transition-all transform hover:-translate-y-1">
                   ⚡ DESCARGAR AHORA - ACCESO TOTAL
                 </Button>
               </Link>

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { trackPageView } from '@/lib/tracking'
+import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 import {
   Globe,
   FolderOpen,
@@ -339,8 +340,9 @@ function DashboardActive({
 }
 
 // ——— Vista para usuarios SIN compra (Upsell) ———
-function DashboardEmpty({ user }: { user: UserProfile }) {
+function DashboardEmpty({ user, videoCount }: { user: UserProfile; videoCount?: number }) {
   const firstName = user?.name?.split(' ')[0] || 'Usuario'
+  const videoLabel = videoCount != null && videoCount > 0 ? videoCount.toLocaleString() : 'miles de'
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -386,7 +388,7 @@ function DashboardEmpty({ user }: { user: UserProfile }) {
           Desbloquea el Pack Enero 2026
         </h2>
         <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-300 mb-8">
-          <li>🔓 Acceso a 1,268 Videos</li>
+          <li>🔓 Acceso a {videoLabel} videos HD</li>
           <li>🚀 Servidores FTP Privados</li>
           <li>⚡ Descargas Ilimitadas</li>
         </ul>
@@ -457,6 +459,7 @@ export default function DashboardPage() {
   const [purchases, setPurchases] = useState<Purchase[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
+  const inventory = useVideoInventory()
 
   useEffect(() => {
     trackPageView('dashboard')
@@ -508,6 +511,6 @@ export default function DashboardPage() {
   return hasPurchase ? (
     <DashboardActive user={user} purchases={purchases} />
   ) : (
-    <DashboardEmpty user={user} />
+    <DashboardEmpty user={user} videoCount={inventory.count ?? undefined} />
   )
 }

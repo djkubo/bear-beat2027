@@ -6,7 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 // ==========================================
 // MENÚ MÓVIL – App Nativa Premium
-// Dark (zinc-950), acentos cyan neon, glassmorphism
+// Dark (zinc-950), acentos bear-blue (manual de marca), glassmorphism
 // ==========================================
 
 interface MobileMenuProps {
@@ -79,19 +79,19 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`md:hidden relative shrink-0 min-w-[48px] min-h-[48px] flex flex-col justify-center items-center gap-1.5 p-3 rounded-xl border transition-all touch-manipulation select-none ${isOpen ? 'z-[110] bg-zinc-900 border-cyan-400/60' : 'z-[60] bg-zinc-900 border-cyan-500/40 hover:bg-zinc-800 hover:border-cyan-400/60 active:scale-95'}`}
+        className={`md:hidden relative shrink-0 min-w-[48px] min-h-[48px] flex flex-col justify-center items-center gap-1.5 p-3 rounded-xl border transition-all touch-manipulation select-none ${isOpen ? 'z-[110] bg-zinc-900 border-bear-blue/60' : 'z-[60] bg-zinc-900 border-bear-blue/40 hover:bg-zinc-800 hover:border-bear-blue/60 active:scale-95'}`}
         aria-label={isOpen ? 'Cerrar menú' : 'Abrir menú'}
         aria-expanded={isOpen}
         aria-controls="mobile-drawer"
       >
         <span
-          className={`w-6 h-0.5 bg-cyan-400 block rounded-full transition-all duration-200 origin-center ${isOpen ? 'rotate-45 translate-y-[7px]' : ''}`}
+          className={`w-6 h-0.5 bg-bear-blue block rounded-full transition-all duration-200 origin-center ${isOpen ? 'rotate-45 translate-y-[7px]' : ''}`}
         />
         <span
-          className={`w-6 h-0.5 bg-cyan-400 block rounded-full transition-all duration-200 ${isOpen ? 'opacity-0 scale-x-0' : 'opacity-100 scale-x-100'}`}
+          className={`w-6 h-0.5 bg-bear-blue block rounded-full transition-all duration-200 ${isOpen ? 'opacity-0 scale-x-0' : 'opacity-100 scale-x-100'}`}
         />
         <span
-          className={`w-6 h-0.5 bg-cyan-400 block rounded-full transition-all duration-200 origin-center ${isOpen ? '-rotate-45 -translate-y-[7px]' : ''}`}
+          className={`w-6 h-0.5 bg-bear-blue block rounded-full transition-all duration-200 origin-center ${isOpen ? '-rotate-45 -translate-y-[7px]' : ''}`}
         />
       </button>
 
@@ -131,7 +131,7 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
                     height={40}
                     className="w-10 h-10 shrink-0"
                   />
-                  <span className="font-bold text-lg text-cyan-400 tracking-tight truncate">BEAR BEAT</span>
+                  <span className="font-bold text-lg text-bear-blue tracking-tight truncate">BEAR BEAT</span>
                 </div>
                 <button
                   type="button"
@@ -154,9 +154,9 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
                         className={`
                           flex items-center gap-4 px-4 py-3.5 rounded-xl text-lg font-medium transition-colors
                           ${item.highlight
-                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' + (!userHasAccess ? ' animate-pulse' : '')
+                            ? 'bg-bear-blue/20 text-bear-blue border border-bear-blue/40' + (!userHasAccess ? ' animate-pulse' : '')
                             : currentPath === item.href
-                              ? 'bg-white/10 text-cyan-400'
+                              ? 'bg-white/10 text-bear-blue'
                               : 'text-zinc-300 hover:bg-white/5 hover:text-white'
                           }
                         `}
@@ -177,8 +177,8 @@ export function MobileMenu({ currentPath = '/', userHasAccess = false, isLoggedI
                   className={`
                     flex items-center justify-center w-full py-3.5 rounded-xl text-base font-bold transition-all active:scale-[0.98]
                     ${ctaItem.primary
-                      ? 'bg-cyan-500 text-zinc-950 hover:bg-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
-                      : 'bg-white/10 text-cyan-400 border border-cyan-500/50 hover:bg-white/15'
+                      ? 'bg-bear-blue text-bear-black hover:brightness-110 shadow-[0_0_20px_rgba(8,225,247,0.3)]'
+                      : 'bg-white/10 text-bear-blue border border-bear-blue/50 hover:bg-white/15'
                     }
                     ${ctaItem.primary && !userHasAccess ? 'animate-pulse' : ''}
                   `}

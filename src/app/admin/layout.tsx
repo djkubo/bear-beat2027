@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { createServerClient } from '@/lib/supabase/server'
 import { verifyBypassCookie, COOKIE_NAME } from '@/lib/admin-bypass'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
+import { AdminHeader } from './AdminHeader'
 
 export default async function AdminLayout({
   children,
@@ -12,7 +13,12 @@ export default async function AdminLayout({
   const cookieStore = await cookies()
   const bypassCookie = cookieStore.get(COOKIE_NAME)?.value
   if (bypassCookie && verifyBypassCookie(bypassCookie)) {
-    return <>{children}</>
+    return (
+      <div className="min-h-screen bg-[#050505] text-white antialiased">
+        <AdminHeader />
+        {children}
+      </div>
+    )
   }
 
   const supabase = await createServerClient()
@@ -29,7 +35,12 @@ export default async function AdminLayout({
 
   // Permitir: role admin en public.users O email en lista blanca
   if (isAdminEmailWhitelist(user.email ?? undefined)) {
-    return <>{children}</>
+    return (
+      <div className="min-h-screen bg-[#050505] text-white antialiased">
+        <AdminHeader userEmail={user.email ?? undefined} />
+        {children}
+      </div>
+    )
   }
 
   const { data: userData } = await supabase
@@ -42,5 +53,10 @@ export default async function AdminLayout({
     redirect('/dashboard')
   }
 
-  return <>{children}</>
+  return (
+    <div className="min-h-screen bg-[#050505] text-white antialiased">
+      <AdminHeader userEmail={user.email ?? undefined} />
+      {children}
+    </div>
+  )
 }

@@ -44,7 +44,7 @@ export function NavBar() {
               alt="Bear Beat Logo"
               className="h-9 w-auto md:h-10"
             />
-            <span className="text-lg md:text-xl font-bold text-cyan-400 tracking-tight">BEAR BEAT</span>
+            <span className="text-lg md:text-xl font-bold text-bear-blue tracking-tight">BEAR BEAT</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -53,7 +53,7 @@ export function NavBar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-zinc-300 hover:text-cyan-400 transition-colors"
+                className="text-sm font-medium text-zinc-300 hover:text-bear-blue transition-colors"
               >
                 {link.label}
               </Link>
@@ -65,21 +65,21 @@ export function NavBar() {
             {isLoggedIn ? (
               <>
                 <Link href="/dashboard">
-                  <Button variant="ghost" size="sm" className="text-zinc-300 hover:text-cyan-400">Mi Panel</Button>
+                  <Button variant="ghost" size="sm" className="text-zinc-300 hover:text-bear-blue">Mi Panel</Button>
                 </Link>
                 <Link href="/mi-cuenta">
-                  <Button variant="ghost" size="sm" className="text-zinc-300 hover:text-cyan-400">Mi cuenta</Button>
+                  <Button variant="ghost" size="sm" className="text-zinc-300 hover:text-bear-blue">Mi cuenta</Button>
                 </Link>
               </>
             ) : (
               <Link href="/login">
-                <Button variant="ghost" size="sm" className="text-zinc-300 hover:text-cyan-400">Iniciar Sesión</Button>
+                <Button variant="ghost" size="sm" className="text-zinc-300 hover:text-bear-blue">Iniciar Sesión</Button>
               </Link>
             )}
-            <Link href="/checkout">
+            <Link href="/checkout?pack=enero-2026">
               <Button
                 size="sm"
-                className={`bg-cyan-500 text-zinc-950 hover:bg-cyan-400 font-bold shadow-[0_0_16px_rgba(34,211,238,0.3)] ${!userHasAccess ? 'animate-pulse' : ''}`}
+                className={`bg-bear-blue text-zinc-950 hover:brightness-110 font-bold shadow-[0_0_16px_rgba(8,225,247,0.3)] ${!userHasAccess ? 'animate-pulse' : ''}`}
               >
                 Acceso Total $350
               </Button>

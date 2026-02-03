@@ -16,7 +16,7 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-const DEFAULT_GREETING = 'Hey! 👋 ¿Quieres ver la lista de tracks del Pack 2026 antes de que suba de precio?';
+const DEFAULT_GREETING = 'Hey! 👋 ¿Quieres ver el catálogo del Pack Enero 2026 antes de que suba de precio?';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -34,7 +34,7 @@ export default function ChatWidget() {
     const userName = getCookie(BB_USER_NAME_COOKIE);
     const mcId = getCookie(BB_MC_ID_COOKIE);
     if (userName && userName.trim()) {
-      const greeting = `¡Hola ${userName.trim()}! 👋 Veo que vienes del chat. Tu Pack 2026 está reservado. ¿Te ayudo a activar tu cuenta ahora mismo?`;
+      const greeting = `¡Hola ${userName.trim()}! 👋 Veo que vienes del chat. Tu Pack Enero 2026 está reservado. ¿Te ayudo a activar tu cuenta ahora mismo?`;
       setMessages(prev => prev.length === 1 && prev[0].role === 'assistant'
         ? [{ role: 'assistant', content: greeting }]
         : prev);
@@ -142,7 +142,7 @@ export default function ChatWidget() {
                 <div className={cn(
                   "max-w-[85%] p-3 rounded-2xl text-sm",
                   m.role === 'user' 
-                    ? "bg-cyan-600 text-white rounded-tr-none" 
+                    ? "bg-bear-blue text-bear-black rounded-tr-none" 
                     : "bg-zinc-800 text-zinc-200 rounded-tl-none"
                 )}>
                   {m.content}
@@ -152,7 +152,7 @@ export default function ChatWidget() {
             {loading && (
               <div className="flex justify-start">
                 <div className="bg-zinc-800 p-3 rounded-2xl rounded-tl-none">
-                  <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
+                  <Loader2 className="w-4 h-4 animate-spin text-bear-blue" />
                 </div>
               </div>
             )}
@@ -161,13 +161,13 @@ export default function ChatWidget() {
           {/* INPUT */}
           <div className="p-3 bg-zinc-900 border-t border-zinc-800 flex gap-2">
             <input
-              className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2 text-[16px] text-white focus:outline-none focus:border-cyan-500"
+              className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2 text-[16px] text-white focus:outline-none focus:border-bear-blue"
               placeholder="Escribe aquí..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             />
-            <Button size="icon" className="bg-cyan-600 hover:bg-cyan-500" onClick={sendMessage}>
+            <Button size="icon" className="bg-bear-blue hover:brightness-110 text-bear-black" onClick={sendMessage}>
               <Send size={18} />
             </Button>
           </div>
@@ -178,7 +178,7 @@ export default function ChatWidget() {
       <Button 
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'h-14 w-14 rounded-full bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-900/20',
+          'h-14 w-14 rounded-full bg-bear-blue hover:brightness-110 text-bear-black shadow-lg shadow-bear-blue/20',
           fromManyChat && !isOpen && 'animate-bounce'
         )}
       >

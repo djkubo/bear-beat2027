@@ -130,114 +130,91 @@ export default async function AdminDashboardPage() {
     .limit(10)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-bear-blue/5 via-background to-bear-black/5">
-      {/* Header */}
-      <div className="bg-card border-b-2 border-bear-blue/20 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <img 
-                src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png" 
-                alt="Bear Beat" 
-                className="h-12 w-auto"
-              />
-              <div>
-                <h1 className="text-3xl font-extrabold">Panel de Admin</h1>
-                <p className="text-sm text-muted-foreground">Bear Beat</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">👤 {userData?.email ?? user?.email ?? '—'}</span>
-              <a href="/dashboard">
-                <button className="px-4 py-2 bg-bear-blue text-bear-black rounded-lg font-bold hover:bg-bear-blue/90">
-                  Ver como Cliente
-                </button>
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <>
       <AdminDashboardToolbar />
 
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
-        {/* KPIs */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
-            <div className="flex justify-between items-start mb-4">
-              <Users className="h-8 w-8" />
-              <span className="text-sm font-bold bg-white/20 px-2 py-1 rounded">
+        <h1 className="text-2xl md:text-3xl font-black text-white mb-6 tracking-tight">
+          Panel de Admin
+        </h1>
+
+        {/* KPIs - cards oscuras marca Bear Beat */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/80 shadow-xl">
+            <div className="flex justify-between items-start mb-3">
+              <Users className="h-7 w-7 text-bear-blue" />
+              <span className="text-xs font-bold text-zinc-500 bg-white/5 px-2 py-1 rounded">
                 +{stats?.users_today || 0} hoy
               </span>
             </div>
-            <div className="text-4xl font-extrabold mb-1">
+            <div className="text-3xl font-black text-white mb-0.5">
               {stats?.total_users || 0}
             </div>
-            <div className="text-sm font-medium opacity-90">
+            <div className="text-sm text-zinc-400">
               Usuarios Totales
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl">
-            <div className="flex justify-between items-start mb-4">
-              <DollarSign className="h-8 w-8" />
-              <span className="text-sm font-bold bg-white/20 px-2 py-1 rounded">
+          <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/80 shadow-xl">
+            <div className="flex justify-between items-start mb-3">
+              <DollarSign className="h-7 w-7 text-bear-blue" />
+              <span className="text-xs font-bold text-zinc-500 bg-white/5 px-2 py-1 rounded">
                 MXN
               </span>
             </div>
-            <div className="text-4xl font-extrabold mb-1">
+            <div className="text-3xl font-black text-white mb-0.5">
               ${totalRevenueMxn.toLocaleString()}
             </div>
-            <div className="text-sm font-medium opacity-90">
-              Ingresos Totales (MXN + USD convertido)
+            <div className="text-sm text-zinc-400">
+              Ingresos Totales
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl">
-            <div className="flex justify-between items-start mb-4">
-              <Package className="h-8 w-8" />
-              <span className="text-sm font-bold bg-white/20 px-2 py-1 rounded">
+          <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/80 shadow-xl">
+            <div className="flex justify-between items-start mb-3">
+              <Package className="h-7 w-7 text-bear-blue" />
+              <span className="text-xs font-bold text-zinc-500 bg-white/5 px-2 py-1 rounded">
                 +{stats?.purchases_today || 0} hoy
               </span>
             </div>
-            <div className="text-4xl font-extrabold mb-1">
+            <div className="text-3xl font-black text-white mb-0.5">
               {stats?.total_purchases || 0}
             </div>
-            <div className="text-sm font-medium opacity-90">
+            <div className="text-sm text-zinc-400">
               Packs Vendidos
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-xl">
-            <div className="flex justify-between items-start mb-4">
-              <TrendingUp className="h-8 w-8" />
-              <span className="text-sm font-bold bg-white/20 px-2 py-1 rounded">
+          <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/80 shadow-xl">
+            <div className="flex justify-between items-start mb-3">
+              <TrendingUp className="h-7 w-7 text-bear-blue" />
+              <span className="text-xs font-bold text-zinc-500 bg-white/5 px-2 py-1 rounded">
                 %
               </span>
             </div>
-            <div className="text-4xl font-extrabold mb-1">
+            <div className="text-3xl font-black text-white mb-0.5">
               {stats?.conversion_rate || '0'}%
             </div>
-            <div className="text-sm font-medium opacity-90">
+            <div className="text-sm text-zinc-400">
               Tasa de Conversión
             </div>
           </div>
         </div>
 
-        {/* Fuentes de Tráfico (First-Touch) */}
+        {/* Fuentes de Tráfico */}
         <div className="mb-8">
-          <div className="bg-card rounded-2xl p-6 border-2 border-cyan-500/30 shadow-xl">
-            <h2 className="text-xl font-extrabold mb-4">📊 Fuentes de Tráfico</h2>
+          <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/50 shadow-xl">
+            <h2 className="text-xl font-black text-white mb-4 tracking-tight">📊 Fuentes de Tráfico</h2>
             {sourceRows.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Aún no hay compras con atribución.</p>
+              <p className="text-zinc-500 text-sm">Aún no hay compras con atribución.</p>
             ) : (
               <ul className="space-y-2">
                 {sourceRows.map(({ source, count, revenueMxn }) => {
                   const { label, icon } = sourceDisplay(source)
                   return (
                     <li key={source} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                      <span className="font-medium">{icon} {label}</span>
-                      <span className="text-muted-foreground text-sm">
+                      <span className="font-medium text-white">{icon} {label}</span>
+                      <span className="text-zinc-400 text-sm">
                         {count} ventas · ${revenueMxn.toLocaleString()} MXN
                       </span>
                     </li>
@@ -248,52 +225,30 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Menú de navegación - 9 secciones (móvil: 3 cols, min 80px, touch-friendly) */}
-        <div className="grid grid-cols-3 lg:grid-cols-9 gap-3 mb-8">
-          <a href="/admin/users" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
-            <div className="text-3xl mb-1">👥</div>
-            <div className="font-bold text-sm whitespace-nowrap">Usuarios</div>
-          </a>
-
-          <a href="/admin/purchases" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
-            <div className="text-3xl mb-1">💳</div>
-            <div className="font-bold text-sm whitespace-nowrap">Compras</div>
-          </a>
-
-          <a href="/admin/packs" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
-            <div className="text-3xl mb-1">📦</div>
-            <div className="font-bold text-sm whitespace-nowrap">Packs</div>
-          </a>
-
-          <a href="/admin/tracking" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
-            <div className="text-3xl mb-1">📊</div>
-            <div className="font-bold text-sm whitespace-nowrap">Tracking</div>
-          </a>
-
-          <a href="/admin/attribution" className="bg-card rounded-xl p-4 border-2 border-green-500 hover:border-green-600 shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
-            <div className="text-3xl mb-1">🎯</div>
-            <div className="font-bold text-sm whitespace-nowrap">Atribución</div>
-          </a>
-
-          <a href="/admin/chatbot" className="bg-card rounded-xl p-4 border-2 border-pink-500 hover:border-pink-600 shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
-            <div className="text-3xl mb-1">💬</div>
-            <div className="font-bold text-sm whitespace-nowrap">Chatbot</div>
-          </a>
-
-          <a href="/admin/manychat" className="bg-card rounded-xl p-4 border-2 border-purple-500 hover:border-purple-600 shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
-            <div className="text-3xl mb-1">🤖</div>
-            <div className="font-bold text-sm whitespace-nowrap">ManyChat</div>
-          </a>
-
-          <a href="/admin/pending" className="bg-card rounded-xl p-4 border-2 border-yellow-500 hover:border-yellow-600 shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
-            <div className="text-3xl mb-1">⏳</div>
-            <div className="font-bold text-sm whitespace-nowrap">Pendientes</div>
-          </a>
-
-          <a href="/admin/settings" className="bg-card rounded-xl p-4 border-2 border-bear-blue/30 hover:border-bear-blue shadow-lg hover:shadow-xl transition-all text-center min-h-[80px] flex flex-col items-center justify-center">
-            <div className="text-3xl mb-1">⚙️</div>
-            <div className="font-bold text-sm whitespace-nowrap">Config</div>
-          </a>
+        {/* Menú de navegación - estilo marca (cards oscuras, borde bear-blue al hover) */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
+          {[
+            { href: '/admin/users', icon: '👥', label: 'Usuarios' },
+            { href: '/admin/purchases', icon: '💳', label: 'Compras' },
+            { href: '/admin/packs', icon: '📦', label: 'Packs' },
+            { href: '/admin/tracking', icon: '📊', label: 'Tracking' },
+            { href: '/admin/attribution', icon: '🎯', label: 'Atribución' },
+            { href: '/admin/chatbot', icon: '💬', label: 'Chatbot' },
+            { href: '/admin/manychat', icon: '🤖', label: 'ManyChat' },
+            { href: '/admin/pending', icon: '⏳', label: 'Pendientes' },
+            { href: '/admin/mensajes', icon: '✉️', label: 'Mensajes' },
+            { href: '/admin/push', icon: '📱', label: 'Push' },
+            { href: '/admin/settings', icon: '⚙️', label: 'Config' },
+          ].map(({ href, icon, label }) => (
+            <a
+              key={href}
+              href={href}
+              className="rounded-xl p-4 border border-white/10 bg-zinc-900/50 hover:border-bear-blue/50 hover:bg-zinc-800/50 shadow-lg transition-all text-center min-h-[80px] flex flex-col items-center justify-center"
+            >
+              <div className="text-3xl mb-1">{icon}</div>
+              <div className="font-bold text-sm text-white whitespace-nowrap">{label}</div>
+            </a>
+          ))}
         </div>
 
         {/* Sync catálogo FTP (usa env del servidor) */}
@@ -301,54 +256,49 @@ export default async function AdminDashboardPage() {
           <SyncVideosFtpButton />
         </div>
 
-        {/* Últimas Compras: tabla en desktop, cards en móvil */}
-        <div className="bg-card rounded-2xl p-6 border-2 border-bear-blue/30 shadow-xl">
-          <h2 className="text-2xl font-extrabold mb-6">
+        {/* Últimas Compras */}
+        <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/50 shadow-xl">
+          <h2 className="text-xl font-black text-white mb-6 tracking-tight">
             💳 Últimas Compras (10)
           </h2>
 
           {!recentPurchases || recentPurchases.length === 0 ? (
-            <p className="text-center py-12 text-muted-foreground">
+            <p className="text-center py-12 text-zinc-500">
               Aún no hay compras
             </p>
           ) : (
             <>
-              {/* Desktop: tabla completa */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full md:table">
+                <table className="w-full">
                   <thead>
-                    <tr className="border-b-2 border-bear-blue/20">
-                      <th className="text-left py-3 px-4 font-bold w-10" title="Fuente">Fuente</th>
-                      <th className="text-left py-3 px-4 font-bold">Fecha</th>
-                      <th className="text-left py-3 px-4 font-bold">Usuario</th>
-                      <th className="text-left py-3 px-4 font-bold">Pack</th>
-                      <th className="text-left py-3 px-4 font-bold">Monto</th>
-                      <th className="text-left py-3 px-4 font-bold">Método</th>
+                    <tr className="border-b border-white/10">
+                      <th className="text-left py-3 px-4 font-bold text-zinc-400 w-10" title="Fuente">Fuente</th>
+                      <th className="text-left py-3 px-4 font-bold text-zinc-400">Fecha</th>
+                      <th className="text-left py-3 px-4 font-bold text-zinc-400">Usuario</th>
+                      <th className="text-left py-3 px-4 font-bold text-zinc-400">Pack</th>
+                      <th className="text-left py-3 px-4 font-bold text-zinc-400">Monto</th>
+                      <th className="text-left py-3 px-4 font-bold text-zinc-400">Método</th>
                     </tr>
                   </thead>
                   <tbody>
                     {recentPurchases.map((purchase: any) => {
                       const { icon } = sourceDisplay(purchase.utm_source || purchase.traffic_source || 'direct')
                       return (
-                        <tr key={purchase.id} className="border-b hover:bg-bear-blue/5">
+                        <tr key={purchase.id} className="border-b border-white/5 hover:bg-white/5">
                           <td className="py-3 px-4 text-xl" title={purchase.utm_source || 'direct'}>
                             {icon}
                           </td>
+                          <td className="py-3 px-4 text-zinc-300">{formatDate(purchase.purchased_at)}</td>
                           <td className="py-3 px-4">
-                            {formatDate(purchase.purchased_at)}
+                            <div className="font-medium text-white">{purchase.user?.name || 'Sin nombre'}</div>
+                            <div className="text-sm text-zinc-500">{purchase.user?.email}</div>
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="font-medium">{purchase.user?.name || 'Sin nombre'}</div>
-                            <div className="text-sm text-muted-foreground">{purchase.user?.email}</div>
-                          </td>
-                          <td className="py-3 px-4 font-medium">
-                            {purchase.pack?.name}
-                          </td>
-                          <td className="py-3 px-4 font-bold text-green-600">
+                          <td className="py-3 px-4 font-medium text-white">{purchase.pack?.name}</td>
+                          <td className="py-3 px-4 font-bold text-bear-blue">
                             {formatPrice(purchase.amount_paid, purchase.currency as any)}
                           </td>
                           <td className="py-3 px-4">
-                            <span className="px-2 py-1 bg-bear-blue/10 rounded text-xs font-bold">
+                            <span className="px-2 py-1 bg-bear-blue/20 text-bear-blue rounded text-xs font-bold">
                               {purchase.payment_provider}
                             </span>
                           </td>
@@ -359,29 +309,26 @@ export default async function AdminDashboardPage() {
                 </table>
               </div>
 
-              {/* Móvil: lista de tarjetas */}
               <div className="block md:hidden space-y-4">
                 {recentPurchases.map((purchase: any) => {
                   const { icon } = sourceDisplay(purchase.utm_source || purchase.traffic_source || 'direct')
                   return (
                     <div
                       key={purchase.id}
-                      className="flex gap-4 p-4 rounded-xl border-2 border-border bg-background/50 shadow-md"
+                      className="flex gap-4 p-4 rounded-xl border border-white/10 bg-zinc-800/50"
                     >
                       <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-bear-blue/10 border border-bear-blue/30 flex items-center justify-center text-3xl">
                         {icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-foreground truncate">
+                        <div className="font-bold text-white truncate">
                           {purchase.user?.name || 'Sin nombre'} · {purchase.pack?.name || '—'}
                         </div>
-                        <div className="text-lg font-bold text-green-600 mt-0.5">
+                        <div className="text-lg font-bold text-bear-blue mt-0.5">
                           {formatPrice(purchase.amount_paid, purchase.currency as any)}
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {formatDate(purchase.purchased_at)}
-                        </div>
-                        <span className="inline-block mt-2 px-2 py-1 bg-bear-blue/10 rounded text-xs font-bold">
+                        <div className="text-xs text-zinc-500 mt-1">{formatDate(purchase.purchased_at)}</div>
+                        <span className="inline-block mt-2 px-2 py-1 bg-bear-blue/20 text-bear-blue rounded text-xs font-bold">
                           {purchase.payment_provider}
                         </span>
                       </div>
@@ -393,6 +340,6 @@ export default async function AdminDashboardPage() {
           )}
         </div>
       </div>
-    </div>
+    </>
   )
 }
