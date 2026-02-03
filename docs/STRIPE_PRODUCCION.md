@@ -71,7 +71,21 @@ Checklist para pasar de **modo Test** a **modo Live** y cobrar pagos reales.
 
 ---
 
-## Paso 5: Comprobar
+## Paso 5: Activar SPEI (transferencias bancarias) – opcional
+
+Si quieres ofrecer **SPEI** en el checkout, debes activar el método "Bank transfers" en Stripe:
+
+1. Entra a **[Payment methods](https://dashboard.stripe.com/settings/payment_methods)** (Settings → Payment methods).
+2. Busca **"Bank transfers"** y actívalo.
+3. En algunas cuentas puede aparecer en **[Account settings → Payments](https://dashboard.stripe.com/account/payments/settings)**.
+
+Si no está activado, al elegir SPEI el usuario verá un mensaje claro con el enlace para activarlo; mientras tanto puede usar Tarjeta, OXXO o PayPal.
+
+**Link (pago rápido con tarjeta):** El checkout ya incluye Link cuando el cliente paga con tarjeta. Para que aparezca, actívalo en [Payment methods](https://dashboard.stripe.com/settings/payment_methods) → Link. Si está activo en tu cuenta, Stripe lo mostrará automáticamente en el flujo de tarjeta (MXN compatible).
+
+---
+
+## Paso 6: Comprobar
 
 1. **Checkout:** Abre en producción `https://bear-beat2027.onrender.com/checkout` y haz un pago de prueba con tarjeta real (o OXXO/SPEI si ya los tienes en Live).
 2. **Webhook:** En Stripe → Developers → Webhooks → tu endpoint Live → pestaña **Events**. Deberías ver el evento enviado y respuesta **200**.

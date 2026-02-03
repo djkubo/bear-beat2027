@@ -23,8 +23,10 @@ async function getPackWithVideoCount(supabase: Awaited<ReturnType<typeof createS
 }
 
 export async function POST(req: NextRequest) {
+  let paymentMethod: string | undefined
   try {
     const body = await req.json()
+    paymentMethod = (body as { paymentMethod?: string })?.paymentMethod
     const cookieHeader = req.headers.get('cookie')
     const attribution = parseAttributionCookie(cookieHeader)
     const { packSlug, paymentMethod, currency = 'mxn', email: bodyEmail } = body as {
@@ -83,8 +85,9 @@ export async function POST(req: NextRequest) {
     }
     const price = prices[currency] || pack.price_usd
     
-    // Configurar payment_method_types según método (MXN requiere al menos un tipo soportado por la moneda)
-    let paymentMethodTypes: string[] = ['card']
+    // Configurar payment_method_types según método (MXN requiere al menos un tipo soportado por la moneda).
+    // Incluimos 'link' para pago con tarjeta: Stripe lo muestra si está activo en el Dashboard (MX compatible).
+    let paymentMethodTypes: string[] = ['card', 'link']
     
     if (paymentMethod === 'oxxo') {
       paymentMethodTypes = ['oxxo']
@@ -193,8 +196,22 @@ export async function POST(req: NextRequest) {
     })
   } catch (error: any) {
     console.error('Error creating checkout:', error)
+    const msg = [error?.message, error?.raw?.message, error?.raw?.error?.message].filter(Boolean).join(' ') || 'Failed to create checkout'
+    // SPEI usa customer_balance: si no está activado en Stripe, mensaje claro con enlace
+    const isSpeiCustomerBalanceError =
+      paymentMethod === 'spei' &&
+      /customer_balance|invalid.*payment.*method|activated in your dashboard|preview features/i.test(String(msg))
+    if (isSpeiCustomerBalanceError) {
+      return NextResponse.json(
+        {
+          error:
+            'SPEI (transferencia bancaria) no está activado en tu cuenta de Stripe. Actívalo aquí: https://dashboard.stripe.com/settings/payment_methods (sección "Bank transfers"). Mientras tanto puedes usar Tarjeta, OXXO o PayPal.',
+        },
+        { status: 400 }
+      )
+    }
     return NextResponse.json(
-      { error: error.message || 'Failed to create checkout' },
+      { error: msg },
       { status: 500 }
     )
   }

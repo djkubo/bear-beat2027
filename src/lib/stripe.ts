@@ -22,7 +22,7 @@ export async function createCheckoutSession({
 }) {
   const session = await stripe.checkout.sessions.create({
     mode: 'payment', // Pago único, no suscripción
-    payment_method_types: ['card'],
+    payment_method_types: ['card', 'link'],
     customer_email: userEmail,
     line_items: [
       {
