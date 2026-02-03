@@ -80,11 +80,8 @@ function buildThumbnailUrl(
     }
     urlPath = `/api/thumbnail-cdn?path=${encodeURIComponent(thumbnailUrlFromDb)}`
   } else if (process.env.NODE_ENV === 'production') {
-    const q = new URLSearchParams()
-    q.set('path', relativePath)
-    if (artist) q.set('artist', artist)
-    if (title) q.set('title', title)
-    urlPath = `/api/thumbnail-from-video?${q.toString()}`
+    const pathJpg = relativePath.replace(/\.(mp4|mov|avi|mkv)$/i, '.jpg')
+    urlPath = `/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`
   } else {
     urlPath = `/api/thumbnail/${encodeURIComponent(relativePath)}`
   }

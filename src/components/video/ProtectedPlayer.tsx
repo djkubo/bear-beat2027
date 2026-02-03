@@ -8,8 +8,10 @@ import { motion } from 'framer-motion'
 // ==========================================
 
 interface ProtectedPlayerProps {
-  // Para demos (streaming protegido)
+  // Para demos por ID (Bunny Stream) – usa /api/files demo_stream
   videoId?: string
+  // Para demos por path (Bunny CDN o FTP proxy) – usa /api/demo-url?path=Genre/video.mp4 (streaming al instante)
+  demoPath?: string
   // Para preview simple (thumbnail + play falso)
   previewUrl?: string
   thumbnail?: string
@@ -26,6 +28,7 @@ interface ProtectedPlayerProps {
 
 export function ProtectedPlayer({
   videoId,
+  demoPath,
   previewUrl,
   thumbnail,
   title,
@@ -40,6 +43,8 @@ export function ProtectedPlayer({
   const [error, setError] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const demoUrlByPath = demoPath ? `/api/demo-url?path=${encodeURIComponent(demoPath)}` : null
+
   // Bloquear click derecho
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -49,16 +54,21 @@ export function ProtectedPlayer({
   // Cargar URL de streaming cuando se da play
   const handlePlay = async () => {
     if (mode === 'full' && previewUrl) {
-      // Modo full: reproducir directamente
+      setIsPlaying(true)
+      return
+    }
+
+    if (mode === 'demo' && demoUrlByPath) {
+      // Demo por path: /api/demo-url redirige a CDN o hace stream desde FTP (arranque al instante)
+      setStreamUrl(demoUrlByPath)
       setIsPlaying(true)
       return
     }
 
     if (mode === 'demo' && videoId) {
-      // Modo demo: obtener URL de streaming firmada
+      // Demo por ID: Bunny Stream vía /api/files
       setLoading(true)
       setError(null)
-
       try {
         const response = await fetch('/api/files', {
           method: 'POST',
@@ -68,9 +78,7 @@ export function ProtectedPlayer({
             videoId
           })
         })
-
         const data = await response.json()
-
         if (data.success) {
           setStreamUrl(data.url)
           setIsPlaying(true)
@@ -82,8 +90,10 @@ export function ProtectedPlayer({
       } finally {
         setLoading(false)
       }
-    } else if (mode === 'preview') {
-      // Modo preview: mostrar paywall
+      return
+    }
+
+    if (mode === 'preview') {
       onDownloadAttempt?.()
     }
   }
@@ -123,16 +133,30 @@ export function ProtectedPlayer({
 
       {/* Contenido del player */}
       {isPlaying ? (
-        // Video reproduciéndose
         mode === 'demo' && streamUrl ? (
-          // Streaming via iframe (Bunny Stream)
-          <iframe
-            src={streamUrl}
-            className="w-full h-full border-0"
-            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            loading="lazy"
-          />
+          demoPath ? (
+            // Demo por path: <video> con /api/demo-url (streaming directo, no descarga)
+            <video
+              src={streamUrl}
+              className="w-full h-full object-cover"
+              autoPlay
+              controls
+              controlsList="nodownload"
+              disablePictureInPicture
+              playsInline
+              onEnded={() => setIsPlaying(false)}
+              onContextMenu={handleContextMenu}
+            />
+          ) : (
+            // Bunny Stream via iframe
+            <iframe
+              src={streamUrl}
+              className="w-full h-full border-0"
+              allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+            />
+          )
         ) : (
           // Video directo (modo full o preview simple)
           <video

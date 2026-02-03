@@ -31,6 +31,62 @@ export default async function AdminUsersPage({
       )
     : users || []
 
+  const isEmpty = filteredUsers.length === 0
+  const cardContent = isEmpty ? (
+    <div className="text-center py-12">
+      <p className="text-xl font-bold text-zinc-500">
+        {searchTerm
+          ? `No hay resultados para "${params?.search}"`
+          : 'Aún no hay usuarios registrados'}
+      </p>
+    </div>
+  ) : (
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-white/10">
+            <th className="text-left py-4 px-4 font-bold text-zinc-400">Usuario</th>
+            <th className="text-left py-4 px-4 font-bold text-zinc-400">Email</th>
+            <th className="text-left py-4 px-4 font-bold text-zinc-400">Teléfono</th>
+            <th className="text-left py-4 px-4 font-bold text-zinc-400">País</th>
+            <th className="text-left py-4 px-4 font-bold text-zinc-400">Packs</th>
+            <th className="text-left py-4 px-4 font-bold text-zinc-400">Registro</th>
+            <th className="text-left py-4 px-4 font-bold text-zinc-400">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredUsers.map((user: any) => (
+            <tr key={user.id} className="border-b border-white/5 hover:bg-white/5">
+              <td className="py-4 px-4">
+                <div className="font-bold text-white">{user.name || 'Sin nombre'}</div>
+                <div className="text-xs text-zinc-500">
+                  ID: {user.id.slice(0, 8)}...
+                </div>
+              </td>
+              <td className="py-4 px-4 font-medium text-zinc-300">{user.email}</td>
+              <td className="py-4 px-4 text-zinc-400">{user.phone || '-'}</td>
+              <td className="py-4 px-4 text-zinc-400">{user.country_code || 'MX'}</td>
+              <td className="py-4 px-4">
+                <span className="px-3 py-1 bg-bear-blue/20 text-bear-blue rounded-full text-sm font-bold">
+                  {user.purchases?.[0]?.count || 0} packs
+                </span>
+              </td>
+              <td className="py-4 px-4 text-sm text-zinc-500">{formatDate(user.created_at)}</td>
+              <td className="py-4 px-4">
+                <a
+                  href={`/admin/users/${user.id}`}
+                  className="text-bear-blue font-bold hover:text-cyan-400 transition"
+                >
+                  Ver detalles →
+                </a>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
       <Link href="/admin" className="text-sm text-bear-blue hover:text-cyan-400 mb-4 inline-block">
@@ -42,71 +98,8 @@ export default async function AdminUsersPage({
           ? `${filteredUsers.length} resultado(s) para "${params?.search}"`
           : `Total: ${count || 0} usuarios`}
       </p>
-
       <div className="rounded-2xl p-6 border border-white/10 bg-zinc-900/50 shadow-xl">
-        {filteredUsers.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-xl font-bold text-zinc-500">
-              {searchTerm
-                ? `No hay resultados para "${params?.search}"`
-                : 'Aún no hay usuarios registrados'}
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left py-4 px-4 font-bold text-zinc-400">Usuario</th>
-                  <th className="text-left py-4 px-4 font-bold text-zinc-400">Email</th>
-                  <th className="text-left py-4 px-4 font-bold text-zinc-400">Teléfono</th>
-                  <th className="text-left py-4 px-4 font-bold text-zinc-400">País</th>
-                  <th className="text-left py-4 px-4 font-bold text-zinc-400">Packs</th>
-                  <th className="text-left py-4 px-4 font-bold text-zinc-400">Registro</th>
-                  <th className="text-left py-4 px-4 font-bold text-zinc-400">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((user: any) => (
-                  <tr key={user.id} className="border-b border-white/5 hover:bg-white/5">
-                    <td className="py-4 px-4">
-                      <div className="font-bold text-white">{user.name || 'Sin nombre'}</div>
-                      <div className="text-xs text-zinc-500">
-                        ID: {user.id.slice(0, 8)}...
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 font-medium text-zinc-300">
-                      {user.email}
-                    </td>
-                    <td className="py-4 px-4 text-zinc-400">
-                      {user.phone || '-'}
-                    </td>
-                    <td className="py-4 px-4 text-zinc-400">
-                      {user.country_code || 'MX'}
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className="px-3 py-1 bg-bear-blue/20 text-bear-blue rounded-full text-sm font-bold">
-                        {user.purchases?.[0]?.count || 0} packs
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-sm text-zinc-500">
-                      {formatDate(user.created_at)}
-                    </td>
-                    <td className="py-4 px-4">
-                      <a
-                        href={`/admin/users/${user.id}`}
-                        className="text-bear-blue font-bold hover:text-cyan-400 transition"
-                      >
-                        Ver detalles →
-                      </a>
-                    </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        {cardContent}
       </div>
     </div>
   )

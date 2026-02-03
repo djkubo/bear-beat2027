@@ -41,16 +41,44 @@ npm run db:sync-videos
 node scripts/sync-videos-to-supabase.js "./Videos Enero 2026"
 ```
 
-## Descarga desde la web (Bunny.net)
+## Demos, portadas y descargas: Bunny o FTP
 
-En **producción** la descarga por navegador usa **Bunny.net** (ya integrado):
+La web puede servir **demos** (preview de video), **portadas** (thumbnails) y **descargas** (videos y ZIPs) de dos formas:
 
-1. Configura en Render (o .env.local) las variables Bunny: `BUNNY_CDN_URL`, `BUNNY_TOKEN_KEY`, y opcionalmente `BUNNY_PACK_PATH_PREFIX=packs/enero-2026`.
-2. Sube los archivos a Bunny Storage con la misma estructura que el catálogo:  
-   `packs/enero-2026/Genre/filename.mp4` (ej. `packs/enero-2026/Bachata/Artista - Título.mp4`).
-3. Cuando un usuario con compra hace clic en “Descargar”, `/api/download` redirige a una **URL firmada** de Bunny (expira en 1 h). No se usa disco en el servidor.
+### Opción 1: Bunny CDN (recomendado si ya lo usas)
 
-- **Por archivo:** el botón de descarga en Contenido ya usa `/api/download` → redirección a Bunny.
-- **Por carpeta:** el usuario puede descargar género por género (cada video) o usar **FTP** (FileZilla) con las credenciales del Dashboard para bajar carpetas completas.
+1. Configura en Render (o .env.local): `NEXT_PUBLIC_BUNNY_CDN_URL`, `BUNNY_TOKEN_KEY`, y opcionalmente `BUNNY_PACK_PATH_PREFIX=packs/enero-2026`.
+2. Sube los archivos a Bunny Storage con la misma estructura que el catálogo.
+3. `/api/demo-url`, `/api/thumbnail-cdn` y `/api/download` redirigen a URLs firmadas de Bunny.
 
-Ver `CONFIGURAR_STORAGE.md` para crear la Storage Zone, Pull Zone y Token Authentication en Bunny.
+### Opción 2: Todo desde Hetzner FTP (sin Bunny)
+
+Si **no** configuras Bunny pero sí FTP (Hetzner Storage Box), la app hace **stream por proxy** desde el FTP:
+
+- **Demos:** stream del video desde `{FTP_BASE_PATH}/{Genre}/{video.mp4}` (ej. `Videos Enero 2026/Bachata/Artista - Título.mp4`).
+- **Portadas:** stream de la imagen desde la **raíz** del FTP: `{Genre}/{file.jpg}` (ej. `Bachata/Artista - Título.jpg`). Estas son las que subes con `scripts/upload-assets.ts`.
+- **Descargas (usuario con compra):** stream de video o ZIP; los ZIPs se buscan en la raíz del FTP (ej. `Bachata.zip`, `Pack_Completo_Enero_2026.zip`).
+
+**Variables en Render (o .env.local):**
+
+```env
+FTP_HOST=u540473.your-storagebox.de
+FTP_USER=u540473
+FTP_PASSWORD=tu_contraseña
+FTP_BASE_PATH=Videos Enero 2026
+```
+
+O con prefijo Hetzner: `HETZNER_FTP_HOST`, `HETZNER_FTP_USER`, `HETZNER_FTP_PASSWORD`. Si `upload-assets.ts` te conectó con TLS, en Render pon `FTP_SECURE=true` para que demos/descargas/portadas también usen FTPS.
+
+**Estructura esperada en el FTP:**
+
+| Qué        | Ruta en el FTP                                      |
+|-----------|------------------------------------------------------|
+| Videos    | `Videos Enero 2026/Bachata/Artista - Título.mp4`     |
+| Portadas  | `Bachata/Artista - Título.jpg` (en la raíz)          |
+| ZIPs      | `Bachata.zip`, `Pack_Completo_Enero_2026.zip` (raíz) |
+
+Los scripts `generate-local-assets.ts` (ZIPs + portadas en el SSD) y `upload-assets.ts` (sube a la raíz del FTP) ya generan esta estructura. El sync `sync-videos-from-ftp.js` lista videos desde `FTP_BASE_PATH` y llena la tabla `videos`; las portadas en la DB son `Genre/file.jpg` y se sirven desde la raíz del FTP.
+
+- **Por archivo:** el botón de descarga en Contenido usa `/api/download` → si hay Bunny, redirección; si solo FTP, stream desde el servidor.
+- **Por carpeta:** el usuario puede descargar el ZIP del género (cuando exista en el FTP) o usar **FTP** (FileZilla) con las credenciales del Dashboard.

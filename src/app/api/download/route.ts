@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { generateSignedUrl, isBunnyConfigured } from '@/lib/bunny'
+import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
+import { Readable } from 'stream'
 
 // Prefijo opcional en Bunny (ej. packs/enero-2026). file = Genre/video.mp4 o Banda.zip (raíz o bajo prefijo).
 const BUNNY_PACK_PREFIX = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || '').replace(/\/$/, '')
@@ -52,37 +54,68 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Path inválido' }, { status: 400 })
     }
 
-    if (!isBunnyConfigured()) {
-      return NextResponse.json(
-        {
-          error: 'Descargas no disponibles',
-          reason: 'bunny_not_configured',
-          message: 'Configura NEXT_PUBLIC_BUNNY_CDN_URL y BUNNY_TOKEN_KEY en el servidor.',
-        },
-        { status: 503 }
-      )
-    }
-
     const isZip = sanitizedPath.toLowerCase().endsWith('.zip')
-    const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
 
-    const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
-    const signedUrl = generateSignedUrl(bunnyPath, expiresIn, process.env.NEXT_PUBLIC_APP_URL)
-
-    try {
-      await supabase.from('downloads').insert({
-        user_id: user.id,
-        pack_id: purchases[0].pack_id,
-        file_path: sanitizedPath,
-        download_method: 'web',
-      })
-    } catch {
-      // ignorar si falla (tabla no existe o RLS)
+    if (isBunnyConfigured()) {
+      const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
+      const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
+      const signedUrl = generateSignedUrl(bunnyPath, expiresIn, process.env.NEXT_PUBLIC_APP_URL)
+      try {
+        await supabase.from('downloads').insert({
+          user_id: user.id,
+          pack_id: purchases[0].pack_id,
+          file_path: sanitizedPath,
+          download_method: 'web',
+        })
+      } catch {
+        // ignorar
+      }
+      const res = NextResponse.redirect(signedUrl, 307)
+      res.headers.set('Cache-Control', 'private, max-age=' + expiresIn)
+      return res
     }
 
-    const res = NextResponse.redirect(signedUrl, 307)
-    res.headers.set('Cache-Control', 'private, max-age=' + expiresIn)
-    return res
+    if (isFtpConfigured()) {
+      try {
+        const type = isZip ? 'zip' : 'video'
+        const stream = await streamFileFromFtp(sanitizedPath, type)
+        const webStream = Readable.toWeb(stream) as ReadableStream
+        const contentType = getContentType(sanitizedPath)
+        const filename = sanitizedPath.split('/').pop() || 'download'
+        try {
+          await supabase.from('downloads').insert({
+            user_id: user.id,
+            pack_id: purchases[0].pack_id,
+            file_path: sanitizedPath,
+            download_method: 'web',
+          })
+        } catch {
+          // ignorar
+        }
+        return new NextResponse(webStream, {
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': 'private, max-age=3600',
+            'Content-Disposition': `attachment; filename="${filename.replace(/"/g, '\\"')}"`,
+          },
+        })
+      } catch (e) {
+        console.error('download FTP:', e)
+        return NextResponse.json(
+          { error: 'Error al descargar. Intenta de nuevo o usa FTP.' },
+          { status: 502 }
+        )
+      }
+    }
+
+    return NextResponse.json(
+      {
+        error: 'Descargas no disponibles',
+        reason: 'bunny_not_configured',
+        message: 'Configura Bunny CDN o FTP (FTP_HOST, FTP_USER, FTP_PASSWORD) en el servidor.',
+      },
+      { status: 503 }
+    )
   } catch (error: unknown) {
     console.error('Download error:', error)
     return NextResponse.json({ error: 'Error al descargar' }, { status: 500 })

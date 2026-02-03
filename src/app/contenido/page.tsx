@@ -61,9 +61,23 @@ export default function ContenidoPage() {
   const [hasAccess, setHasAccess] = useState(false)
   const [posterError, setPosterError] = useState(false)
   const [demoError, setDemoError] = useState(false)
+  const [downloadingZipGenreId, setDownloadingZipGenreId] = useState<string | null>(null)
+  const [downloadingVideoId, setDownloadingVideoId] = useState<string | null>(null)
+  const [thumbErrors, setThumbErrors] = useState<Set<string>>(new Set())
   const videoRef = useRef<HTMLVideoElement>(null)
   const expandedSectionRef = useRef<HTMLDivElement>(null)
   const inventory = useVideoInventory()
+
+  /** URL de portada: la API ya devuelve /api/thumbnail-cdn?path=...; si no, construimos por convención. */
+  const getThumbnailUrl = (video: Video): string => {
+    if (video.thumbnailUrl) {
+      if (video.thumbnailUrl.startsWith('http://') || video.thumbnailUrl.startsWith('https://')) return video.thumbnailUrl
+      if (video.thumbnailUrl.startsWith('/')) return video.thumbnailUrl
+      return `/api/thumbnail-cdn?path=${encodeURIComponent(video.thumbnailUrl)}`
+    }
+    const pathJpg = video.path.replace(/\.(mp4|mov|avi|mkv)$/i, '.jpg')
+    return `/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`
+  }
 
   useEffect(() => {
     setPosterError(false)
@@ -154,7 +168,10 @@ export default function ContenidoPage() {
 
   const handleDownloadAttempt = (video: Video) => {
     if (hasAccess) {
-      window.open(`/api/download?file=${encodeURIComponent(video.path)}`, '_blank')
+      setDownloadingVideoId(video.id)
+      const url = `/api/download?file=${encodeURIComponent(video.path)}`
+      window.open(url, '_blank')
+      setTimeout(() => setDownloadingVideoId(null), 2000)
     } else {
       setSelectedVideo(video)
       setShowPaywall(true)
@@ -167,8 +184,7 @@ export default function ContenidoPage() {
     trackCTAClick('preview', 'contenido', video.name)
   }
 
-  const ZIP_NOT_AVAILABLE_MSG =
-    '⚠️ El paquete ZIP de este género aún no está disponible. Por favor usa la opción FTP para descargar la carpeta completa.'
+  const ZIP_GENERATING_MSG = 'El Pack de este género se está generando, intenta más tarde.'
 
   const handleDownloadFolderZip = async (genre: Genre) => {
     if (!hasAccess) {
@@ -176,6 +192,7 @@ export default function ContenidoPage() {
       return
     }
     const zipName = `${genre.name}.zip`
+    setDownloadingZipGenreId(genre.id)
     try {
       const res = await fetch(`/api/download?file=${encodeURIComponent(zipName)}`, { redirect: 'manual' })
       const isRedirect = res.status === 302 || res.status === 307
@@ -184,22 +201,24 @@ export default function ContenidoPage() {
       if (isRedirect && location) {
         const headRes = await fetch(location, { method: 'HEAD', redirect: 'follow' }).catch(() => null)
         if (headRes && !headRes.ok) {
-          toast.warning(ZIP_NOT_AVAILABLE_MSG)
+          toast.error(ZIP_GENERATING_MSG)
           return
         }
         window.open(location, '_blank')
         trackCTAClick('download_folder_zip', 'contenido', zipName)
       } else if (isRedirect && !location) {
         toast.error('No se pudo iniciar la descarga.')
-      } else if (res.status === 404) {
+      } else if (res.status === 404 || res.status === 502 || res.status === 503) {
         await res.json().catch(() => ({}))
-        toast.warning(ZIP_NOT_AVAILABLE_MSG)
+        toast.error(ZIP_GENERATING_MSG)
       } else {
         const data = await res.json().catch(() => ({}))
-        toast.error(data?.error || 'Error al descargar. Intenta de nuevo o usa FTP.')
+        toast.error(data?.error || ZIP_GENERATING_MSG)
       }
     } catch {
-      toast.warning(ZIP_NOT_AVAILABLE_MSG)
+      toast.error(ZIP_GENERATING_MSG)
+    } finally {
+      setDownloadingZipGenreId(null)
     }
   }
 
@@ -214,7 +233,7 @@ export default function ContenidoPage() {
   return (
     <div className="min-h-screen bg-[#050505] text-white antialiased pb-24 md:pb-0 overflow-x-hidden">
       {/* HEADER */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/95 backdrop-blur-md py-3 md:py-4 px-4 md:px-6">
+      <header className="sticky top-0 z-50 border-b border-white/5 bg-zinc-950/95 backdrop-blur-md py-3 md:py-4 px-4 md:px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <Image
@@ -318,7 +337,7 @@ export default function ContenidoPage() {
                   key={genre.id}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 transition-all hover:border-bear-blue hover:shadow-[0_0_24px_rgba(8,225,247,0.12)] hover:-translate-y-0.5 cursor-pointer min-w-0"
+                  className="rounded-xl border border-white/5 bg-zinc-900/80 p-5 transition-all hover:border-bear-blue hover:shadow-[0_0_24px_rgba(8,225,247,0.12)] hover:-translate-y-0.5 cursor-pointer min-w-0"
                   onClick={() => setExpandedGenre(expandedGenre === genre.id ? null : genre.id)}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -355,27 +374,38 @@ export default function ContenidoPage() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden min-w-0"
+                  className="rounded-xl border border-white/5 bg-zinc-900/60 overflow-hidden min-w-0"
                 >
                   {filteredGenres
                     .filter((g) => g.id === expandedGenre)
                     .map((genre) => (
                       <div key={genre.id} className="min-w-0">
-                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-white/10 bg-zinc-800/50">
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-white/5 bg-zinc-800/50">
                           <h3 className="font-bold text-white truncate">{genre.name}</h3>
                           {hasAccess && (
                             <button
                               type="button"
+                              disabled={downloadingZipGenreId === genre.id}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleDownloadFolderZip(genre)
                               }}
-                              className="inline-flex items-center gap-2 min-h-[48px] px-4 py-3 rounded-lg bg-bear-blue/20 text-bear-blue font-bold text-base hover:bg-bear-blue/30 transition border border-bear-blue/40 shrink-0"
+                              className="inline-flex items-center gap-2 min-h-[48px] px-4 py-3 rounded-lg bg-bear-blue/20 text-bear-blue font-bold text-base hover:bg-bear-blue/30 transition border border-bear-blue/40 shrink-0 disabled:opacity-70"
                             >
-                              <span className="text-lg">⬇️</span>
-                              <Archive className="h-5 w-5 shrink-0" />
-                              <span className="hidden sm:inline">DESCARGAR CARPETA ZIP</span>
-                              <span className="sm:hidden">ZIP</span>
+                              {downloadingZipGenreId === genre.id ? (
+                                <>
+                                  <span className="animate-spin">⏳</span>
+                                  <span className="hidden sm:inline">Iniciando...</span>
+                                  <span className="sm:hidden">...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-lg">⬇️</span>
+                                  <Archive className="h-5 w-5 shrink-0" />
+                                  <span className="hidden sm:inline">DESCARGAR CARPETA ZIP</span>
+                                  <span className="sm:hidden">ZIP</span>
+                                </>
+                              )}
                             </button>
                           )}
                         </div>
@@ -399,6 +429,19 @@ export default function ContenidoPage() {
                             >
                               <Play className="h-4 w-4" />
                             </button>
+                            {/* Portada real (thumbnail) por video – estilo Rekordbox */}
+                            <div className="w-14 h-10 sm:w-16 sm:h-10 shrink-0 rounded overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
+                              {!thumbErrors.has(video.id) ? (
+                                <img
+                                  src={getThumbnailUrl(video)}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                  onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
+                                />
+                              ) : (
+                                <Play className="h-5 w-5 text-bear-blue/60" />
+                              )}
+                            </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-white truncate">{video.artist}</p>
                               <p className="text-sm text-gray-500 truncate">{video.title}</p>
@@ -417,19 +460,26 @@ export default function ContenidoPage() {
                             </div>
                             <button
                               type="button"
+                              disabled={downloadingVideoId === video.id}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleDownloadAttempt(video)
                               }}
-                              className={`min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg transition shrink-0 ${
+                              className={`min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg transition shrink-0 disabled:opacity-70 ${
                                 hasAccess
                                   ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
                                   : 'bg-zinc-700/50 text-zinc-400 hover:bg-zinc-600/50'
                               }`}
                               aria-label="Descargar"
                             >
-                              <span className="text-lg mr-0.5">⬇️</span>
-                              <Download className="h-5 w-5" />
+                              {downloadingVideoId === video.id ? (
+                                <span className="text-sm font-medium">⏳</span>
+                              ) : (
+                                <>
+                                  <span className="text-lg mr-0.5">⬇️</span>
+                                  <Download className="h-5 w-5" />
+                                </>
+                              )}
                             </button>
                           </div>
                         ))}
@@ -447,16 +497,16 @@ export default function ContenidoPage() {
               {hasAccess ? (
                 /* ---------- USUARIO PRO: Panel de Utilidad / Reproducción ---------- */
                 selectedVideo ? (
-                  <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4">
+                  <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
                     {/* Reproductor */}
                     <div
                       className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4 select-none"
                       onContextMenu={(e) => e.preventDefault()}
                       onDragStart={(e) => e.preventDefault()}
                     >
-                      {selectedVideo.thumbnailUrl && !posterError ? (
+                      {!posterError ? (
                         <img
-                          src={selectedVideo.thumbnailUrl}
+                          src={getThumbnailUrl(selectedVideo)}
                           alt=""
                           className="absolute inset-0 w-full h-full object-cover"
                           onError={() => setPosterError(true)}
@@ -522,12 +572,19 @@ export default function ContenidoPage() {
                     {/* Acción principal: descarga directa – grande, táctil */}
                     <button
                       type="button"
+                      disabled={downloadingVideoId === selectedVideo.id}
                       onClick={() => handleDownloadAttempt(selectedVideo)}
-                      className="w-full min-h-[48px] py-4 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 transition flex items-center justify-center gap-2"
+                      className="w-full min-h-[48px] py-4 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 transition flex items-center justify-center gap-2 disabled:opacity-80"
                     >
-                      <span className="text-xl">⬇️</span>
-                      <Download className="h-5 w-5" />
-                      DESCARGAR VIDEO
+                      {downloadingVideoId === selectedVideo.id ? (
+                        <>⏳ Iniciando...</>
+                      ) : (
+                        <>
+                          <span className="text-xl">⬇️</span>
+                          <Download className="h-5 w-5" />
+                          DESCARGAR VIDEO
+                        </>
+                      )}
                     </button>
                     <Link
                       href="/comunidad"
@@ -539,7 +596,7 @@ export default function ContenidoPage() {
                   </div>
                 ) : (
                   /* Estado vacío Pro: icono + texto + tip FTP */
-                  <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-8 text-center">
+                  <div className="rounded-2xl border border-white/5 bg-zinc-900/40 p-8 text-center">
                     <Folder className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
                     <p className="text-sm text-zinc-400 mb-2">
                       Selecciona un video de la lista para ver la vista previa y descargar.
@@ -553,7 +610,7 @@ export default function ContenidoPage() {
                 /* ---------- USUARIO FREE: Preview + Oferta + Testimonio (venta) ---------- */
                 <>
                   {selectedVideo ? (
-                    <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4">
+                    <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
                       <h3 className="font-bold text-white mb-3 flex items-center gap-2">
                         <Play className="h-4 w-4 text-bear-blue" />
                         Preview Demo
@@ -567,9 +624,9 @@ export default function ContenidoPage() {
                         }}
                         onDragStart={(e) => e.preventDefault()}
                       >
-                        {selectedVideo.thumbnailUrl && !posterError ? (
+                        {!posterError ? (
                           <img
-                            src={selectedVideo.thumbnailUrl}
+                            src={getThumbnailUrl(selectedVideo)}
                             alt=""
                             className="absolute inset-0 w-full h-full object-cover"
                             onError={() => setPosterError(true)}
@@ -637,7 +694,7 @@ export default function ContenidoPage() {
                       </button>
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-8 text-center">
+                    <div className="rounded-2xl border border-white/5 bg-zinc-900/40 p-8 text-center">
                       <Music2 className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
                       <p className="text-sm text-gray-500">Selecciona un video</p>
                       <p className="text-xs text-gray-600">para ver la preview</p>
