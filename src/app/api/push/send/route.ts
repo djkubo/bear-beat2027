@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     const failed = results.length - sent
 
     // Registrar en historial
-    await supabase.from('notification_history').insert({
+    await supabase.from('push_notifications_history').insert({
       title,
       body,
       url,
