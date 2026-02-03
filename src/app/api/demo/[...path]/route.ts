@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateSignedUrl, isBunnyConfigured } from '@/lib/bunny'
+import { generateSignedUrl, isBunnyConfigured, buildBunnyPath } from '@/lib/bunny'
 
 // ==========================================
 // API DE DEMOS – Solo 307 a BunnyCDN (Cloud Native)
-// Sin FTP ni disco. Servidor solo redirige a URL firmada.
+// Solo videos: con prefijo "Videos Enero 2026" (BUNNY_PACK_PATH_PREFIX).
 // ==========================================
 
-const BUNNY_PACK_PREFIX = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || '').replace(/\/$/, '')
 const DEMO_EXPIRY_SECONDS = 1800 // 30 min
 
 /**
@@ -38,7 +37,10 @@ export async function GET(
       )
     }
 
-    const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${pathNorm}` : pathNorm
+    const bunnyPath = buildBunnyPath(pathNorm, true)
+    if (!bunnyPath) {
+      return NextResponse.json({ error: 'Path inválido', reason: 'empty_path' }, { status: 400 })
+    }
     const signedUrl = generateSignedUrl(bunnyPath, DEMO_EXPIRY_SECONDS, process.env.NEXT_PUBLIC_APP_URL)
 
     const res = NextResponse.redirect(signedUrl, 307)

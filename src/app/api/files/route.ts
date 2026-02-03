@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { generateSignedUrl, getBunnyPackPrefix } from '@/lib/bunny'
+import { generateSignedUrl, getBunnyPackPrefix, buildBunnyPath } from '@/lib/bunny'
 import { generateStreamUrl, listFiles, listFilesRecursive } from '@/lib/storage/bunny'
 
 /** Carpeta en Bunny Storage para el pack. Mismo valor que /api/download. */
@@ -140,13 +140,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Ruta en Bunny: mismo prefijo que /api/download (getBunnyPackPrefix)
-    const prefix = getBunnyPackPrefix()
-    const fullPath = filePath.startsWith('packs/') || (prefix && filePath.startsWith(prefix + '/'))
-      ? filePath
-      : prefix
-        ? `${prefix}/${filePath.replace(/^\//, '')}`
-        : filePath.replace(/^\//, '')
+    // Videos con prefijo; ZIPs en raíz (misma lógica que /api/download)
+    const pathNorm = filePath.replace(/^\//, '').trim()
+    const isZip = pathNorm.toLowerCase().endsWith('.zip')
+    const fullPath = buildBunnyPath(pathNorm, !isZip)
+    if (!fullPath) {
+      return NextResponse.json({ success: false, error: 'Invalid file path' }, { status: 400 })
+    }
     const signedUrl = generateSignedUrl(
       fullPath,
       3600, // 1 hora

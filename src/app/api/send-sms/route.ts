@@ -1,45 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
+import { sendBrevoSms, isBrevoSmsConfigured } from '@/lib/brevo-sms'
 
 export async function POST(req: NextRequest) {
   try {
     const { to, message } = await req.json()
-    
+
     if (!to || !message) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
-    
-    // Verificar que Twilio esté configurado
-    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-      console.warn('Twilio not configured, skipping SMS')
-      return NextResponse.json({ 
-        success: true, 
-        message: 'SMS skipped (Twilio not configured)' 
+
+    // 1) Intentar Brevo SMS primero (transaccionales, seguimiento de envío/entrega)
+    if (isBrevoSmsConfigured()) {
+      const brevo = await sendBrevoSms(to, message)
+      if (brevo.success) {
+        return NextResponse.json({
+          success: true,
+          messageId: brevo.messageId,
+          provider: 'brevo',
+        })
+      }
+      console.warn('Brevo SMS failed, falling back to Twilio:', brevo.error)
+    }
+
+    // 2) Fallback: Twilio
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+      const client = twilio(
+        process.env.TWILIO_ACCOUNT_SID,
+        process.env.TWILIO_AUTH_TOKEN
+      )
+      const result = await client.messages.create({
+        body: message,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to,
+      })
+      return NextResponse.json({
+        success: true,
+        messageId: result.sid,
+        provider: 'twilio',
       })
     }
-    
-    const client = twilio(
-      process.env.TWILIO_ACCOUNT_SID,
-      process.env.TWILIO_AUTH_TOKEN
-    )
-    
-    const result = await client.messages.create({
-      body: message,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to,
-    })
-    
+
+    console.warn('No SMS provider configured (Brevo nor Twilio)')
     return NextResponse.json({
-      success: true,
-      messageId: result.sid,
-    })
-  } catch (error: any) {
+      success: false,
+      error: 'SMS no configurado. Añade BREVO_API_KEY o Twilio en el servidor.',
+    }, { status: 503 })
+  } catch (error: unknown) {
     console.error('Error sending SMS:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to send SMS' },
+      { error: error instanceof Error ? error.message : 'Failed to send SMS' },
       { status: 500 }
     )
   }

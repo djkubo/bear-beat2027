@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateSignedUrl, isBunnyConfigured, getBunnyPackPrefix, getBunnyConfigStatus } from '@/lib/bunny'
+import { generateSignedUrl, isBunnyConfigured, buildBunnyPath, getBunnyConfigStatus } from '@/lib/bunny'
 import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
 import { Readable } from 'stream'
 
@@ -48,8 +48,11 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-      const prefix = getBunnyPackPrefix()
-      const bunnyPath = prefix ? `${prefix}/${pathNorm}` : pathNorm
+      // Portadas en la raíz del CDN: SIN prefijo (Genre/foto.jpg)
+      const bunnyPath = buildBunnyPath(pathNorm, false)
+      if (!bunnyPath) {
+        return NextResponse.redirect(new URL(PLACEHOLDER_URL, req.url))
+      }
       const signedUrl = generateSignedUrl(bunnyPath, 3600)
       if (signedUrl && signedUrl.startsWith('http') && signedUrl.length > 20) {
         return NextResponse.redirect(signedUrl)

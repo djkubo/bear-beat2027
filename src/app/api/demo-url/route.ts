@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateSignedUrl, isBunnyConfigured, getBunnyPackPrefix, getBunnyConfigStatus } from '@/lib/bunny'
+import { generateSignedUrl, isBunnyConfigured, buildBunnyPath, getBunnyConfigStatus } from '@/lib/bunny'
 import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
 
 export const dynamic = 'force-dynamic'
@@ -60,10 +60,11 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const prefix = getBunnyPackPrefix()
-    const bunnyPath = prefix && !pathNorm.toLowerCase().startsWith(prefix.toLowerCase() + '/')
-      ? `${prefix}/${pathNorm}`
-      : pathNorm
+    // Solo videos: siempre con prefijo "Videos Enero 2026" (BUNNY_PACK_PATH_PREFIX)
+    const bunnyPath = buildBunnyPath(pathNorm, true)
+    if (!bunnyPath) {
+      return NextResponse.json({ error: 'Path inválido', reason: 'empty_path' }, { status: 400 })
+    }
     try {
       const signedUrl = generateSignedUrl(bunnyPath, DEMO_EXPIRY_SECONDS)
       if (!signedUrl || !signedUrl.startsWith('http') || signedUrl.length < 20) {

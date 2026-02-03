@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { generateSignedUrl, isBunnyConfigured, getBunnyPackPrefix } from '@/lib/bunny'
+import { generateSignedUrl, isBunnyConfigured, buildBunnyPath } from '@/lib/bunny'
 import { uploadFile } from '@/lib/storage/bunny'
 import fs from 'fs'
 import path from 'path'
@@ -62,12 +62,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(existing.thumbnail_url)
     }
 
-    // 2) ¿Existe ya el .jpg en Bunny? (mismo path que el video, extensión .jpg) → usar sin ffmpeg
+    // 2) ¿Existe ya el .jpg en Bunny? Portadas en raíz (Genre/foto.jpg)
     if (isBunnyConfigured()) {
-      const prefix = getBunnyPackPrefix()
-      const bunnyJpgPath = prefix ? `${prefix}/${pathJpg}` : pathJpg
-      const jpgSignedUrl = generateSignedUrl(bunnyJpgPath, 300)
-      const headRes = await fetch(jpgSignedUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) })
+      const bunnyJpgPath = buildBunnyPath(pathJpg, false)
+      const jpgSignedUrl = bunnyJpgPath ? generateSignedUrl(bunnyJpgPath, 300) : ''
+      const headRes = jpgSignedUrl ? await fetch(jpgSignedUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) }) : { ok: false }
       if (headRes.ok) {
         await (admin as any)
           .from('videos')
@@ -89,13 +88,13 @@ export async function GET(req: NextRequest) {
     activeGenerations.count += 1
 
     try {
-      const prefix = getBunnyPackPrefix()
-      const bunnyVideoPath = prefix ? `${prefix}/${sanitized}` : sanitized
-      const signedUrl = generateSignedUrl(bunnyVideoPath, 300)
+      const bunnyVideoPath = buildBunnyPath(sanitized, true)
+      const signedUrl = bunnyVideoPath ? generateSignedUrl(bunnyVideoPath, 300) : ''
       const res = await fetch(signedUrl, {
         headers: { Range: `bytes=0-${MAX_VIDEO_CHUNK - 1}` },
         signal: AbortSignal.timeout(18000),
       })
+      if (!signedUrl) throw new Error('Invalid video path')
       if (!res.ok) throw new Error(`Video fetch: ${res.status}`)
       const buf = Buffer.from(await res.arrayBuffer())
       await fs.promises.writeFile(tmpVideo, buf)
@@ -122,8 +121,8 @@ export async function GET(req: NextRequest) {
 
       if (!fs.existsSync(tmpThumb)) throw new Error('No se generó thumbnail')
       const thumbBuffer = await fs.promises.readFile(tmpThumb)
-      const bunnyThumbPath = prefix ? `${prefix}/${pathJpg}` : pathJpg
-      const upload = await uploadFile(bunnyThumbPath, thumbBuffer)
+      const bunnyThumbPath = buildBunnyPath(pathJpg, false)
+      const upload = bunnyThumbPath ? await uploadFile(bunnyThumbPath, thumbBuffer) : { success: false, error: 'Invalid path' }
       if (!upload.success) throw new Error(upload.error || 'Upload failed')
 
       await (admin as any)

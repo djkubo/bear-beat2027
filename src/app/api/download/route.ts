@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { generateSignedUrl, isBunnyConfigured, getBunnyPackPrefix } from '@/lib/bunny'
+import { generateSignedUrl, isBunnyConfigured, buildBunnyPath } from '@/lib/bunny'
 import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
 import { Readable } from 'stream'
 
@@ -77,11 +77,11 @@ export async function GET(req: NextRequest) {
 
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
-      const prefix = getBunnyPackPrefix()
+      // Videos: con prefijo (Videos Enero 2026/Genre/video.mp4). ZIPs: en raíz (Genre.zip)
+      const bunnyPath = buildBunnyPath(sanitizedPath, !isZip)
       let signedUrl: string
       try {
-        const bunnyPath = prefix ? `${prefix}/${sanitizedPath}` : sanitizedPath
-        signedUrl = generateSignedUrl(bunnyPath, expiresIn)
+        signedUrl = bunnyPath ? generateSignedUrl(bunnyPath, expiresIn) : ''
       } catch (e) {
         console.error('[download] Bunny signed URL failed:', (e as Error)?.message || e, 'path:', sanitizedPath)
         signedUrl = ''

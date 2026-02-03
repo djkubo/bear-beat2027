@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getPublicAppOrigin } from '@/lib/utils'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import fs from 'fs'
@@ -30,10 +31,7 @@ export async function GET(
 
     // En producción los videos están en FTP; si no hay archivo local, servir placeholder
     if (!fs.existsSync(fullVideoPath)) {
-      const origin = (process.env.NEXT_PUBLIC_APP_URL && !/localhost|127\.0\.0\.1|0\.0\.0\.0/.test(process.env.NEXT_PUBLIC_APP_URL))
-        ? process.env.NEXT_PUBLIC_APP_URL
-        : req.url
-      return NextResponse.redirect(new URL('/favicon.png', origin))
+      return NextResponse.redirect(new URL('/favicon.png', getPublicAppOrigin(req)))
     }
 
     // Generar nombre único para el thumbnail
@@ -68,10 +66,7 @@ export async function GET(
           { timeout: 30000 }
         )
       } catch {
-        const origin = (process.env.NEXT_PUBLIC_APP_URL && !/localhost|127\.0\.0\.1|0\.0\.0\.0/.test(process.env.NEXT_PUBLIC_APP_URL))
-          ? process.env.NEXT_PUBLIC_APP_URL
-          : req.url
-        return NextResponse.redirect(new URL('/favicon.png', origin))
+        return NextResponse.redirect(new URL('/favicon.png', getPublicAppOrigin(req)))
       }
     }
 

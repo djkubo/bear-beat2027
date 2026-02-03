@@ -93,6 +93,16 @@ Lista de todas las variables que usa el proyecto, con enlaces y pasos para obten
 | **TWILIO_WHATSAPP_NUMBER** | Ej: `whatsapp:+14155238886` (sandbox) o tu número Twilio para WhatsApp. |
 | **DEV_OTP_BYPASS_CODE** | Solo pruebas: ej. `111111` para entrar sin SMS. En producción quitar o no usar. |
 
+### Brevo SMS (SMS transaccionales – refuerzo o alternativa a Twilio)
+
+| Variable | Dónde sacarla |
+|----------|----------------|
+| **BREVO_API_KEY** | [Brevo](https://app.brevo.com) → **SMS** → **Configuración** → "Clave API" (formato `xkeysib-...`). Si está configurada, `/api/send-sms` usa Brevo primero (envío y seguimiento de entrega) y Twilio como fallback. |
+| **BREVO_SMS_SENDER** | Nombre del remitente que aparece en el SMS (máx 11 caracteres). Ej: `BearBeat`. Opcional; por defecto se usa "BearBeat". |
+| **BREVO_SMS_WEBHOOK_URL** | (Opcional) URL a la que Brevo notificará el estado de envío/entrega del SMS. Ver [BREVO_SMS.md](BREVO_SMS.md). |
+| **BREVO_SMTP_KEY** | Clave SMTP de Brevo (formato `xsmtpsib-...`). Se genera una sola vez en Brevo → SMTP; sirve para enviar **emails** por SMTP (ej. en Supabase Auth → Custom SMTP o si sustituyes Resend por Brevo). **Guárdala en un lugar seguro; Brevo no la muestra de nuevo.** |
+| **BREVO_MCP_TOKEN** | (Opcional) Token MCP: versión Base64 de la clave API para conectar un sistema de IA a Brevo vía protocolo MCP. Se genera en Brevo → API Keys → "Crear una clave API del servidor MCP". Solo si usas integración MCP. |
+
 ### Resend (emails transaccionales)
 
 | Variable | Dónde sacarla |

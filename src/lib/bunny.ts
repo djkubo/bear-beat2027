@@ -14,10 +14,24 @@ const BUNNY_CDN_URL = (
 ).trim().replace(/\/+$/, '')
 const BUNNY_TOKEN_KEY = process.env.BUNNY_TOKEN_KEY || ''
 
-/** Prefijo de ruta en el CDN (ej. packs/enero-2026). Mismo valor en demo-url, download y thumbnail-cdn. */
+/** Prefijo de ruta en el CDN (ej. "Videos Enero 2026"). Solo para videos; portadas y ZIPs van en la raíz. */
 export function getBunnyPackPrefix(): string {
   const raw = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || '').trim()
   return raw.replace(/\/+$/, '')
+}
+
+/**
+ * Construye la ruta final en el CDN según la estructura FTP real.
+ * - usePrefix true → videos: "Videos Enero 2026/Genre/video.mp4"
+ * - usePrefix false → portadas y ZIPs en raíz: "Genre/foto.jpg" o "Genre.zip"
+ */
+export function buildBunnyPath(relativePath: string, usePrefix: boolean = true): string {
+  const pathNorm = (relativePath || '').replace(/^\/+/, '').replace(/\/+$/, '').trim()
+  if (!pathNorm) return ''
+  if (!usePrefix) return pathNorm
+  const prefix = getBunnyPackPrefix()
+  if (!prefix) return pathNorm
+  return [prefix, pathNorm].join('/').replace(/\/+/g, '/')
 }
 
 /** URL debe ser https y parecer CDN de Bunny (ej. https://xxx.b-cdn.net). */
