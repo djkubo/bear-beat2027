@@ -30,9 +30,9 @@ export default async function AdminPacksPage() {
             Total: {packs?.length || 0} packs
           </p>
         </div>
-        <button className="w-full sm:w-auto bg-bear-blue text-bear-black px-6 py-3 rounded-xl font-bold hover:bg-bear-blue/90 transition shadow-[0_0_15px_rgba(8,225,247,0.2)]">
+        <Link href="/admin/packs/new" className="w-full sm:w-auto inline-flex justify-center bg-bear-blue text-bear-black px-6 py-3 rounded-xl font-bold hover:bg-bear-blue/90 transition shadow-[0_0_15px_rgba(8,225,247,0.2)]">
           ➕ Crear Nuevo Pack
-        </button>
+        </Link>
       </div>
 
       {!packs || packs.length === 0 ? (
@@ -40,9 +40,9 @@ export default async function AdminPacksPage() {
           <p className="text-xl font-bold text-zinc-400 mb-4">
             No hay packs creados
           </p>
-          <button className="bg-bear-blue text-bear-black px-8 py-4 rounded-xl font-bold hover:bg-bear-blue/90 transition">
+          <Link href="/admin/packs/new" className="inline-block bg-bear-blue text-bear-black px-8 py-4 rounded-xl font-bold hover:bg-bear-blue/90 transition">
             ➕ Crear Primer Pack
-          </button>
+          </Link>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -103,12 +103,12 @@ export default async function AdminPacksPage() {
                   </div>
 
                   <div className="flex gap-2">
-                    <button className="flex-1 bg-bear-blue text-bear-black py-2 rounded-lg font-bold hover:bg-bear-blue/90 text-sm transition">
+                    <Link href={`/admin/packs/${pack.id}/edit`} className="flex-1 text-center bg-bear-blue text-bear-black py-2 rounded-lg font-bold hover:bg-bear-blue/90 text-sm transition">
                       ✏️ Editar
-                    </button>
-                    <button className="flex-1 bg-zinc-800 text-white py-2 rounded-lg font-bold hover:bg-zinc-700 text-sm transition border border-white/5">
+                    </Link>
+                    <Link href={`/checkout?pack=${pack.slug}`} target="_blank" rel="noopener noreferrer" className="flex-1 text-center bg-zinc-800 text-white py-2 rounded-lg font-bold hover:bg-zinc-700 text-sm transition border border-white/5">
                       👁️ Ver
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>

@@ -28,7 +28,7 @@ import { getMessengerUrl } from '@/config/contact'
 // EMBUDO - COMPLETAR COMPRA (POST-PAGO)
 // ==========================================
 
-type PageState = 'loading' | 'success' | 'form' | 'login' | 'activating' | 'done' | 'error'
+type PageState = 'loading' | 'success' | 'form' | 'login' | 'activating' | 'done' | 'error' | 'processing'
 
 export default function CompletePurchasePage() {
   const searchParams = useSearchParams()
@@ -190,30 +190,43 @@ export default function CompletePurchasePage() {
         return
       }
       
-      // Fallback: intentar desde la base de datos
+      // Fallback: si verify falló (webhook tardó o pago aún procesando), buscar en pending_purchases
+      let pendingData: any = null
+      let pendingError: boolean = true
       try {
-        const { data, error } = await supabase
-          .from('pending_purchases')
-          .select('*, pack:packs(*)')
-          .eq('stripe_session_id', sessionId)
-          .single()
+        if (sessionId && provider !== 'paypal') {
+          const res = await supabase.from('pending_purchases').select('*, pack:packs(*)').eq('stripe_session_id', sessionId).single()
+          pendingData = res.data
+          pendingError = !!res.error
+        } else if (paymentIntentId) {
+          const res = await supabase.from('pending_purchases').select('*, pack:packs(*)').eq('stripe_payment_intent', paymentIntentId).single()
+          pendingData = res.data
+          pendingError = !!res.error
+        }
 
-        if (!error && data) {
-          if (data.status === 'completed') {
+        if (!pendingError && pendingData) {
+          if (pendingData.status === 'completed') {
             toast.success('¡Tu compra ya está activa!')
             router.push('/dashboard')
             return
           }
-
-          setPurchaseData(data)
-          
-          if (data.customer_email) {
-            setEmail(data.customer_email)
+          const pack = Array.isArray(pendingData.pack) ? pendingData.pack[0] : pendingData.pack
+          setPurchaseData({
+            stripe_session_id: sessionId || paymentIntentId,
+            pack_id: pendingData.pack_id,
+            pack: pack || { name: 'Pack' },
+            amount_paid: pendingData.amount_paid,
+            currency: (pendingData.currency || 'MXN').toUpperCase(),
+            payment_provider: pendingData.payment_provider || 'stripe',
+            customer_email: pendingData.customer_email,
+            customer_name: pendingData.customer_name,
+          })
+          if (pendingData.customer_email) {
+            setEmail(pendingData.customer_email)
             setEmailFromPayment(true)
-            await checkExistingAccount(data.customer_email)
+            await checkExistingAccount(pendingData.customer_email)
           }
-          if (data.customer_name) setName(data.customer_name)
-          
+          if (pendingData.customer_name) setName(pendingData.customer_name)
           setState('success')
           setTimeout(() => setState('form'), 2500)
           return
@@ -225,13 +238,15 @@ export default function CompletePurchasePage() {
       if (!stripeRes.ok) {
         const msg = String(stripeData?.error || stripeData?.status || '')
         if (msg.includes('Payment not completed') || msg.includes('unpaid')) {
-          setError('Tu pago no se completó. Si usaste tarjeta y falló, prueba con OXXO o SPEI desde el checkout.')
+          setError('Tu pago está en procesamiento. Si acabas de pagar (tarjeta/OXXO/SPEI), espera 1–2 minutos y haz clic en Reintentar. No cierres esta página.')
+          setState('processing')
         } else if (msg.toLowerCase().includes('card') || msg.includes('402')) {
           setError('Tu tarjeta no pasó. No te preocupes: intenta de nuevo con OXXO o transferencia SPEI (desde la página de pago).')
+          setState('error')
         } else {
-          setError('No pudimos verificar tu pago. ¿Intentaste con OXXO o SPEI? Si ya pagaste, espera unos minutos y recarga; si no, vuelve al checkout y elige otro método.')
+          setError('No pudimos verificar tu pago. Si ya pagaste, espera 1–2 minutos y haz clic en Reintentar. Si no, vuelve al checkout.')
+          setState('processing')
         }
-        setState('error')
       }
       
     } catch (err) {
@@ -1179,6 +1194,35 @@ export default function CompletePurchasePage() {
             </motion.div>
           )}
 
+          {/* ==================== PAGO EN PROCESAMIENTO ==================== */}
+          {state === 'processing' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12"
+            >
+              <div className="text-6xl mb-6">⏳</div>
+              <h2 className="text-2xl font-bold mb-4">Pago en procesamiento</h2>
+              <p className="text-gray-400 mb-6">{error}</p>
+              <p className="text-sm text-bear-blue mb-6">No cierres esta pestaña. Tu compra quedará guardada y podrás reclamar tu cuenta después desde este mismo enlace.</p>
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => { setState('loading'); loadPurchaseData(); }}
+                  className="w-full bg-bear-blue text-bear-black font-bold py-3 rounded-xl"
+                >
+                  Reintentar ahora
+                </button>
+                <Link href="/" className="block w-full bg-white/10 text-white font-bold py-3 rounded-xl text-center">
+                  Volver al inicio
+                </Link>
+                <a href={getMessengerUrl()} target="_blank" rel="noopener noreferrer" className="block w-full bg-white/10 text-white font-bold py-3 rounded-xl text-center inline-flex items-center justify-center gap-2">
+                  <span aria-hidden>💬</span> Ayuda en línea
+                </a>
+              </div>
+            </motion.div>
+          )}
+
           {/* ==================== ERROR ==================== */}
           {state === 'error' && (
             <motion.div
@@ -1191,6 +1235,13 @@ export default function CompletePurchasePage() {
               <p className="text-gray-400 mb-6">{error}</p>
               <p className="text-sm text-yellow-400 mb-6">¿Qué puedes hacer? Intenta con OXXO o SPEI desde el checkout, o contacta soporte con tu email de pago.</p>
               <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => { setState('loading'); loadPurchaseData(); }}
+                  className="w-full bg-white/10 text-white font-bold py-3 rounded-xl"
+                >
+                  Reintentar verificación
+                </button>
                 <Link 
                   href="/checkout?pack=enero-2026"
                   className="block w-full bg-bear-blue text-bear-black font-bold py-3 rounded-xl"

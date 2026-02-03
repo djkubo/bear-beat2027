@@ -381,6 +381,12 @@ export const trackPaymentIntent = (packSlug: string, amount: number, currency: s
   })
 }
 
+/**
+ * Trackea pago exitoso y envía evento Purchase a Meta.
+ * IMPORTANTE: amount y currency deben ser los valores reales de la respuesta de la API
+ * (verify-payment o pending_purchases), no valores estáticos, para que las conversiones
+ * de Meta reflejen el monto y moneda correctos (MXN o USD).
+ */
 export const trackPaymentSuccess = (
   userId: string,
   packId: number,
@@ -391,16 +397,17 @@ export const trackPaymentSuccess = (
   phone?: string,
   orderId?: string
 ) => {
+  const currencyCode = (currency || 'MXN').toUpperCase()
   trackEvent({
     eventType: 'payment_success',
     eventName: 'Pago exitoso',
-    eventData: { pack_id: packId, amount, pack_name: packName },
+    eventData: { pack_id: packId, amount, pack_name: packName, currency: currencyCode },
     userId,
     email,
     phone,
   })
 
-  // Facebook Pixel - Purchase con event_id = orderId para deduplicación con CAPI
+  // Facebook Pixel - Purchase con monto y moneda reales para conversiones correctas
   fbTrackPurchase(
     {
       content_name: packName,
@@ -408,7 +415,7 @@ export const trackPaymentSuccess = (
       content_type: 'product',
       num_items: 1,
       value: amount,
-      currency: currency || 'MXN',
+      currency: currencyCode,
       order_id: orderId,
       event_id: orderId,
     },

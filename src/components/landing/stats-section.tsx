@@ -12,11 +12,11 @@ export function StatsSection({ totalPurchases, totalVideos }: StatsSectionProps 
   return (
     <section className="py-10 border-y border-white/5 bg-black/50">
       <div className="max-w-7xl mx-auto px-4 text-center">
-        <p className="text-sm font-mono text-zinc-500 mb-6 uppercase tracking-widest">
-          COMPATIBLE CON EL ESTÁNDAR DE LA INDUSTRIA
+        <p className="text-sm font-mono text-zinc-500 mb-4 uppercase tracking-widest">
+          Compatible con Serato, Rekordbox, VirtualDJ y más
         </p>
 
-        <CompatibleLogos variant="all" logoHeight={44} />
+        <CompatibleLogos variant="all" logoHeight={40} />
 
         <div className="mt-10 p-6 bg-zinc-900/50 rounded-2xl border border-white/5 inline-flex items-center gap-4">
           <div className="flex -space-x-4">

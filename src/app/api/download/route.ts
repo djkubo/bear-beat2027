@@ -60,19 +60,68 @@ export async function GET(req: NextRequest) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
       const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
       const signedUrl = generateSignedUrl(bunnyPath, expiresIn, process.env.NEXT_PUBLIC_APP_URL)
-      try {
-        await supabase.from('downloads').insert({
-          user_id: user.id,
-          pack_id: purchases[0].pack_id,
-          file_path: sanitizedPath,
-          download_method: 'web',
-        })
-      } catch {
-        // ignorar
+      const bunnyOk = await (async () => {
+        try {
+          const headRes = await fetch(signedUrl, { method: 'HEAD', redirect: 'follow' })
+          return headRes.ok
+        } catch {
+          return false
+        }
+      })()
+      if (bunnyOk) {
+        try {
+          await supabase.from('downloads').insert({
+            user_id: user.id,
+            pack_id: purchases[0].pack_id,
+            file_path: sanitizedPath,
+            download_method: 'web',
+          })
+        } catch {
+          // ignorar
+        }
+        const res = NextResponse.redirect(signedUrl, 307)
+        res.headers.set('Cache-Control', 'private, max-age=' + expiresIn)
+        return res
       }
-      const res = NextResponse.redirect(signedUrl, 307)
-      res.headers.set('Cache-Control', 'private, max-age=' + expiresIn)
-      return res
+      // Bunny no respondió: fallback a FTP si está configurado
+      if (isFtpConfigured()) {
+        try {
+          const type = isZip ? 'zip' : 'video'
+          const stream = await streamFileFromFtp(sanitizedPath, type)
+          const webStream = Readable.toWeb(stream) as ReadableStream
+          const contentType = getContentType(sanitizedPath)
+          const filename = sanitizedPath.split('/').pop() || 'download'
+          try {
+            await supabase.from('downloads').insert({
+              user_id: user.id,
+              pack_id: purchases[0].pack_id,
+              file_path: sanitizedPath,
+              download_method: 'web',
+            })
+          } catch {
+            // ignorar
+          }
+          return new NextResponse(webStream, {
+            headers: {
+              'Content-Type': contentType,
+              'Cache-Control': 'private, max-age=3600',
+              'Content-Disposition': `attachment; filename="${filename.replace(/"/g, '\\"')}"`,
+            },
+          })
+        } catch (ftpErr) {
+          console.error('download FTP fallback:', ftpErr)
+        }
+      }
+      const supportUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/contenido` : '/contenido'
+      return NextResponse.json(
+        {
+          error: 'La descarga no está disponible en este momento.',
+          message: 'El servidor de descargas no respondió. Por favor intenta más tarde o descarga por FTP desde tu panel. Si el problema continúa, contacta a soporte.',
+          supportUrl,
+          redirect: '/dashboard',
+        },
+        { status: 503 }
+      )
     }
 
     if (isFtpConfigured()) {

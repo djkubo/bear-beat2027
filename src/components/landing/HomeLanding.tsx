@@ -9,7 +9,6 @@ import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 import { StatsSection } from '@/components/landing/stats-section'
-import { CompatibleLogos } from '@/components/landing/compatible-logos'
 import { Play, CheckCircle2, Check, Download, Wifi, Folder, Music2, Search, ChevronRight, Lock } from 'lucide-react'
 
 // ==========================================
@@ -56,7 +55,7 @@ interface UserState {
 // COMPONENTES AUXILIARES
 // ==========================================
 
-function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl, totalVideos = 0 }: { video: Video; onClose: () => void; hasAccess?: boolean; cdnBaseUrl?: string | null; totalVideos?: number }) {
+function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl, totalVideos = 0, packSlug = 'enero-2026' }: { video: Video; onClose: () => void; hasAccess?: boolean; cdnBaseUrl?: string | null; totalVideos?: number; packSlug?: string }) {
   const [downloading, setDownloading] = useState(false)
   const [demoError, setDemoError] = useState(false)
   const demoSrc = hasAccess ? `/api/download?file=${encodeURIComponent(video.path)}&stream=true` : `/api/demo-url?path=${encodeURIComponent(video.path)}`
@@ -116,7 +115,7 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl, totalVideos
                 {downloading ? 'Descargando...' : '⬇️ Descargar Video'}
               </button>
             ) : (
-              <Link href="/checkout?pack=enero-2026">
+              <Link href={`/checkout?pack=${packSlug}`}>
                 <button className="bg-bear-blue hover:bg-cyan-400 text-black font-black py-3 px-8 rounded-full transition shadow-[0_0_20px_rgba(8,225,247,0.4)]">
                   DESBLOQUEAR ESTE Y {moreLabel} MÁS
                 </button>
@@ -135,6 +134,7 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl, totalVideos
 export default function HomeLanding() {
   const [genres, setGenres] = useState<Genre[]>([])
   const [packInfo, setPackInfo] = useState<PackInfo | null>(null)
+  const [featuredPack, setFeaturedPack] = useState<{ slug: string; name: string; price_mxn: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -147,9 +147,15 @@ export default function HomeLanding() {
   const inventory = useVideoInventory()
   const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted ?? '0 B'
   const genreCount = packInfo?.genreCount ?? inventory.genreCount ?? 0
+  const packSlug = featuredPack?.slug ?? 'enero-2026'
+  const packName = featuredPack?.name ?? 'Pack Enero 2026'
+  const priceMXNFromPack = featuredPack?.price_mxn ?? 350
 
   useEffect(() => {
     fetch('/api/cdn-base').then(r => r.json()).then(d => setCdnBaseUrl(d.baseUrl)).catch(() => {})
+    fetch('/api/packs?featured=true').then(r => r.json()).then(d => {
+      if (d.pack) setFeaturedPack({ slug: d.pack.slug, name: d.pack.name, price_mxn: Number(d.pack.price_mxn) || 350 })
+    }).catch(() => {})
     trackPageView('home')
     checkUser()
     loadData()
@@ -166,8 +172,8 @@ export default function HomeLanding() {
 
   const loadData = async () => {
     try {
-      // Misma fuente que /contenido: listado real del servidor para que el usuario vea qué está comprando
-      const res = await fetch(`/api/videos?pack=enero-2026`, { cache: 'no-store' })
+      const slug = featuredPack?.slug ?? 'enero-2026'
+      const res = await fetch(`/api/videos?pack=${encodeURIComponent(slug)}`, { cache: 'no-store' })
       const data = await res.json()
       if (data.success) {
         setGenres(data.genres || [])
@@ -180,9 +186,25 @@ export default function HomeLanding() {
     }
   }
 
+  useEffect(() => {
+    if (!featuredPack) return
+    const slug = featuredPack.slug
+    setLoading(true)
+    fetch(`/api/videos?pack=${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setGenres(data.genres || [])
+          setPackInfo(data.pack)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [featuredPack?.slug])
+
   const totalVideos = packInfo?.totalVideos ?? inventory.count ?? 0
   const totalPurchases = packInfo?.totalPurchases ?? inventory.totalPurchases ?? 0
-  const priceMXN = 350
+  const priceMXN = priceMXNFromPack
 
   // Mismo filtro que /contenido: artista, título, displayName, género, key, BPM
   const query = searchQuery.toLowerCase().trim()
@@ -233,9 +255,9 @@ export default function HomeLanding() {
               <Link href="/login" className="text-sm font-bold text-white hover:text-bear-blue transition">Login</Link>
             )}
             {!userState.hasAccess && (
-              <Link href="/checkout?pack=enero-2026">
+              <Link href={`/checkout?pack=${packSlug}`}>
                 <button className="bg-bear-blue hover:bg-cyan-400 text-black px-5 py-2 rounded-full text-sm font-black transition shadow-[0_0_15px_rgba(8,225,247,0.3)]">
-                  ACCESO TOTAL $350
+                  ACCESO TOTAL ${priceMXN}
                 </button>
               </Link>
             )}
@@ -290,80 +312,61 @@ export default function HomeLanding() {
                     PREVIEW 2026 • HD 1080P
                   </div>
                 </div>
-                {/* Logos oficiales: añade en /public/logos/ serato.png, rekordbox.png, virtualdj.png (o .svg) */}
-                <div className="mt-6 flex flex-col items-center lg:items-start gap-3">
-                  <span className="text-xs font-bold tracking-widest text-zinc-500">COMPATIBLE CON</span>
-                  <CompatibleLogos variant="hero" logoHeight={36} subtle />
-                </div>
               </div>
 
               {/* TEXTO DE VENTA (DERECHA EN DESKTOP) – Sin redundancia con catálogo */}
               <div className="text-center lg:text-left space-y-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/50 text-red-400 text-xs font-bold uppercase tracking-wider mb-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  Precio de lanzamiento · Pack Enero 2026
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-bear-blue/20 border border-bear-blue/50 text-bear-blue text-xs font-bold uppercase tracking-wider mb-2">
+                  {packName} · Pago único
                 </div>
 
-                <h1 className="text-5xl lg:text-7xl font-black text-white leading-[0.9] tracking-tight">
-                  TU SET <span className="text-bear-blue">PERFECTO</span><br />
-                  EN 5 MINUTOS.
+                <h1 className="text-4xl lg:text-6xl font-black text-white leading-[1] tracking-tight">
+                  Video remixes HD<br />
+                  <span className="text-bear-blue">Key & BPM</span> para tu set
                 </h1>
 
-                <p className="text-xl text-zinc-400 max-w-lg mx-auto lg:mx-0">
-                  Video remixes HD por Key & BPM. Sin editar. Abre el catálogo abajo y escucha — luego desbloqueas todo.
+                <p className="text-lg text-zinc-400 max-w-lg mx-auto lg:mx-0">
+                  Miles de videos listos para descargar. Mira el catálogo abajo, escucha demos y desbloquea todo con un solo pago.
                 </p>
 
-                <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-4 lg:gap-8 py-2">
-                  <div>
-                    <p className="text-zinc-500 text-sm font-bold line-through decoration-red-500/50">$1,500 MXN</p>
-                    <p className="text-xs text-zinc-600">Precio regular</p>
-                  </div>
+                <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-4 py-2">
                   <div className="text-center lg:text-left">
-                    <div className="text-5xl font-black text-white flex items-start gap-1">
-                      <span className="text-2xl mt-1 text-bear-blue">$</span>{priceMXN}
+                    <div className="text-4xl lg:text-5xl font-black text-white flex items-baseline justify-center lg:justify-start gap-1">
+                      <span className="text-xl text-bear-blue">$</span>{priceMXN}
+                      <span className="text-lg font-bold text-zinc-400 ml-1">MXN</span>
                     </div>
-                    <p className="text-bear-blue font-bold text-sm tracking-widest">PAGO ÚNICO</p>
+                    <p className="text-bear-blue font-bold text-sm tracking-widest">UNA VEZ · TUYO PARA SIEMPRE</p>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-3 max-w-md mx-auto lg:mx-0">
                   <Link href="#catalogo" onClick={() => trackCTAClick('HERO', 'landing')}>
-                    <button className="w-full bg-bear-blue hover:brightness-110 text-bear-black text-xl font-black py-5 rounded-xl shadow-[0_0_30px_rgba(8,225,247,0.4)] hover:shadow-[0_0_50px_rgba(8,225,247,0.6)] transition transform hover:-translate-y-1">
-                      VER CATÁLOGO Y DESBLOQUEAR
+                    <button className="w-full bg-bear-blue hover:brightness-110 text-bear-black text-lg font-black py-4 rounded-xl shadow-[0_0_20px_rgba(8,225,247,0.3)] transition">
+                      Ver catálogo y escuchar demos
                     </button>
                   </Link>
-                  <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('HERO_direct', 'landing')} className="text-sm text-bear-blue hover:underline text-center lg:text-left">
-                    O ir directo a pagar $350 →
+                  <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('HERO_direct', 'landing')} className="text-center lg:text-left">
+                    <button className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl border border-white/20 transition">
+                      Comprar ahora · ${priceMXN} MXN
+                    </button>
                   </Link>
-                  <p className="text-xs text-zinc-500 flex justify-center lg:justify-start gap-4">
-                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> Inmediato</span>
-                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> Garantía 30 días: devolución 100%</span>
+                  <p className="text-xs text-zinc-500 flex justify-center lg:justify-start gap-3 flex-wrap">
+                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> Acceso al instante</span>
+                    <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> Descarga web y FTP</span>
                   </p>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* CÓMO FUNCIONA – 3 pasos (reduce fricción mental, embudo claro) */}
-          <section className="py-8 px-4 border-y border-white/5">
-            <div className="max-w-3xl mx-auto">
-              <p className="text-center text-zinc-500 text-sm font-medium mb-4">Así de simple:</p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-black text-sm">1</span>
-                  <span className="text-white font-medium">Mira el catálogo abajo</span>
-                </div>
-                <span className="hidden sm:block text-zinc-600">→</span>
-                <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-black text-sm">2</span>
-                  <span className="text-white font-medium">Paga $350 (una vez)</span>
-                </div>
-                <span className="hidden sm:block text-zinc-600">→</span>
-                <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-black text-sm">3</span>
-                  <span className="text-white font-medium">Descarga todo (web o FTP)</span>
-                </div>
-              </div>
+          {/* 3 pasos */}
+          <section className="py-6 px-4 border-y border-white/5">
+            <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-center sm:text-left">
+              <span className="text-white font-medium">1. Ves el catálogo</span>
+              <span className="text-zinc-600 hidden sm:inline">→</span>
+              <span className="text-white font-medium">2. Pagas ${priceMXN} una vez</span>
+              <span className="text-zinc-600 hidden sm:inline">→</span>
+              <span className="text-white font-medium">3. Descargas todo</span>
             </div>
           </section>
 
@@ -402,7 +405,7 @@ export default function HomeLanding() {
               {/* Header idéntico a contenido: Pack Enero 2026 + stats + buscador */}
               <div className="mb-6 md:mb-8">
                 <h2 className="text-2xl md:text-4xl font-black text-white mb-2">
-                  Pack Enero 2026
+                  {packName}
                 </h2>
                 <div className="flex flex-wrap items-center gap-3 mb-6 text-sm text-gray-400">
                   <span className="inline-flex items-center gap-1.5">
@@ -578,7 +581,7 @@ export default function HomeLanding() {
                           {selectedVideo.key && <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-300">{selectedVideo.key}</span>}
                           {selectedVideo.bpm && <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-300">{selectedVideo.bpm} BPM</span>}
                         </div>
-                        <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('sidebar_preview', 'landing')}>
+                        <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('sidebar_preview', 'landing')}>
                           <button className="w-full mt-3 h-11 rounded-xl bg-bear-blue text-bear-black font-black hover:brightness-110 transition flex items-center justify-center gap-2">
                             <Lock className="h-4 w-4" />
                             Desbloquear descarga
@@ -594,34 +597,27 @@ export default function HomeLanding() {
                     )}
 
                     <div className="rounded-2xl border-2 border-bear-blue/60 bg-bear-blue/5 p-6 shadow-[0_0_30px_rgba(8,225,247,0.08)]">
-                      <h3 className="font-black text-white text-lg mb-1">Acceso Completo</h3>
-                      <p className="text-3xl md:text-4xl font-black text-bear-blue mb-1">$350 MXN</p>
-                      <p className="text-xs text-gray-500 mb-4">Pago único · Acceso de por vida</p>
+                      <h3 className="font-black text-white text-lg mb-1">Acceso completo al pack</h3>
+                      <p className="text-3xl font-black text-bear-blue mb-1">${priceMXN} MXN</p>
+                      <p className="text-xs text-gray-500 mb-4">Pago único · Descarga web y FTP</p>
                       <ul className="space-y-2 mb-5 text-sm text-gray-300">
-                        {[`${totalVideos > 0 ? totalVideos.toLocaleString() : '…'} videos HD`, 'Descarga ilimitada', 'Acceso FTP incluido', 'Soporte 24/7', 'Garantía 30 días'].map((item, i) => (
+                        {[`${totalVideos > 0 ? totalVideos.toLocaleString() : '…'} videos HD`, 'Descarga ilimitada', 'Acceso FTP incluido'].map((item, i) => (
                           <li key={i} className="flex items-center gap-2">
                             <Check className="h-4 w-4 text-green-500 shrink-0" />
                             {item}
                           </li>
                         ))}
                       </ul>
-                      <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('sidebar_cta', 'landing')}>
+                      <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('sidebar_cta', 'landing')}>
                         <button className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition">
-                          DESBLOQUEAR TODO AHORA →
+                          Comprar ahora
                         </button>
                       </Link>
                     </div>
 
                     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="h-9 w-9 rounded-full bg-bear-blue/20 flex items-center justify-center font-bold text-bear-blue text-sm">C</div>
-                        <div>
-                          <p className="font-bold text-white text-sm">DJ Carlos · CDMX</p>
-                          <p className="text-yellow-500 text-xs">★★★★★</p>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-400 italic leading-relaxed">
-                        &quot;Pagué y en 5 minutos ya estaba descargando por FTP. ¡Increíble calidad!&quot;
+                      <p className="text-xs text-gray-400 leading-relaxed">
+                        Pago único. Descargas por web o FTP. Sin suscripciones.
                       </p>
                     </div>
                   </div>
@@ -630,26 +626,27 @@ export default function HomeLanding() {
             </div>
           </section>
 
-          {/* CTA FINAL – Sin repetir cifras; un solo mensaje de cierre */}
-          <section className="py-16 md:py-20 px-4 text-center bg-gradient-to-b from-transparent to-bear-blue/10">
-            <h2 className="text-3xl md:text-5xl font-black text-white mb-6 tracking-tight">¿Listo para dominar la pista?</h2>
-            <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('final_cta', 'landing')}>
-              <button className="bg-bear-blue hover:brightness-110 text-bear-black text-xl font-black py-5 px-10 rounded-2xl shadow-[0_0_40px_rgba(8,225,247,0.4)] hover:scale-105 transition">
-                QUIERO MI ACCESO — $350 MXN
+          {/* CTA FINAL */}
+          <section className="py-12 md:py-16 px-4 text-center bg-gradient-to-b from-transparent to-bear-blue/10">
+            <h2 className="text-2xl md:text-4xl font-black text-white mb-4 tracking-tight">Todo el pack por ${priceMXN} MXN</h2>
+            <p className="text-zinc-400 mb-6 max-w-md mx-auto">Pago único. Descarga por web o FTP cuando quieras.</p>
+            <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('final_cta', 'landing')}>
+              <button className="bg-bear-blue hover:brightness-110 text-bear-black text-lg font-black py-4 px-8 rounded-xl transition">
+                Ir a pagar
               </button>
             </Link>
           </section>
 
           {/* STICKY CTA MÓVIL – Siempre visible al scroll (invitados) */}
           {!userState.hasAccess && (
-            <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-white/10 bg-[#0a0a0a]/95 backdrop-blur p-3 safe-area-pb">
+            <div className="fixed bottom-0 left-0 right-0 z-[30] md:hidden border-t border-white/10 bg-[#0a0a0a]/95 backdrop-blur p-3 safe-area-pb">
               <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
-                <p className="text-sm font-medium text-gray-300">
-                  <span className="text-white font-bold">{totalVideos > 0 ? totalVideos.toLocaleString() : '…'}</span> videos listos
+                <p className="text-sm text-gray-400">
+                  <span className="text-white font-bold">{totalVideos > 0 ? totalVideos.toLocaleString() : '…'}</span> videos · ${priceMXN} MXN
                 </p>
-                <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('sticky_cta', 'landing')} className="shrink-0">
+                <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('sticky_cta', 'landing')} className="shrink-0">
                   <button className="h-11 px-5 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition">
-                    DESBLOQUEAR $350
+                    Comprar
                   </button>
                 </Link>
               </div>
@@ -667,6 +664,7 @@ export default function HomeLanding() {
             hasAccess={userState.hasAccess}
             cdnBaseUrl={cdnBaseUrl}
             totalVideos={totalVideos}
+            packSlug={packSlug}
           />
         )}
       </AnimatePresence>

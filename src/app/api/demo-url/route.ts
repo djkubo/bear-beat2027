@@ -7,7 +7,8 @@ const DEMO_EXPIRY_SECONDS = 1800 // 30 min
 
 /**
  * GET /api/demo-url?path=Genre/Video.mp4
- * Con Bunny: redirige 307 a URL firmada. Sin Bunny pero con FTP: hace stream del video desde FTP.
+ * Proxy stream para que el <video> funcione sin problemas de redirect/CORS.
+ * Bunny: hace fetch a la URL firmada y hace pipe al cliente. FTP: stream directo.
  */
 export async function GET(req: NextRequest) {
   const pathParam = req.nextUrl.searchParams.get('path')
@@ -15,15 +16,41 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'path required' }, { status: 400 })
   }
 
-  const sanitized = pathParam.replace(/^\//, '').trim()
+  const sanitized = decodeURIComponent(pathParam).replace(/^\//, '').trim()
   const pathNorm = sanitized.replace(/^Videos Enero 2026\/?/i, '').trim() || sanitized
 
   if (isBunnyConfigured()) {
     const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${pathNorm}` : pathNorm
     const signedUrl = generateSignedUrl(bunnyPath, DEMO_EXPIRY_SECONDS, process.env.NEXT_PUBLIC_APP_URL)
-    const res = NextResponse.redirect(signedUrl, 307)
-    res.headers.set('Cache-Control', 'private, max-age=300')
-    return res
+    try {
+      const range = req.headers.get('range') || ''
+      const res = await fetch(signedUrl, {
+        method: 'GET',
+        headers: range ? { Range: range } : {},
+      })
+      if (!res.ok && res.status !== 206) {
+        return NextResponse.json({ error: 'Demo no disponible' }, { status: res.status })
+      }
+      const contentType = res.headers.get('content-type') || getContentType(pathNorm)
+      const headers = new Headers({
+        'Content-Type': contentType,
+        'Cache-Control': 'private, max-age=300',
+        'Accept-Ranges': 'bytes',
+      })
+      const contentLength = res.headers.get('content-length')
+      if (contentLength) headers.set('Content-Length', contentLength)
+      if (res.status === 206) {
+        const cr = res.headers.get('content-range')
+        if (cr) headers.set('Content-Range', cr)
+      }
+      return new NextResponse(res.body ?? undefined, {
+        status: res.status,
+        headers,
+      })
+    } catch (e) {
+      console.error('demo-url Bunny proxy:', e)
+      return NextResponse.json({ error: 'Error al cargar el demo' }, { status: 502 })
+    }
   }
 
   if (isFtpConfigured()) {

@@ -16,7 +16,7 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-const DEFAULT_GREETING = 'Hey! 👋 ¿Quieres ver el catálogo del Pack Enero 2026 antes de que suba de precio?';
+const DEFAULT_GREETING = '¡Hola! 👋 ¿Tienes dudas sobre el pack o quieres ver el catálogo?';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -34,7 +34,7 @@ export default function ChatWidget() {
     const userName = getCookie(BB_USER_NAME_COOKIE);
     const mcId = getCookie(BB_MC_ID_COOKIE);
     if (userName && userName.trim()) {
-      const greeting = `¡Hola ${userName.trim()}! 👋 Veo que vienes del chat. Tu Pack Enero 2026 está reservado. ¿Te ayudo a activar tu cuenta ahora mismo?`;
+      const greeting = `¡Hola ${userName.trim()}! 👋 ¿Te ayudo a activar tu cuenta o a resolver alguna duda?`;
       setMessages(prev => prev.length === 1 && prev[0].role === 'assistant'
         ? [{ role: 'assistant', content: greeting }]
         : prev);
@@ -119,10 +119,10 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-6 right-4 z-40 flex flex-col items-end w-[calc(100vw-32px)] max-w-[350px] pointer-events-none [&>*]:pointer-events-auto">
-      {/* VENTANA DEL CHAT – ancho seguro móvil, anti-zoom input 16px */}
+    <div className="fixed top-20 right-4 z-[25] flex flex-col items-end w-[calc(100vw-32px)] max-w-[350px] pointer-events-none [&>*]:pointer-events-auto">
+      {/* VENTANA DEL CHAT – abre hacia abajo para no tapar CTAs del footer */}
       {isOpen && (
-        <div className="mb-3 w-full h-[500px] max-h-[70vh] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="mb-3 w-full h-[420px] max-h-[60vh] bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           
           {/* HEADER */}
           <div className="p-4 bg-zinc-900 border-b border-zinc-800 flex justify-between items-center">
@@ -174,15 +174,16 @@ export default function ChatWidget() {
         </div>
       )}
 
-      {/* BOTÓN FLOTANTE (rebote si viene de ManyChat hasta que se abre) */}
+      {/* BOTÓN FLOTANTE – arriba a la derecha para no tapar CTAs de compra */}
       <Button 
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? 'Cerrar chat' : 'Abrir chat'}
         className={cn(
-          'h-14 w-14 rounded-full bg-bear-blue hover:brightness-110 text-bear-black shadow-lg shadow-bear-blue/20',
+          'h-12 w-12 rounded-full bg-bear-blue/90 hover:bg-bear-blue text-bear-black shadow-lg',
           fromManyChat && !isOpen && 'animate-bounce'
         )}
       >
-        {isOpen ? <X size={24} /> : <MessageSquare size={24} />}
+        {isOpen ? <X size={22} /> : <MessageSquare size={22} />}
       </Button>
     </div>
   );
