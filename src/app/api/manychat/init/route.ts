@@ -75,10 +75,13 @@ export async function POST(req: NextRequest) {
     
   } catch (error: any) {
     console.error('ManyChat init error:', error)
+    const hint = process.env.NODE_ENV === 'production'
+      ? 'Añade MANYCHAT_API_KEY en Render → tu servicio → Environment.'
+      : 'Añade MANYCHAT_API_KEY en .env.local'
     return NextResponse.json(
       { 
         error: error.message || 'Initialization failed',
-        hint: 'Make sure MANYCHAT_API_KEY is set correctly in .env.local'
+        hint
       },
       { status: 500 }
     )
@@ -140,10 +143,13 @@ export async function GET() {
     
   } catch (error: any) {
     console.error('ManyChat status error:', error)
+    const hint = process.env.NODE_ENV === 'production'
+      ? 'Añade MANYCHAT_API_KEY en Render → tu servicio → Environment.'
+      : 'Añade MANYCHAT_API_KEY en .env.local'
     return NextResponse.json(
       { 
         error: error.message || 'Failed to get status',
-        hint: 'Make sure MANYCHAT_API_KEY is set correctly in .env.local'
+        hint
       },
       { status: 500 }
     )

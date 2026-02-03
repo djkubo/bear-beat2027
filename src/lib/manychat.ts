@@ -422,6 +422,7 @@ export async function sendFlow(subscriberId: string, flowNamespace: string): Pro
 // ==========================================
 
 const CONNECTION_ERROR_MSG = 'ERROR CRÍTICO: No se pudo conectar a ManyChat. Verifica la API KEY.'
+export const MANYCHAT_KEY_MISSING_MSG = 'MANYCHAT_API_KEY no está configurada. En producción: Render → Environment. En local: .env.local'
 
 /**
  * Verifica que la API Key de ManyChat sea válida haciendo una llamada simple (getTags).
@@ -430,7 +431,7 @@ const CONNECTION_ERROR_MSG = 'ERROR CRÍTICO: No se pudo conectar a ManyChat. Ve
  */
 export async function verifyConnection(): Promise<void> {
   if (!MANYCHAT_API_KEY?.trim()) {
-    throw new Error(CONNECTION_ERROR_MSG)
+    throw new Error(MANYCHAT_KEY_MISSING_MSG)
   }
   try {
     const response = await fetch(

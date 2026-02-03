@@ -46,7 +46,8 @@ export default function AdminManyChat() {
       const data = await response.json()
       
       if (!response.ok) {
-        throw new Error(data.error || 'Error al obtener estado')
+        const msg = data.hint ? `${data.error}\n\n${data.hint}` : (data.error || 'Error al obtener estado')
+        throw new Error(msg)
       }
       
       setStatus(data)
@@ -124,9 +125,9 @@ export default function AdminManyChat() {
             <div className="rounded-xl p-6 border border-red-500/30 bg-red-500/10 text-center">
               <XCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
               <p className="font-bold text-red-400 mb-2">Error de Conexión</p>
-              <p className="text-red-300 text-sm">{error}</p>
-              <p className="text-xs text-gray-500 mt-2">
-                Verifica MANYCHAT_API_KEY en .env.local
+              <p className="text-red-300 text-sm whitespace-pre-line">{error}</p>
+              <p className="text-xs text-gray-500 mt-3">
+                Producción: Render → Environment → MANYCHAT_API_KEY. Local: .env.local
               </p>
             </div>
           ) : status ? (
