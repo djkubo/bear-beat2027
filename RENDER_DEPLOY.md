@@ -36,6 +36,16 @@ En **Environment** del servicio, asegúrate de tener al menos:
 
 Copia el resto de variables desde tu `.env.local` (Stripe webhook, Resend, ManyChat, etc.).
 
+### FTP (acceso real tras pagar)
+
+Hay **dos formas** de que el usuario tenga acceso real al servidor de descarga por FTP:
+
+**Opción rápida – cuenta compartida:** En Render → Environment añade `FTP_HOST`, `FTP_USER`, `FTP_PASSWORD` y `NEXT_PUBLIC_FTP_HOST` (mismo valor que FTP_HOST, ej. `u540473.your-storagebox.de`). Tras cada compra se guardan esas credenciales y el usuario puede conectar con FileZilla de inmediato.
+
+**Opción por compra – Hetzner Robot:** Añade `HETZNER_ROBOT_USER`, `HETZNER_ROBOT_PASSWORD`, `HETZNER_STORAGEBOX_ID`; se crea una subcuenta real por compra. Ver `docs/HETZNER_FTP_REAL.md`.
+
+Si no configuras ninguna de las dos, se guardan credenciales `dj_xxx` que **no conectan** a ningún servidor. Lista completa: `docs/RENDER_FTP_MINIMO.md`.
+
 ### Si usas Docker (build: NEXT_PUBLIC_* deben estar en el build)
 
 Las variables **NEXT_PUBLIC_*** se insertan en el bundle en **tiempo de build**. El Dockerfile declara ARG/ENV para:

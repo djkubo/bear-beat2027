@@ -5,6 +5,7 @@ import {
   createStorageBoxSubaccount,
   isHetznerFtpConfigured,
 } from '@/lib/hetzner-robot'
+import { isFtpConfigured } from '@/lib/ftp-stream'
 
 function generatePassword(): string {
   const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -125,13 +126,14 @@ export async function POST(req: NextRequest) {
 
     if (existingPurchase) {
       const ftp_user = existingPurchase.ftp_username || `dj_${userId.slice(0, 8)}`
+      const host = ftp_user.includes('-sub')
+        ? `${ftp_user}.your-storagebox.de`
+        : (process.env.NEXT_PUBLIC_FTP_HOST || process.env.FTP_HOST || undefined)
       return NextResponse.json({
         ok: true,
         ftp_username: ftp_user,
         ftp_password: existingPurchase.ftp_password || '',
-        ftp_host: ftp_user.includes('-sub')
-          ? `${ftp_user}.your-storagebox.de`
-          : undefined,
+        ftp_host: host,
       })
     }
 
@@ -151,12 +153,19 @@ export async function POST(req: NextRequest) {
       if (result.ok) {
         ftp_username = result.username
         ftp_password = result.password
+        console.log('[activate] FTP real creado en Hetzner:', ftp_username, 'host:', result.host)
       } else {
-        console.error('Hetzner subaccount failed, using generated credentials:', result.error)
+        console.error('[activate] Hetzner subaccount failed, fallback dj_xxx (FTP no funcionará):', result.error)
         ftp_username = `dj_${userId.slice(0, 8)}`
         ftp_password = generatePassword()
       }
+    } else if (isFtpConfigured()) {
+      // Fallback: cuenta FTP compartida (misma para todos los compradores). Funciona si en Render hay FTP_HOST, FTP_USER, FTP_PASSWORD.
+      ftp_username = process.env.FTP_USER || process.env.HETZNER_FTP_USER!
+      ftp_password = process.env.FTP_PASSWORD || process.env.HETZNER_FTP_PASSWORD!
+      console.log('[activate] FTP compartido asignado (misma cuenta para todos). Host:', process.env.NEXT_PUBLIC_FTP_HOST || process.env.FTP_HOST)
     } else {
+      console.warn('[activate] Sin Hetzner Robot ni FTP_*: credenciales dj_xxx no conectan a ningún servidor. Añade HETZNER_* o FTP_HOST/FTP_USER/FTP_PASSWORD en Render.')
       ftp_username = `dj_${userId.slice(0, 8)}`
       ftp_password = generatePassword()
     }
@@ -202,11 +211,12 @@ export async function POST(req: NextRequest) {
           .eq('pack_id', packId)
           .maybeSingle()
         const fu = existing?.ftp_username || ftp_username
+        const host = fu.includes('-sub') ? `${fu}.your-storagebox.de` : (process.env.NEXT_PUBLIC_FTP_HOST || process.env.FTP_HOST || undefined)
         return NextResponse.json({
           ok: true,
           ftp_username: fu,
           ftp_password: existing?.ftp_password || ftp_password,
-          ftp_host: fu.includes('-sub') ? `${fu}.your-storagebox.de` : undefined,
+          ftp_host: host,
         })
       }
       console.error('Purchase insert error:', insertError)
@@ -216,13 +226,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const ftp_host = ftp_username.includes('-sub')
+      ? `${ftp_username}.your-storagebox.de`
+      : (process.env.NEXT_PUBLIC_FTP_HOST || process.env.FTP_HOST || undefined)
     return NextResponse.json({
       ok: true,
       ftp_username,
       ftp_password,
-      ftp_host: ftp_username.includes('-sub')
-        ? `${ftp_username}.your-storagebox.de`
-        : undefined,
+      ftp_host,
     });
   } catch (e: any) {
     console.error('Activate purchase error:', e)
