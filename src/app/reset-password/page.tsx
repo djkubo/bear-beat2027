@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { getMessengerUrl } from '@/config/contact'
 
 // ==========================================
 // RESET PASSWORD PAGE - Diseño Persuasivo
@@ -262,11 +263,12 @@ export default function ResetPasswordPage() {
           <p className="text-sm text-gray-500">
             ¿Problemas?{' '}
             <a 
-              href="https://wa.me/5215512345678?text=Hola%2C%20tengo%20problemas%20para%20cambiar%20mi%20contrase%C3%B1a" 
+              href={getMessengerUrl()} 
               target="_blank"
+              rel="noopener noreferrer"
               className="text-bear-blue hover:underline"
             >
-              Contacta soporte
+              Contacta soporte (chat, Messenger o Instagram)
             </a>
           </p>
         </div>

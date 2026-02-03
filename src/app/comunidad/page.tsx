@@ -4,10 +4,17 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { getWhatsAppUrl } from '@/config/contact'
+import { CONTACT_CONFIG } from '@/config/contact'
+import {
+  isPushSupported,
+  getNotificationPermission,
+  registerServiceWorker,
+  requestNotificationPermission,
+  subscribeToPush,
+} from '@/lib/push-notifications'
 
 // ==========================================
-// COMUNIDAD VIP - Grupo WhatsApp + Bonos
+// COMUNIDAD VIP - Grupo WhatsApp + Bonos (contenido que se desbloquea)
 // ==========================================
 
 interface Bono {
@@ -30,6 +37,14 @@ export default function ComunidadPage() {
   const supabase = createClient()
   const [hasAccess, setHasAccess] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [pushStatus, setPushStatus] = useState<'default' | 'granted' | 'denied' | 'unsupported'>('default')
+  const [pushLoading, setPushLoading] = useState(false)
+
+  useEffect(() => {
+    registerServiceWorker()
+    if (isPushSupported()) setPushStatus(getNotificationPermission() as any)
+    else setPushStatus('unsupported')
+  }, [])
 
   useEffect(() => {
     checkAccess()
@@ -66,7 +81,22 @@ export default function ComunidadPage() {
     )
   }
 
-  const whatsappGroupUrl = getWhatsAppUrl('Hola, quiero unirme al grupo VIP de Bear Beat')
+  const communityGroupUrl = CONTACT_CONFIG.communityWhatsAppGroup
+
+  const handleEnablePush = async () => {
+    if (!isPushSupported()) return
+    setPushLoading(true)
+    try {
+      await registerServiceWorker()
+      const perm = await requestNotificationPermission()
+      setPushStatus(perm)
+      if (perm === 'granted') await subscribeToPush()
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setPushLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-bear-black text-white">
@@ -90,31 +120,61 @@ export default function ComunidadPage() {
       <main className="max-w-4xl mx-auto py-12 px-4">
         <h1 className="text-3xl md:text-4xl font-black mb-2">Comunidad VIP</h1>
         <p className="text-gray-400 mb-10">
-          Grupo exclusivo y bonos extra para clientes con acceso.
+          Grupo exclusivo en WhatsApp y bonos de contenido que se irán desbloqueando.
         </p>
 
-        {/* Botón grupo VIP WhatsApp */}
-        <section className="mb-12">
+        {/* Grupo VIP WhatsApp */}
+        <section className="mb-10">
           <div className="bg-green-500/10 border-2 border-green-500/40 rounded-2xl p-8 text-center">
             <span className="text-5xl block mb-4">💬</span>
             <h2 className="text-xl font-bold text-green-400 mb-2">Grupo VIP en WhatsApp</h2>
             <p className="text-gray-400 mb-6 max-w-md mx-auto">
-              Únete al grupo de DJs con acceso. Comparte dudas, tips y contenido exclusivo.
+              Únete al grupo de DJs con acceso. Ahí compartimos tips, dudas y avisos cada vez que desbloqueamos contenido nuevo.
             </p>
             <a
-              href={whatsappGroupUrl}
+              href={communityGroupUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-green-600 text-white font-bold px-8 py-4 rounded-xl hover:bg-green-700 transition-colors"
             >
-              📱 Unirme al grupo VIP
+              📱 Unirme al grupo VIP de WhatsApp
             </a>
           </div>
         </section>
 
-        {/* 6 bonos */}
+        {/* Activar notificaciones push */}
+        <section className="mb-10 rounded-2xl border-2 border-bear-blue/30 bg-bear-blue/5 p-6">
+          <h2 className="text-lg font-bold text-bear-blue mb-2">🔔 Activa las notificaciones</h2>
+          <p className="text-sm text-gray-400 mb-4">
+            Cada vez que desbloqueemos contenido exclusivo te avisamos por aquí. También lo comunicamos en el grupo de WhatsApp.
+          </p>
+          {pushStatus === 'unsupported' && (
+            <p className="text-sm text-gray-500">Tu navegador no soporta notificaciones push.</p>
+          )}
+          {pushStatus === 'granted' && (
+            <p className="text-sm text-green-400 font-medium">✓ Notificaciones activadas. Te avisaremos cuando haya novedades.</p>
+          )}
+          {pushStatus === 'denied' && (
+            <p className="text-sm text-gray-500">Has bloqueado las notificaciones. Puedes activarlas desde la configuración del navegador.</p>
+          )}
+          {pushStatus === 'default' && (
+            <button
+              type="button"
+              onClick={handleEnablePush}
+              disabled={pushLoading}
+              className="rounded-xl bg-bear-blue text-bear-black font-bold px-6 py-3 hover:brightness-110 disabled:opacity-50 transition-all"
+            >
+              {pushLoading ? 'Activando...' : 'Activar notificaciones'}
+            </button>
+          )}
+        </section>
+
+        {/* Bonos – contenido que se desbloquea */}
         <section>
-          <h2 className="text-xl font-bold text-bear-blue mb-4">🎁 Bonos incluidos</h2>
+          <h2 className="text-xl font-bold text-bear-blue mb-2">🎁 Contenido exclusivo (se irá desbloqueando)</h2>
+          <p className="text-sm text-gray-400 mb-4">
+            Los bonos se comparten en el grupo de WhatsApp y por correo según los vayamos liberando. Te avisamos por push y en el grupo.
+          </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {BONOS.map((bono) => (
               <div
@@ -141,7 +201,7 @@ export default function ComunidadPage() {
         </section>
 
         <p className="text-sm text-gray-500 mt-8">
-          Los bonos disponibles se comparten por el grupo VIP o por correo. Si no ves un enlace aún, abre el chat de soporte (esquina inferior derecha).
+          Si no ves un bono aún, estará disponible pronto. Activa las notificaciones y únete al grupo para enterarte al momento.
         </p>
       </main>
     </div>

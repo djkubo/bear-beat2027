@@ -15,7 +15,7 @@ export function HowItWorks() {
       number: '2️⃣',
       title: 'RECIBES ACCESO',
       subtitle: 'Al instante',
-      description: 'Email + WhatsApp con tu usuario y contraseña',
+      description: 'Email con tu usuario y contraseña',
       color: 'text-bear-blue',
     },
     {

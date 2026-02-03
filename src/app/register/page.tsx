@@ -86,7 +86,7 @@ export default function RegisterPage() {
   const onStep1 = async (data: RegisterFormData) => {
     setFormError(null)
     if (!phone || phone.length < 8) {
-      setFormError('Ingresa un número de WhatsApp válido.')
+      setFormError('Ingresa un número de teléfono válido.')
       return
     }
     const isValidPhone = validatePhoneNumber(phone, country)
@@ -285,7 +285,7 @@ export default function RegisterPage() {
                 <TrendingUp className="h-5 w-5" />
               </span>
               <p className="text-sm text-gray-400">
-                <span className="font-bold text-white">+156</span> se registraron esta semana
+                Únete a la comunidad de DJs que ya usan Bear Beat
               </p>
             </motion.div>
           </motion.div>
@@ -372,7 +372,7 @@ export default function RegisterPage() {
 
                       <div>
                         <label htmlFor="reg-phone" className="block text-sm font-medium text-gray-400 mb-2">
-                          WhatsApp
+                          Teléfono
                         </label>
                         <p className="text-xs text-gray-500 mb-2">(para enviarte tu acceso)</p>
                         <div
@@ -383,7 +383,7 @@ export default function RegisterPage() {
                             onChange={setPhone}
                             onCountryChange={setCountry}
                             defaultCountry={country}
-                            placeholder="55 1234 5678"
+                            placeholder="Ej: 55 1234 5678"
                           />
                         </div>
                       </div>

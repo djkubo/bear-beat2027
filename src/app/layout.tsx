@@ -26,7 +26,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} relative min-w-0 overflow-x-hidden overflow-y-auto bg-black text-white antialiased`}>
         <GlobalErrorBoundary>
-          <main className="relative min-w-0 overflow-x-hidden overflow-y-auto">
+          <main className="relative min-w-0">
             {children}
           </main>
         </GlobalErrorBoundary>

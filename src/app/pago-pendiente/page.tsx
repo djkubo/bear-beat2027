@@ -167,7 +167,7 @@ export default function PagoPendientePage() {
                     <span className="text-2xl">4️⃣</span>
                     <div>
                       <p className="font-bold">Te avisamos cuando esté listo</p>
-                      <p className="text-sm text-gray-400">Por email y WhatsApp (1-24 horas)</p>
+                      <p className="text-sm text-gray-400">Por email (1-24 horas)</p>
                     </div>
                   </div>
                 </>
@@ -198,7 +198,7 @@ export default function PagoPendientePage() {
                     <span className="text-2xl">4️⃣</span>
                     <div>
                       <p className="font-bold">Te avisamos cuando esté listo</p>
-                      <p className="text-sm text-gray-400">Por email y WhatsApp (casi inmediato)</p>
+                      <p className="text-sm text-gray-400">Por email (casi inmediato)</p>
                     </div>
                   </div>
                 </>
@@ -214,7 +214,7 @@ export default function PagoPendientePage() {
               ⏰ Tiempo estimado: {method === 'oxxo' ? '1-24 horas' : '5-30 minutos'}
             </p>
             <p className="text-sm text-gray-400 mt-1">
-              Te enviaremos email y WhatsApp cuando esté listo
+              Te enviaremos un email (y te avisamos por el chat si hace falta) cuando esté listo
             </p>
           </div>
 

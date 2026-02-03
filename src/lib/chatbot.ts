@@ -131,7 +131,7 @@ const INTENTS: Intent[] = [
     displayName: 'Cómo funciona',
     category: 'info',
     keywords: ['cómo funciona', 'como funciona', 'qué es', 'que es', 'explicar', 'entiendo', 'para qué sirve', 'cómo es', 'como es'],
-    autoResponse: '¡Hola! 👋 Bear Beat es super fácil:\n\n1️⃣ **Pagas** una sola vez ($350 MXN)\n2️⃣ **Recibes** acceso inmediato por email y WhatsApp\n3️⃣ **Descargas** todos los videos que quieras\n4️⃣ **Usas** los videos en tus eventos de DJ\n\n¡Y listo! El acceso es permanente. ¿Alguna otra duda?',
+    autoResponse: '¡Hola! 👋 Bear Beat es super fácil:\n\n1️⃣ **Pagas** una sola vez ($350 MXN)\n2️⃣ **Recibes** acceso inmediato por email\n3️⃣ **Descargas** todos los videos que quieras\n4️⃣ **Usas** los videos en tus eventos de DJ\n\n¡Y listo! El acceso es permanente. ¿Alguna otra duda?',
     requiresHuman: false,
     priority: 5,
   },

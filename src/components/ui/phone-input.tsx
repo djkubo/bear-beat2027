@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { parsePhoneNumber, CountryCode, getCountries, getCountryCallingCode } from 'libphonenumber-js'
+import { parsePhoneNumber, CountryCode, getCountryCallingCode } from 'libphonenumber-js'
 
 interface PhoneInputProps {
   value: string
@@ -50,16 +50,37 @@ const countryFlags: Record<string, string> = {
   'PY': '🇵🇾',
 }
 
+/** Convierte E.164 a formato nacional para mostrar en el input (ej: +525512345678 → 55 1234 5678) */
+function e164ToDisplay(e164: string, country: CountryCode): string {
+  if (!e164 || !e164.startsWith('+')) return ''
+  try {
+    const parsed = parsePhoneNumber(e164, country)
+    return parsed ? parsed.formatNational().replace(/\s/g, ' ').trim() : e164.replace(/^\+\d+/, '').trim() || ''
+  } catch {
+    const digits = e164.replace(/\D/g, '')
+    const code = getCountryCallingCode(country)
+    if (digits.startsWith(code)) return digits.slice(code.length).replace(/(\d{2})(?=\d)/g, '$1 ')
+    return digits
+  }
+}
+
 export function PhoneInput({
   value,
   onChange,
   onCountryChange,
   defaultCountry = 'MX',
   className = '',
-  placeholder = '55 1234 5678',
+  placeholder = 'Número con lada (ej. 55 1234 5678)',
 }: PhoneInputProps) {
   const [country, setCountry] = useState<CountryCode>(defaultCountry)
   const [phoneNumber, setPhoneNumber] = useState('')
+
+  // Sincronizar valor externo (ej. desde complete-purchase) al input mostrado
+  useEffect(() => {
+    if (!value || !value.startsWith('+')) return
+    const display = e164ToDisplay(value, country)
+    setPhoneNumber(display)
+  }, [value, country])
 
   useEffect(() => {
     // Detectar país por IP al montar
@@ -73,7 +94,6 @@ export function PhoneInput({
         }
       })
       .catch(() => {
-        // Default a México si falla
         setCountry('MX')
       })
   }, [])
@@ -120,13 +140,13 @@ export function PhoneInput({
   const callingCode = getCountryCallingCode(country)
 
   return (
-    <div className="flex gap-2">
-      {/* Selector de país – Dark Mode coherente con formularios (zinc-800, bear-blue focus) */}
-      <div className="relative">
+    <div className="flex gap-3 items-stretch w-full min-w-0">
+      {/* Selector de país */}
+      <div className="relative shrink-0">
         <select
           value={country}
           onChange={handleCountryChange}
-          className="appearance-none w-32 px-3 py-3 border border-zinc-800 rounded-xl focus:ring-2 focus:ring-bear-blue/20 focus:border-bear-blue text-base font-medium bg-black text-white cursor-pointer focus:outline-none transition-colors"
+          className="appearance-none w-28 sm:w-32 px-3 py-3 border border-zinc-700 rounded-xl focus:ring-2 focus:ring-bear-blue/20 focus:border-bear-blue text-base font-medium bg-zinc-900 text-white cursor-pointer focus:outline-none transition-colors h-[50px]"
         >
           {Object.keys(countryNames).map((code) => (
             <option key={code} value={code} className="bg-zinc-900 text-white">
@@ -139,17 +159,18 @@ export function PhoneInput({
         </div>
       </div>
 
-      {/* Input de teléfono */}
-      <div className="flex-1 relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium pointer-events-none text-sm">
+      {/* Input de teléfono: más ancho, números tabulares para que no se vean ensimados */}
+      <div className="flex-1 min-w-[140px] sm:min-w-[180px] relative">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium pointer-events-none text-sm whitespace-nowrap">
           +{callingCode}
-        </div>
+        </span>
         <input
           type="tel"
           value={phoneNumber}
           onChange={handlePhoneChange}
-          className={`w-full pl-14 pr-4 py-3 border border-zinc-800 rounded-xl focus:ring-2 focus:ring-bear-blue/20 focus:border-bear-blue text-base bg-black text-white placeholder-gray-600 focus:outline-none transition-colors ${className}`}
+          className={`w-full min-w-0 pl-[3.25rem] sm:pl-14 pr-4 py-3 border border-zinc-700 rounded-xl focus:ring-2 focus:ring-bear-blue/20 focus:border-bear-blue text-base sm:text-lg bg-zinc-900 text-white placeholder-gray-500 focus:outline-none transition-colors tabular-nums tracking-wide ${className}`}
           placeholder={placeholder}
+          style={{ letterSpacing: '0.02em' }}
         />
       </div>
     </div>

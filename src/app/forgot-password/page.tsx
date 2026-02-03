@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import Image from 'next/image'
+import { getMessengerUrl } from '@/config/contact'
 import { Lock, Mail, MailCheck, AlertCircle } from 'lucide-react'
 
 // ==========================================
@@ -23,8 +24,13 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
+      const baseUrl =
+        typeof window !== 'undefined'
+          ? window.location.origin
+          : (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
+      const redirectTo = baseUrl ? `${baseUrl}/reset-password` : '/reset-password'
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password`,
+        redirectTo,
       })
 
       if (error) throw error
@@ -187,9 +193,12 @@ export default function ForgotPasswordPage() {
               <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-3">
                 ¡Correo Enviado!
               </h2>
-              <p className="text-center text-zinc-400 text-sm sm:text-base mb-6">
+              <p className="text-center text-zinc-400 text-sm sm:text-base mb-2">
                 Hemos enviado un enlace a{' '}
                 <span className="text-cyan-400 font-medium break-all">{email}</span>.
+              </p>
+              <p className="text-center text-zinc-500 text-xs mb-6">
+                Revisa también <strong>Spam</strong> y <strong>Promociones</strong>. El enlace caduca en 1 hora. Si no llega en 5 minutos, contacta soporte.
               </p>
 
               {/* Abrir Gmail / Abrir Outlook (misma lógica que verify-email) */}
@@ -242,12 +251,12 @@ export default function ForgotPasswordPage() {
           <p className="text-sm text-zinc-500">
             ¿Problemas para acceder?{' '}
             <a
-              href="https://wa.me/5215512345678?text=Hola%2C%20necesito%20ayuda%20para%20recuperar%20mi%20contrase%C3%B1a"
+              href={getMessengerUrl()}
               target="_blank"
               rel="noopener noreferrer"
               className="text-cyan-500 hover:text-cyan-400 hover:underline transition-colors"
             >
-              Contacta soporte
+              Contacta soporte (chat, Messenger o Instagram)
             </a>
           </p>
         </div>

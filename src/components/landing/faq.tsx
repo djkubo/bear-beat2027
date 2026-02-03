@@ -24,7 +24,7 @@ export function FAQ() {
     },
     {
       question: '¿Cuándo puedo descargar?',
-      answer: 'INMEDIATAMENTE después de pagar. Te llega un email y WhatsApp con tu acceso.',
+      answer: 'INMEDIATAMENTE después de pagar. Te llega un email con tu acceso.',
       emoji: '⚡',
     },
     {

@@ -52,6 +52,8 @@ Ahora deberías ver una página con **Site URL** y **Redirect URLs**.
 
 **Importante:** Si el enlace del email de confirmación te llevaba a `https://0.0.0.0:10000/login`, era porque **Site URL** estaba mal (o vacía y Supabase usaba otra). Con **Site URL** = `https://bear-beat2027.onrender.com` y **NEXT_PUBLIC_APP_URL** en Render con el mismo valor, el enlace del email irá a tu web en producción.
 
+**Si no te llega el email de "Recuperar contraseña":** revisa [Recuperar contraseña: no llega el email](./RECUPERAR_CONTRASEÑA_EMAIL.md).
+
 ---
 
 ## Paso 5 — Personalizar el email de confirmación (opcional)

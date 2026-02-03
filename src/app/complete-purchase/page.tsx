@@ -708,7 +708,7 @@ export default function CompletePurchasePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-2">📱 WhatsApp</label>
+                  <label className="block text-sm font-bold mb-2">📱 Teléfono (opcional)</label>
                   <PhoneInput
                     value={phone}
                     onChange={setPhone}

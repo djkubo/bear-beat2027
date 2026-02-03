@@ -186,40 +186,17 @@ export default function ContenidoPage() {
 
   const ZIP_GENERATING_MSG = 'El Pack de este género se está generando, intenta más tarde.'
 
-  const handleDownloadFolderZip = async (genre: Genre) => {
+  const handleDownloadFolderZip = (genre: Genre) => {
     if (!hasAccess) {
       setShowPaywall(true)
       return
     }
     const zipName = `${genre.name}.zip`
     setDownloadingZipGenreId(genre.id)
-    try {
-      const res = await fetch(`/api/download?file=${encodeURIComponent(zipName)}`, { redirect: 'manual' })
-      const isRedirect = res.status === 302 || res.status === 307
-      const location = res.headers.get('Location')
-
-      if (isRedirect && location) {
-        const headRes = await fetch(location, { method: 'HEAD', redirect: 'follow' }).catch(() => null)
-        if (headRes && !headRes.ok) {
-          toast.error(ZIP_GENERATING_MSG)
-          return
-        }
-        window.open(location, '_blank')
-        trackCTAClick('download_folder_zip', 'contenido', zipName)
-      } else if (isRedirect && !location) {
-        toast.error('No se pudo iniciar la descarga.')
-      } else if (res.status === 404 || res.status === 502 || res.status === 503) {
-        await res.json().catch(() => ({}))
-        toast.error(ZIP_GENERATING_MSG)
-      } else {
-        const data = await res.json().catch(() => ({}))
-        toast.error(data?.error || ZIP_GENERATING_MSG)
-      }
-    } catch {
-      toast.error(ZIP_GENERATING_MSG)
-    } finally {
-      setDownloadingZipGenreId(null)
-    }
+    const url = `/api/download?file=${encodeURIComponent(zipName)}`
+    window.open(url, '_blank')
+    trackCTAClick('download_folder_zip', 'contenido', zipName)
+    setTimeout(() => setDownloadingZipGenreId(null), 2000)
   }
 
   if (loading) {
@@ -275,7 +252,7 @@ export default function ContenidoPage() {
               className="shrink-0 inline-flex items-center gap-2 min-h-[48px] px-5 py-3 rounded-xl bg-green-500/20 text-green-400 font-bold border border-green-500/40 hover:bg-green-500/30 transition"
             >
               <MessageCircle className="h-5 w-5" />
-              Unirse al Grupo VIP de WhatsApp
+              Unirse a la Comunidad VIP
             </Link>
           </div>
         </div>
@@ -458,29 +435,6 @@ export default function ContenidoPage() {
                                 </span>
                               )}
                             </div>
-                            <button
-                              type="button"
-                              disabled={downloadingVideoId === video.id}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDownloadAttempt(video)
-                              }}
-                              className={`min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg transition shrink-0 disabled:opacity-70 ${
-                                hasAccess
-                                  ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                                  : 'bg-zinc-700/50 text-zinc-400 hover:bg-zinc-600/50'
-                              }`}
-                              aria-label="Descargar"
-                            >
-                              {downloadingVideoId === video.id ? (
-                                <span className="text-sm font-medium">⏳</span>
-                              ) : (
-                                <>
-                                  <span className="text-lg mr-0.5">⬇️</span>
-                                  <Download className="h-5 w-5" />
-                                </>
-                              )}
-                            </button>
                           </div>
                         ))}
                         </div>
@@ -591,7 +545,7 @@ export default function ContenidoPage() {
                       className="mt-4 w-full min-h-[48px] flex items-center justify-center gap-2 rounded-xl border-2 border-green-500/50 bg-green-500/10 text-green-400 font-bold text-base hover:bg-green-500/20 transition"
                     >
                       <MessageCircle className="h-5 w-5" />
-                      Unirse al Grupo VIP de WhatsApp
+                      Unirse a la Comunidad VIP
                     </Link>
                   </div>
                 ) : (

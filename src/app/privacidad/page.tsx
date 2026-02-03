@@ -15,7 +15,7 @@ export default function PrivacidadPage() {
         <ul>
           <li>Nombre completo</li>
           <li>Dirección de correo electrónico</li>
-          <li>Número de teléfono (para WhatsApp)</li>
+          <li>Número de teléfono (opcional, para contacto)</li>
           <li>Información de pago (procesada por Stripe)</li>
         </ul>
         <h3>Información recopilada automáticamente</h3>
@@ -47,7 +47,7 @@ export default function PrivacidadPage() {
         <ul>
           <li><strong className="text-white font-bold">Stripe:</strong> Para procesar pagos de forma segura</li>
           <li><strong className="text-white font-bold">Supabase:</strong> Para almacenar datos de forma segura</li>
-          <li><strong className="text-white font-bold">ManyChat:</strong> Para comunicaciones por WhatsApp/Messenger</li>
+          <li><strong className="text-white font-bold">ManyChat:</strong> Para comunicaciones por Messenger/Instagram</li>
           <li><strong className="text-white font-bold">Meta (Facebook):</strong> Para análisis y publicidad</li>
         </ul>
         <p>

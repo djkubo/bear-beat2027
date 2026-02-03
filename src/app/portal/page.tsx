@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { getMessengerUrl, getWhatsAppUrl } from '@/config/contact'
+import { getMessengerUrl, getInstagramUrl } from '@/config/contact'
 
 // ==========================================
 // PORTAL DE CLIENTE - Accesos rápidos y guía
@@ -138,13 +138,13 @@ export default function PortalPage() {
         {/* Soporte directo */}
         <section className="bg-gradient-to-r from-bear-blue/10 to-cyan-500/10 border border-bear-blue/20 rounded-2xl p-6">
           <h2 className="text-xl font-bold mb-4">¿Necesitas ayuda?</h2>
-          <p className="text-gray-400 mb-4">Te respondemos en menos de 5 minutos.</p>
+          <p className="text-gray-400 mb-4">Chat (esquina de la web), Messenger o Instagram. Te respondemos en menos de 5 minutos.</p>
           <div className="flex flex-wrap gap-3">
             <a href={getMessengerUrl()} target="_blank" rel="noopener noreferrer" className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700">
               💬 Messenger
             </a>
-            <a href={getWhatsAppUrl()} target="_blank" rel="noopener noreferrer" className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700">
-              📱 WhatsApp
+            <a href={getInstagramUrl()} target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-bold hover:opacity-90">
+              📸 Instagram
             </a>
           </div>
         </section>

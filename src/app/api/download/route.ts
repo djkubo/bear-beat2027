@@ -12,8 +12,8 @@ const EXPIRY_ZIP = 10800 // 3 h (los ZIP tardan más en bajar)
 
 /**
  * GET /api/download?file=Genre/video.mp4 | Banda.zip
- * Solo usuarios con compras activas. Servidor solo autentica y redirige 307 a URL firmada de BunnyCDN.
- * Sin lectura de disco ni FTP. Cloud Native.
+ * Solo usuarios con compras activas. Hace proxy del archivo desde Bunny o FTP
+ * con Content-Disposition: attachment para forzar descarga (no abrir en pestaña).
  */
 export async function GET(req: NextRequest) {
   try {
@@ -56,34 +56,49 @@ export async function GET(req: NextRequest) {
 
     const isZip = sanitizedPath.toLowerCase().endsWith('.zip')
 
+    const filename = sanitizedPath.split('/').pop() || 'download'
+    const contentType = getContentType(sanitizedPath)
+    const disposition = `attachment; filename="${filename.replace(/"/g, '\\"')}"`
+
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
       const bunnyPath = BUNNY_PACK_PREFIX ? `${BUNNY_PACK_PREFIX}/${sanitizedPath}` : sanitizedPath
       const signedUrl = generateSignedUrl(bunnyPath, expiresIn, process.env.NEXT_PUBLIC_APP_URL)
-      const bunnyOk = await (async () => {
-        try {
-          const headRes = await fetch(signedUrl, { method: 'HEAD', redirect: 'follow' })
-          return headRes.ok
-        } catch {
-          return false
-        }
-      })()
-      if (bunnyOk) {
-        try {
-          await supabase.from('downloads').insert({
-            user_id: user.id,
-            pack_id: purchases[0].pack_id,
-            file_path: sanitizedPath,
-            download_method: 'web',
+      try {
+        const range = req.headers.get('range') || ''
+        const res = await fetch(signedUrl, {
+          method: 'GET',
+          headers: range ? { Range: range } : {},
+        })
+        if (res.ok || res.status === 206) {
+          try {
+            await supabase.from('downloads').insert({
+              user_id: user.id,
+              pack_id: purchases[0].pack_id,
+              file_path: sanitizedPath,
+              download_method: 'web',
+            })
+          } catch {
+            // ignorar
+          }
+          const headers = new Headers({
+            'Content-Type': res.headers.get('content-type') || contentType,
+            'Cache-Control': 'private, max-age=' + expiresIn,
+            'Content-Disposition': disposition,
+            'Accept-Ranges': 'bytes',
           })
-        } catch {
-          // ignorar
+          const contentLength = res.headers.get('content-length')
+          if (contentLength) headers.set('Content-Length', contentLength)
+          if (res.status === 206) {
+            const cr = res.headers.get('content-range')
+            if (cr) headers.set('Content-Range', cr)
+          }
+          return new NextResponse(res.body ?? undefined, { status: res.status, headers })
         }
-        const res = NextResponse.redirect(signedUrl, 307)
-        res.headers.set('Cache-Control', 'private, max-age=' + expiresIn)
-        return res
+      } catch (e) {
+        console.error('download Bunny proxy:', e)
       }
-      // Bunny no respondió: fallback a FTP si está configurado
+      // Bunny falló: fallback a FTP si está configurado
       if (isFtpConfigured()) {
         try {
           const type = isZip ? 'zip' : 'video'

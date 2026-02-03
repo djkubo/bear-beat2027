@@ -391,7 +391,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
                 <ul className="space-y-3 text-sm text-gray-300">
-                  {['Acceso Inmediato (Web + FTP)', 'Actualizaciones incluidas', 'Licencia de uso comercial'].map((item, i) => (
+                  {['Acceso Inmediato (Web + FTP)', 'Pack completo · Un solo pago', 'Licencia de uso comercial'].map((item, i) => (
                     <li key={i} className="flex items-center gap-3">
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-500/20 text-green-400">
                         <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -429,7 +429,7 @@ export default function CheckoutPage() {
                     <li className="flex gap-3">
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-bold text-sm">2</span>
                       <div>
-                        <p className="font-medium text-white text-sm">Recibes tu acceso por Email/WhatsApp</p>
+                        <p className="font-medium text-white text-sm">Recibes tu acceso por email</p>
                         <p className="text-xs text-gray-500">En minutos</p>
                       </div>
                     </li>
@@ -451,8 +451,53 @@ export default function CheckoutPage() {
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue font-black text-xs">1</span>
                     <h2 className="text-lg font-bold text-white">Completa tu pago</h2>
                   </div>
-                  <p className="text-sm text-gray-500 mb-4">Elige cómo pagar → luego recibes acceso al instante.</p>
-                  <div className="grid grid-cols-2 gap-3 mb-6">
+                  <p className="text-sm text-gray-500 mb-4">Nombre, email y luego elige cómo pagar.</p>
+
+                  {/* Nombre y email PRIMERO para que al completarlos se vean los botones de pago */}
+                  <div className="mb-4">
+                    <label htmlFor="checkout-name" className="block text-sm font-medium text-gray-400 mb-1.5">
+                      Tu nombre (para el recibo)
+                    </label>
+                    <input
+                      id="checkout-name"
+                      type="text"
+                      value={checkoutName}
+                      onChange={(e) => setCheckoutName(e.target.value)}
+                      placeholder="Ej. Gustavo"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-lg text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
+                    />
+                  </div>
+
+                  <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4 mb-4 flex gap-3 items-start">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <h4 className="font-bold text-yellow-400 text-sm uppercase">Atención DJ</h4>
+                      <p className="text-yellow-200/80 text-sm">Tu acceso y contraseña llegarán a este correo. Escríbelo sin errores.</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <label htmlFor="checkout-email" className="block text-sm font-medium text-gray-400 mb-1.5">
+                      Tu email
+                      {(selectedMethod === 'oxxo' || selectedMethod === 'spei') && !checkoutEmail && (
+                        <span className="text-amber-400"> (necesario para OXXO/SPEI)</span>
+                      )}
+                    </label>
+                    <input
+                      id="checkout-email"
+                      type="email"
+                      value={checkoutEmail ?? ''}
+                      onChange={(e) => setCheckoutEmail(e.target.value.trim() || null)}
+                      placeholder="tu@email.com"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-lg text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Con este correo podrás iniciar sesión después de pagar (invitado o ya registrado).
+                    </p>
+                  </div>
+
+                  {/* Botones de método de pago – visibles después de nombre/email */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
                     {country === 'MX' && (
                       <>
                         <button
@@ -503,7 +548,6 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                  {/* Franja seguridad: candado + tarjetas + SSL */}
                   <div className="mb-4 flex flex-wrap items-center justify-center gap-2 py-3 px-4 rounded-xl border border-bear-blue/30 bg-zinc-950/80 text-center">
                     <Lock className="h-4 w-4 shrink-0 text-bear-blue" />
                     <span className="text-sm font-bold text-white">Transacción Encriptada 256-bit SSL</span>
@@ -513,51 +557,6 @@ export default function CheckoutPage() {
                     <span className="text-xs text-gray-400">Mastercard</span>
                     <Banknote className="h-3.5 w-3.5 text-orange-400" />
                     <span className="text-xs text-gray-400">OXXO</span>
-                  </div>
-
-                  {/* Nombre (para el recibo) – pre-llenado desde ManyChat */}
-                  <div className="mb-4">
-                    <label htmlFor="checkout-name" className="block text-sm font-medium text-gray-400 mb-1.5">
-                      Tu nombre (para el recibo)
-                    </label>
-                    <input
-                      id="checkout-name"
-                      type="text"
-                      value={checkoutName}
-                      onChange={(e) => setCheckoutName(e.target.value)}
-                      placeholder="Ej. Gustavo"
-                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-lg text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
-                    />
-                  </div>
-
-                  {/* Alerta amarilla justo antes del input de email */}
-                  <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4 mb-6 flex gap-3 items-start animate-pulse">
-                    <span className="text-2xl">⚠️</span>
-                    <div>
-                      <h4 className="font-bold text-yellow-400 text-sm uppercase">Atención DJ</h4>
-                      <p className="text-yellow-200/80 text-sm">Tu acceso y contraseña llegarán a este correo. Escríbelo sin errores.</p>
-                    </div>
-                  </div>
-
-                  {/* Email: obligatorio para OXXO/SPEI; necesario para tarjeta/PayPal */}
-                  <div className="mb-4">
-                    <label htmlFor="checkout-email" className="block text-sm font-medium text-gray-400 mb-1.5">
-                      Tu email
-                      {(selectedMethod === 'oxxo' || selectedMethod === 'spei') && !checkoutEmail && (
-                        <span className="text-amber-400"> (necesario para OXXO/SPEI)</span>
-                      )}
-                    </label>
-                    <input
-                      id="checkout-email"
-                      type="email"
-                      value={checkoutEmail ?? ''}
-                      onChange={(e) => setCheckoutEmail(e.target.value.trim() || null)}
-                      placeholder="tu@email.com"
-                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-lg text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Con este correo podrás iniciar sesión después de pagar (invitado o ya registrado).
-                    </p>
                   </div>
 
                   {/* ESCENARIO A: Tarjeta – Stripe Elements + PaymentElement + botón custom */}

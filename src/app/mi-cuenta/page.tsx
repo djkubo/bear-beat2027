@@ -209,13 +209,13 @@ export default function MiCuentaPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-2">Teléfono / WhatsApp</label>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Teléfono (opcional)</label>
               <div className="relative">
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Ej: 55 1234 5678"
+                  placeholder="Número con lada (ej. 55 1234 5678)"
                   className="w-full bg-zinc-900/80 border border-zinc-700 rounded-xl pl-4 pr-12 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-colors"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">

@@ -9,7 +9,7 @@ export function BenefitsSection() {
     {
       emoji: '⚡',
       title: 'Acceso al INSTANTE',
-      description: 'En cuanto pagas, te llega tu acceso por email y WhatsApp. En 1 minuto ya puedes descargar.',
+      description: 'En cuanto pagas, te llega tu acceso por email. En 1 minuto ya puedes descargar.',
       highlight: 'Sin esperas',
     },
     {
