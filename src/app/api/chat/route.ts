@@ -15,8 +15,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const runtime = 'edge';
 
-const SYSTEM_PROMPT = \`Eres BearBot, el Vendedor Estrella de Bear Beat (bearbeat.com).
-FECHA ACTUAL: \${new Date().toLocaleDateString()}
+const SYSTEM_PROMPT = `Eres BearBot, el Vendedor Estrella de Bear Beat (bearbeat.com).
+FECHA ACTUAL: ${new Date().toLocaleDateString()}
 TU MOTOR: OpenAI GPT-5.2 (Nivel Dios).
 
 OBJETIVO ÚNICO: VENDER el "Pack Video Remixes 2026" ($19 USD / $350 MXN) y solucionar problemas técnicos en segundos.
@@ -33,7 +33,7 @@ REGLAS DE ORO:
 3. CIERRE: "¿Te paso el link de pago o tienes otra duda?".
 4. SOPORTE: Si la web falla, mándalos al FTP (FileZilla) o Google Drive.
 
-SI NO SABES ALGO: "Ese dato no lo tengo, escribe 'Agente' para hablar con un humano."\`;
+SI NO SABES ALGO: "Ese dato no lo tengo, escribe 'Agente' para hablar con un humano."`;
 
 export async function POST(req: Request) {
   try {
@@ -66,13 +66,13 @@ export async function POST(req: Request) {
       match_count: 5,
     });
 
-    const context = documents?.map((d: any) => d.content).join('\\n\\n') || '';
+    const context = documents?.map((d: any) => d.content).join('\n\n') || '';
 
     const response = await openai.chat.completions.create({
       model: 'gpt-5.2', // Tu modelo solicitado
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'system', content: \`CONTEXTO REAL DEL NEGOCIO:\\n\${context}\` },
+        { role: 'system', content: `CONTEXTO REAL DEL NEGOCIO:\n${context}` },
         ...(history || []).slice(-5),
         { role: 'user', content: message }
       ],
