@@ -14,6 +14,29 @@ export function isBrevoSmsConfigured(): boolean {
   return BREVO_API_KEY.length >= 20 && BREVO_API_KEY.startsWith('xkeysib-')
 }
 
+/** Diagnóstico para admin: qué falta o falla (sin revelar valores). */
+export function getBrevoSmsConfigDiagnostic(): { apiKey: string; sender: string; ok: boolean } {
+  const apiKey =
+    !BREVO_API_KEY || BREVO_API_KEY.length === 0
+      ? 'no definida'
+      : BREVO_API_KEY.length < 20
+        ? `muy corta (${BREVO_API_KEY.length} caracteres, mínimo 20)`
+        : !BREVO_API_KEY.startsWith('xkeysib-')
+          ? 'formato incorrecto (debe empezar por xkeysib-)'
+          : 'OK'
+  const sender =
+    !BREVO_SMS_SENDER || BREVO_SMS_SENDER.length === 0
+      ? 'no definido (usa BREVO_SMS_SENDER, máx 11 caracteres)'
+      : BREVO_SMS_SENDER.length > 11
+        ? 'muy largo (máx 11 caracteres)'
+        : 'OK'
+  return {
+    apiKey,
+    sender,
+    ok: apiKey === 'OK' && sender === 'OK',
+  }
+}
+
 /**
  * Normaliza número para Brevo: debe ser E.164 (ej. +5215512345678).
  */
