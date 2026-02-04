@@ -177,10 +177,10 @@ export function ProtectedPlayer({
           className="w-full h-full cursor-pointer group relative"
           onClick={handlePlay}
         >
-          {/* Thumbnail o placeholder con icono de play */}
-          {thumbnail ? (
+          {/* Thumbnail o placeholder con icono de play (siempre URL relativa) */}
+          {thumbnailSrc ? (
             <img
-              src={thumbnail}
+              src={thumbnailSrc}
               alt={title}
               className="w-full h-full object-cover"
               draggable={false}
