@@ -235,3 +235,52 @@ export async function sendPaymentFailedRecoveryEmail(params: {
     return { success: false, error: e instanceof Error ? e.message : String(e) }
   }
 }
+
+/** Evento de actividad transaccional Brevo (API v3/smtp/statistics/events) */
+export interface BrevoEmailEvent {
+  date: string
+  email: string
+  event: string
+  messageId?: string
+  from?: string
+  reason?: string
+  tag?: string
+  templateId?: number
+}
+
+/**
+ * Obtiene la actividad de emails transaccionales desde Brevo (últimos N días).
+ */
+export async function getBrevoEmailEvents(params: {
+  days?: number
+  startDate?: string
+  endDate?: string
+  limit?: number
+}): Promise<{ events: BrevoEmailEvent[]; error?: string }> {
+  if (!BREVO_API_KEY || BREVO_API_KEY.length < 20) {
+    return { events: [], error: 'Brevo not configured' }
+  }
+  const limit = Math.min(5000, Math.max(1, params.limit ?? 2500))
+  const url = new URL('https://api.brevo.com/v3/smtp/statistics/events')
+  url.searchParams.set('limit', String(limit))
+  url.searchParams.set('sort', 'desc')
+  if (params.startDate && params.endDate) {
+    url.searchParams.set('startDate', params.startDate)
+    url.searchParams.set('endDate', params.endDate)
+  } else {
+    url.searchParams.set('days', String(params.days ?? 30))
+  }
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { accept: 'application/json', 'api-key': BREVO_API_KEY },
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return { events: [], error: data.message ?? data.code ?? `HTTP ${res.status}` }
+    }
+    const events = Array.isArray(data.events) ? data.events : []
+    return { events }
+  } catch (e) {
+    return { events: [], error: e instanceof Error ? e.message : String(e) }
+  }
+}
