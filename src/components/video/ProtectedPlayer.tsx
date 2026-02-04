@@ -160,7 +160,7 @@ export function ProtectedPlayer({
         ) : (
           // Video directo (modo full o preview simple)
           <video
-            src={previewUrl}
+            src={previewSrc || previewUrl}
             className="w-full h-full object-cover"
             autoPlay
             controls={mode === 'full'}
