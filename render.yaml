@@ -14,4 +14,5 @@ services:
       - key: NEXT_PUBLIC_APP_URL
         sync: false
         # En Render Dashboard pon: https://bear-beat2027.onrender.com (o tu dominio)
-      # El resto (Supabase, Stripe, etc.) se configuran en Dashboard → Environment
+      # El resto (Supabase, Stripe, Bunny, etc.) en Dashboard → Environment.
+      # BUNNY_PACK_PATH_PREFIX: valor SIN comillas, ej. Videos Enero 2026 (no "Videos Enero 2026")

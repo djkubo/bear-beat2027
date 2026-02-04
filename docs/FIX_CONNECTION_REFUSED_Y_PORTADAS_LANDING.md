@@ -78,7 +78,15 @@ Si los demos no cargan (404), casi siempre es porque la variable en Render tiene
 - **Mal:** `"Videos Enero 2026"` → el servidor busca una carpeta con comillas en el nombre y Bunny devuelve 404.
 - **Bien:** `Videos Enero 2026` (sin comillas).
 
-**Pasos:** Render → tu servicio → Environment → editar `BUNNY_PACK_PATH_PREFIX` → valor **sin comillas** → Save. Luego redeploy si hace falta.
+**Pasos:** Render → tu servicio → Environment → editar `BUNNY_PACK_PATH_PREFIX` → **quitar las comillas** del valor. Debe quedar exactamente:
+
+```
+Videos Enero 2026
+```
+
+(Sin comillas delante ni detrás.) Save → redeploy si hace falta.
+
+*Nota: El código en `src/lib/bunny.ts` también quita comillas al leer la variable por si quedaron puestas en Render.*
 
 ---
 

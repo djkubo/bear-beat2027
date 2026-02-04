@@ -16,7 +16,9 @@ const BUNNY_TOKEN_KEY = process.env.BUNNY_TOKEN_KEY || ''
 
 /** Prefijo de ruta en el CDN (ej. "Videos Enero 2026"). Todo (videos, portadas, ZIPs) va bajo este prefijo en Bunny Storage. */
 export function getBunnyPackPrefix(): string {
-  const raw = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || '').trim()
+  let raw = (process.env.BUNNY_PACK_PATH_PREFIX || process.env.BUNNY_PACK_PREFIX || '').trim()
+  // Quitar comillas si las pusieron en Render (ej. "Videos Enero 2026" → Videos Enero 2026)
+  raw = raw.replace(/^["']|["']$/g, '')
   return raw.replace(/\/+$/, '')
 }
 
@@ -108,15 +110,17 @@ export function getBunnyConfigStatus(): BunnyConfigStatus {
 
 /**
  * Genera URL firmada para BunnyCDN (demos y descargas).
- * Path normalizado sin ..; URL con segmentos codificados (encodeURIComponent).
- * Sin dobles slashes: base sin barra final, pathEncoded empieza con /.
+ * Fórmula oficial Bunny: token = Base64(SHA256(securityKey + path + expires)); path = decoded.
+ * La URL se construye con path decoded; el navegador la codifica al hacer la petición.
  */
 export function generateSignedUrl(
   filePath: string,
   expiresInSeconds: number = 3600,
   allowedReferrer?: string
 ): string {
-  const pathNormalized = '/' + (filePath || '').replace(/^\/+/, '').replace(/\.\./g, '').trim()
+  const pathNorm = (filePath || '').replace(/^\/+/, '').replace(/\.\./g, '').trim()
+  if (!pathNorm) return ''
+  const pathNormalized = '/' + pathNorm
   const expires = Math.floor(Date.now() / 1000) + expiresInSeconds
 
   const hashable = BUNNY_TOKEN_KEY + pathNormalized + expires.toString()
@@ -128,17 +132,20 @@ export function generateSignedUrl(
     .replace(/\//g, '_')
     .replace(/=/g, '')
 
-  const pathEncoded = '/' + pathNormalized.split('/').filter(Boolean).map(encodeURIComponent).join('/')
-  const url = `${BUNNY_CDN_URL}${pathEncoded}?token=${token}&expires=${expires}`
+  const baseUrl = BUNNY_CDN_URL.replace(/\/+$/, '')
+  const url = new URL(baseUrl)
+  url.pathname = pathNormalized
+  url.search = `?token=${token}&expires=${expires}`
 
+  let signed = url.href
   if (allowedReferrer) {
     const refHash = crypto
       .createHash('sha256')
       .update(allowedReferrer)
       .digest('base64')
       .substring(0, 8)
-    return `${url}&token_countries=MX,US&token_referrer=${refHash}`
+    signed += `&token_countries=MX,US&token_referrer=${refHash}`
   }
 
-  return url
+  return signed
 }
