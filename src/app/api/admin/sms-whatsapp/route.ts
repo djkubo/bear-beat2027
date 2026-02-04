@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import { getBrevoSmsConfigDiagnostic, isBrevoSmsConfigured } from '@/lib/brevo-sms'
+import { SMS_TEMPLATES, WHATSAPP_TEMPLATES } from './templates'
 
 /** Nombres de env que pueden tener el número de WhatsApp (Twilio). Se usa el primero que exista. */
 const TWILIO_WHATSAPP_ENV_KEYS = [
@@ -50,18 +51,6 @@ async function isAdmin(req: NextRequest): Promise<boolean> {
   const { data: profile } = await (supabase.from('users') as any).select('role').eq('id', user.id).maybeSingle()
   return (profile as { role?: string } | null)?.role === 'admin'
 }
-
-export const SMS_TEMPLATES = [
-  { id: 'otp', label: 'OTP / Código', message: 'Tu código Bear Beat: 123456. Válido 10 min.' },
-  { id: 'bienvenida', label: 'Bienvenida', message: '¡Hola! Gracias por comprar Bear Beat. Tu acceso está listo en la app.' },
-  { id: 'recordatorio', label: 'Recordatorio', message: 'Bear Beat: no olvides completar tu pago para activar tu pack.' },
-] as const
-
-export const WHATSAPP_TEMPLATES = [
-  { id: 'bienvenida', label: 'Bienvenida', message: '¡Hola! Gracias por comprar Bear Beat. Tu acceso está listo.' },
-  { id: 'recordatorio', label: 'Recordatorio', message: 'Bear Beat: te recordamos completar tu pago para activar tu pack.' },
-  { id: 'soporte', label: 'Soporte', message: 'Hola, somos Bear Beat. ¿En qué podemos ayudarte?' },
-] as const
 
 export async function GET(req: NextRequest) {
   const ok = await isAdmin(req)

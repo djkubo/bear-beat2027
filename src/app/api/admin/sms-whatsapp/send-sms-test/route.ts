@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import { sendBrevoSms, isBrevoSmsConfigured, getBrevoSmsConfigDiagnostic } from '@/lib/brevo-sms'
-import { SMS_TEMPLATES } from '../route'
+import { SMS_TEMPLATES } from '../templates'
 
 async function isAdmin(req: NextRequest): Promise<boolean> {
   const supabase = await createServerClient()

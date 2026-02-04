@@ -325,6 +325,79 @@ export async function sendPaymentConfirmationEmail(params: {
   })
 }
 
+/**
+ * Email "No Dudas" – recuperación de carrito abandonado (registrados sin compras).
+ * Asunto: "👀 ¿Te dio miedo, [Nombre]?", copy agresivo, botón a checkout.
+ */
+export async function sendAbandonedCartEmail(params: {
+  to: string
+  name?: string
+  checkoutUrl: string
+}): Promise<SendTransactionalEmailResult> {
+  if (!isBrevoEmailConfigured()) {
+    return { success: false, error: 'Brevo email not configured' }
+  }
+  const displayName = (params.name || params.to.split('@')[0] || 'DJ').trim()
+  const subject = `👀 ¿Te dio miedo, ${escapeHtml(displayName)}?`
+  const htmlContent = `
+<div style="font-family: sans-serif; background: #000; color: #fff; padding: 40px; border-radius: 10px; border: 1px solid #333;">
+  <h2 style="color: #fff; margin-top: 0;">Tu competencia no duda.</h2>
+  <p style="color: #ccc;">Vimos que te registraste pero no tomaste acción. Mientras lo piensas, otros ya están descargando los remixes exclusivos de este mes.</p>
+  <p style="color: #ccc;">No dejes que $350 MXN sean la excusa para no sonar profesional.</p>
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="${escapeHtml(params.checkoutUrl)}" style="background: #00ff88; color: #000; padding: 15px 40px; text-decoration: none; font-weight: 900; border-radius: 50px; text-transform: uppercase; display: inline-block;">
+      TERMINAR MI COMPRA AHORA ➔
+    </a>
+  </div>
+</div>
+  `.trim()
+  return sendEmail(params.to, subject, htmlContent, {
+    name: displayName,
+    tags: ['abandoned_cart', 'recovery'],
+  })
+}
+
+/**
+ * Email "Security Clearance" – restablecer contraseña (estética Bear Beat Dark / Hacker).
+ * Se envía desde API cuando el usuario pide recuperar clave; el link es generado por Supabase.
+ */
+export async function sendPasswordResetEmail(params: {
+  to: string
+  resetLink: string
+}): Promise<SendTransactionalEmailResult> {
+  if (!isBrevoEmailConfigured()) {
+    return { success: false, error: 'Brevo email not configured' }
+  }
+  const subject = '🔐 CLAVE DE SEGURIDAD: Restablecer Acceso'
+  const htmlContent = `
+  <div style="font-family: monospace; background-color: #000; color: #0f0; padding: 40px; border: 1px solid #333;">
+    <h1 style="color: #fff; text-align: center;">BEAR<span style="color: #00f0ff;">BEAT</span> SYSTEM</h1>
+    
+    <div style="border: 1px dashed #333; padding: 20px; margin: 30px 0;">
+      <p style="margin: 0; color: #666;">SOLICITUD: <span style="color: #fff;">RESET_PASSWORD</span></p>
+      <p style="margin: 0; color: #666;">USUARIO: <span style="color: #fff;">${escapeHtml(params.to)}</span></p>
+      <p style="margin: 0; color: #666;">IP: <span style="color: #fff;">SEGURA</span></p>
+    </div>
+
+    <p style="font-family: sans-serif; color: #ccc; text-align: center;">
+      ¿Perdiste las llaves del arsenal? No pasa nada. Usa este enlace seguro de un solo uso:
+    </p>
+
+    <div style="text-align: center; margin: 40px 0;">
+      <a href="${escapeHtml(params.resetLink)}" 
+         style="background-color: #333; color: #fff; border: 1px solid #00f0ff; padding: 15px 30px; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">
+         > RESTABLECER AHORA <
+      </a>
+    </div>
+    
+    <p style="font-size: 10px; color: #444; text-align: center;">Si no fuiste tú, ignora este mensaje. El enlace expira en 1 hora.</p>
+  </div>
+  `.trim()
+  return sendEmail(params.to, subject, htmlContent, {
+    tags: ['password_reset', 'security'],
+  })
+}
+
 /** Evento de actividad transaccional Brevo (API v3/smtp/statistics/events) */
 export interface BrevoEmailEvent {
   date: string

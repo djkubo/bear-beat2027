@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -17,30 +16,24 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
-  const supabase = createClient()
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      // El enlace del email lleva a Supabase y luego redirige a nuestro callback con ?code=...
-      // El callback intercambia el code por sesión y redirige a next=/reset-password
-      const baseUrl =
-        typeof window !== 'undefined'
-          ? window.location.origin
-          : (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
-      if (!baseUrl || !baseUrl.startsWith('http')) {
-        toast.error('Configuración incorrecta: falta la URL de la app. Contacta soporte.')
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        toast.error(data.error || 'Error al enviar email')
         setLoading(false)
         return
       }
-      const redirectTo = `${baseUrl}/auth/callback?next=${encodeURIComponent('/reset-password')}`
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo,
-      })
-
-      if (error) throw error
 
       setEmailSent(true)
       toast.success('¡Email enviado!')

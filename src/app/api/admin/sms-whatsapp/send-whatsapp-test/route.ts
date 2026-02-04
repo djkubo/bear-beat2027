@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import twilio from 'twilio'
-import { WHATSAPP_TEMPLATES } from '../route'
+import { WHATSAPP_TEMPLATES } from '../templates'
 
 const TWILIO_WHATSAPP_ENV_KEYS = [
   'TWILIO_WHATSAPP_NUMBER',

@@ -30,6 +30,18 @@ export interface Database {
           updated_at?: string
         }
       }
+      /** Marca usuarios a los que ya se les envió el recordatorio de carrito abandonado (evitar spam). */
+      abandoned_cart_reminders: {
+        Row: { user_id: string; sent_at: string }
+        Insert: { user_id: string; sent_at?: string }
+        Update: { sent_at?: string }
+      }
+      /** Por cada drop mensual, marca a qué usuarios ya se les envió la alerta SMS (evitar repetir). */
+      drop_alerts_sent: {
+        Row: { user_id: string; drop_key: string; sent_at: string }
+        Insert: { user_id: string; drop_key: string; sent_at?: string }
+        Update: { sent_at?: string }
+      }
       packs: {
         Row: {
           id: number
