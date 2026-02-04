@@ -165,15 +165,15 @@ export default function HomeLanding() {
   }
 
   const getThumbnailUrl = (video: Video): string => {
-    // 1. Si ya tiene URL remota (Bunny/S3), la usamos
+    // Si tiene URL completa (ej. Bunny), úsala
     if (video.thumbnailUrl && video.thumbnailUrl.startsWith('http')) {
       return video.thumbnailUrl
     }
-    // 2. Si no, construimos la ruta relativa a nuestra API (SIN DOMINIO)
+    // Si no, construye la ruta relativa (IMPORTANTE: empieza con /)
     if (video.path) {
       return `/api/thumbnail-cdn?path=${encodeURIComponent(video.path)}`
     }
-    // 3. Fallback final si todo falla
+    // Fallback solo si no hay path
     return '/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png'
   }
   const videoRef = useRef<HTMLVideoElement>(null)

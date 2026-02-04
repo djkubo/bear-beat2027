@@ -81,18 +81,18 @@ export function getPublicAppOrigin(request?: { headers?: Headers; nextUrl?: { or
   const origin = request?.nextUrl?.origin || (request?.url ? new URL(request.url).origin : '')
   if (origin && !LOCAL_ORIGIN_REGEX.test(origin)) return origin
 
-  // Si estamos en el navegador, NUNCA devolver origen local/interno
+  // CAMBIO OBLIGATORIO: Si estamos en navegador, NUNCA devolver nada (para forzar ruta relativa)
   if (typeof window !== 'undefined') return ''
-  // Si estamos en servidor y no hay otra opción, devolver vacío en vez de 0.0.0.0
+  // Si estamos en servidor, devolver app o vacío, NUNCA origin si es local
   return app || ''
 }
 
 /**
- * URL base para construir enlaces. En el cliente siempre '' (rutas relativas).
+ * URL base. En cliente siempre '' (rutas relativas). ¡ESTO ES VITAL!
  */
-export function getBaseUrl(): string {
+export function getBaseUrl(request?: Parameters<typeof getPublicAppOrigin>[0]): string {
   if (typeof window !== 'undefined') return ''
-  return getPublicAppOrigin()
+  return request ? getPublicAppOrigin(request) : getPublicAppOrigin()
 }
 
 /**

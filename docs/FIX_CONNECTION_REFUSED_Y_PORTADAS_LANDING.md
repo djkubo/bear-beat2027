@@ -71,6 +71,17 @@ Esto no se arregla en código; solo en el panel de Render.
 
 ---
 
+## 4.1 ERROR 404 en demos: quitar comillas de `BUNNY_PACK_PATH_PREFIX`
+
+Si los demos no cargan (404), casi siempre es porque la variable en Render tiene **comillas**.
+
+- **Mal:** `"Videos Enero 2026"` → el servidor busca una carpeta con comillas en el nombre y Bunny devuelve 404.
+- **Bien:** `Videos Enero 2026` (sin comillas).
+
+**Pasos:** Render → tu servicio → Environment → editar `BUNNY_PACK_PATH_PREFIX` → valor **sin comillas** → Save. Luego redeploy si hace falta.
+
+---
+
 ## 5. Archivos tocados en este fix
 
 | Archivo | Cambio |
