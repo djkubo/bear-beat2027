@@ -164,12 +164,17 @@ export default function HomeLanding() {
     setDownloadingVideoId(null)
   }
 
-  /** Portada dinámica: ruta relativa a la API. Sin baseUrl para que el navegador resuelva contra el dominio actual. */
   const getThumbnailUrl = (video: Video): string => {
+    // 1. Si ya tiene URL remota (Bunny/S3), la usamos
+    if (video.thumbnailUrl && video.thumbnailUrl.startsWith('http')) {
+      return video.thumbnailUrl
+    }
+    // 2. Si no, construimos la ruta relativa a nuestra API (SIN DOMINIO)
     if (video.path) {
       return `/api/thumbnail-cdn?path=${encodeURIComponent(video.path)}`
     }
-    return '/logos/BBIMAGOTIPO_Mesa de trabajo 1.png'
+    // 3. Fallback final si todo falla
+    return '/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png'
   }
   const videoRef = useRef<HTMLVideoElement>(null)
   const inventory = useVideoInventory()

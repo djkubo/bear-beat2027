@@ -80,17 +80,19 @@ export function getPublicAppOrigin(request?: { headers?: Headers; nextUrl?: { or
   }
   const origin = request?.nextUrl?.origin || (request?.url ? new URL(request.url).origin : '')
   if (origin && !LOCAL_ORIGIN_REGEX.test(origin)) return origin
-  // Nunca devolver 0.0.0.0 ni localhost (p. ej. en Render el request puede tener origin interno).
-  return ''
+
+  // Si estamos en el navegador, NUNCA devolver origen local/interno
+  if (typeof window !== 'undefined') return ''
+  // Si estamos en servidor y no hay otra opción, devolver vacío en vez de 0.0.0.0
+  return app || ''
 }
 
 /**
- * URL base para construir enlaces. En el cliente siempre '' (rutas relativas) para evitar
- * ERR_CONNECTION_REFUSED con 0.0.0.0. En servidor usa getPublicAppOrigin si se pasa request.
+ * URL base para construir enlaces. En el cliente siempre '' (rutas relativas).
  */
-export function getBaseUrl(request?: Parameters<typeof getPublicAppOrigin>[0]): string {
+export function getBaseUrl(): string {
   if (typeof window !== 'undefined') return ''
-  return request ? getPublicAppOrigin(request) : ''
+  return getPublicAppOrigin()
 }
 
 /**
