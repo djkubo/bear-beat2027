@@ -38,9 +38,19 @@ export async function GET(req: NextRequest) {
   const eventFilter = searchParams.get('event') || undefined
   const templateFilter = searchParams.get('template') || undefined
 
-  // Pedir a Brevo solo eventos con nuestros tags (plantillas de este proyecto)
+  const senderEmail = (process.env.BREVO_SENDER_EMAIL || '').trim().toLowerCase()
+  const normalizeFrom = (from: string | undefined): string => {
+    if (!from) return ''
+    const match = from.match(/<([^>]+)>/)
+    return (match ? match[1] : from).trim().toLowerCase()
+  }
+  const ourTagsSet = new Set(PROJECT_EMAIL_TAGS)
+  const isOurEvent = (ev: BrevoEmailEvent) =>
+    (ev.tag && ourTagsSet.has(ev.tag as any)) || (senderEmail && senderEmail.includes('@') && normalizeFrom(ev.from) === senderEmail)
+
+  // 1) Intentar primero con filtro de tags (solo eventos de nuestras plantillas)
   const tagsToRequest = [...PROJECT_EMAIL_TAGS]
-  const { events, error } = await getBrevoEmailEvents({
+  let result = await getBrevoEmailEvents({
     days: startDate && endDate ? undefined : (Number.isFinite(days) ? days : 90),
     startDate,
     endDate,
@@ -48,8 +58,23 @@ export async function GET(req: NextRequest) {
     tags: tagsToRequest,
   })
 
-  if (error) {
-    return NextResponse.json({ error, summary: null, emails: [] }, { status: 200 })
+  let events = result.events
+  let usedTagFilter = true
+
+  // 2) Si no hay eventos (o error), pedir SIN tags y filtrar aquí por remitente + tags
+  if (result.error || events.length === 0) {
+    const fallback = await getBrevoEmailEvents({
+      days: startDate && endDate ? undefined : (Number.isFinite(days) ? days : 90),
+      startDate,
+      endDate,
+      limit: 5000,
+    })
+    if (!fallback.error) {
+      events = fallback.events.filter(isOurEvent)
+      usedTagFilter = false
+    } else if (result.error) {
+      return NextResponse.json({ error: result.error, summary: null, emails: [] }, { status: 200 })
+    }
   }
 
   // Filtro por plantilla: si template=bienvenida|recuperacion|transaccional, solo eventos con esos tags
@@ -61,17 +86,7 @@ export async function GET(req: NextRequest) {
       ? events.filter((ev) => ev.tag && templateTags.includes(ev.tag))
       : events
 
-  // Opcional: además filtrar por remitente (por si algún evento sin tag se coló)
-  const senderEmail = (process.env.BREVO_SENDER_EMAIL || '').trim().toLowerCase()
-  const normalizeFrom = (from: string | undefined): string => {
-    if (!from) return ''
-    const match = from.match(/<([^>]+)>/)
-    return (match ? match[1] : from).trim().toLowerCase()
-  }
-  const projectEvents =
-    senderEmail && senderEmail.includes('@')
-      ? byTemplate.filter((ev) => normalizeFrom(ev.from) === senderEmail)
-      : byTemplate
+  const projectEvents = byTemplate
 
   // Conteo por tipo de evento para el resumen (solo de este proyecto)
   const eventTypeCounts: Record<string, number> = {}
@@ -100,6 +115,23 @@ export async function GET(req: NextRequest) {
     )
   }
 
+  // Resumen por plantilla: eventos, destinatarios únicos, desglose por tipo de evento
+  const byTemplateStats: Record<string, { total_events: number; unique_recipients: string[]; event_breakdown: Record<string, number> }> = {}
+  for (const [tplId, tplTags] of Object.entries(TEMPLATE_TO_TAGS)) {
+    const tplEvents = projectEvents.filter((e) => e.tag && tplTags.includes(e.tag))
+    const uniqueRecipients = [...new Set(tplEvents.map((e) => e.email).filter(Boolean))]
+    const breakdown: Record<string, number> = {}
+    for (const ev of tplEvents) {
+      const t = ev.event || 'unknown'
+      breakdown[t] = (breakdown[t] ?? 0) + 1
+    }
+    byTemplateStats[tplId] = {
+      total_events: tplEvents.length,
+      unique_recipients: uniqueRecipients,
+      event_breakdown: breakdown,
+    }
+  }
+
   const summary = {
     total_events: projectEvents.length,
     total_events_before_filter: events.length,
@@ -110,6 +142,9 @@ export async function GET(req: NextRequest) {
     sender_email: senderEmail || null,
     filtered_by_template: Boolean(templateFilter),
     template_filter: templateFilter || null,
+    used_tag_filter: usedTagFilter,
+    raw_events_from_api: events.length,
+    by_template: byTemplateStats,
     project_templates: [
       { id: 'bienvenida', label: 'Bienvenida', tags: TEMPLATE_TO_TAGS.bienvenida },
       { id: 'recuperacion', label: 'Recuperación pago', tags: TEMPLATE_TO_TAGS.recuperacion },

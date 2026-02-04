@@ -47,6 +47,11 @@ La lista completa de claves que el proyecto acepta en Render está en `scripts/r
 
 Sin `MANYCHAT_API_KEY` verás "Error de Conexión" en Admin → ManyChat.
 
+**Brevo (emails transaccionales y Admin → Emails Brevo):** Para enviar correos (bienvenida, recuperación de pago, transaccionales) y usar la página **Admin → Emails Brevo** (plantillas, envío de prueba, analíticas), añade en Render → Environment:
+- `BREVO_API_KEY` = tu API Key de Brevo
+- `BREVO_SENDER_EMAIL` = email del remitente (ej. `noreply@tudominio.com`)
+- `BREVO_SENDER_NAME` = nombre del remitente (ej. `Bear Beat`)
+
 ### FTP (acceso real tras pagar)
 
 Hay **dos formas** de que el usuario tenga acceso real al servidor de descarga por FTP:
@@ -139,7 +144,20 @@ Si no ves el panel de admin, comprueba que tu usuario en la tabla `users` tenga 
 
 ---
 
-## 7. Resumen rápido
+## 7. Subir cambios a producción
+
+Para que los últimos cambios del código estén en producción:
+
+1. **Sube el código** a tu repositorio (rama que Render usa, normalmente `main`):
+   ```bash
+   git add .
+   git commit -m "Descripción del cambio"
+   git push origin main
+   ```
+2. Si tienes **Auto-Deploy** activado en Render, se lanzará un deploy solo. Si no, en [dashboard.render.com](https://dashboard.render.com) → tu servicio **bear-beat2027** → **Manual Deploy** → **Deploy latest commit**.
+3. Revisa la pestaña **Logs** por si el build o el arranque fallan.
+
+## 8. Resumen rápido
 
 - **Build Command:** `npm install && npm run build`
 - **Start Command:** `npm run start`
@@ -150,7 +168,7 @@ Cuando tengas el mensaje exacto del log (build o runtime), se puede afinar el fi
 
 ---
 
-## 8. Checklist para que todo funcione en producción
+## 9. Checklist para que todo funcione en producción
 
 | Paso | Dónde | Qué hacer |
 |------|--------|-----------|

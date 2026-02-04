@@ -71,6 +71,7 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "@next/swc": "15.5.11",
     "@playwright/test": "^1.58.1",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^20",
