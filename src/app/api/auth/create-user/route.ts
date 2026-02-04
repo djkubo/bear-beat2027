@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendWelcomeRegistroEmail } from '@/lib/brevo-email'
 import type { Database } from '@/types/database'
 
 type UserInsert = Database['public']['Tables']['users']['Insert']
@@ -61,6 +62,14 @@ export async function POST(req: NextRequest) {
       } as UserInsert,
       { onConflict: 'id' }
     )
+
+    // --- EMAIL BIENVENIDA REGISTRO (plantilla "Modo Bestia") ---
+    try {
+      await sendWelcomeRegistroEmail({ to: email.trim(), name: name || undefined })
+    } catch (mailErr) {
+      console.error('create-user: welcome email failed', mailErr)
+      // No fallar el registro si el email falla
+    }
 
     return NextResponse.json({
       ok: true,

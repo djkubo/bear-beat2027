@@ -29,6 +29,8 @@ interface Summary {
   template_filter?: string | null
   used_tag_filter?: boolean
   raw_events_from_api?: number
+  brevo_configured?: boolean
+  brevo_diagnostic?: { BREVO_API_KEY: string; BREVO_SENDER_EMAIL: string }
   by_template?: Record<string, TemplateStats>
   project_templates?: { id: string; label: string; tags: string[] }[]
 }
@@ -77,8 +79,17 @@ function eventBadgeClass(event: string): string {
 
 const PAGE_SIZE = 100
 
+/** Qué plantilla se usa en cada acción (para que veas qué tenemos en cada flujo). */
+const PLANTILLAS_POR_ACCION = [
+  { accion: 'Registro (cuenta nueva)', plantilla: 'Bienvenida registro (Modo Bestia)', archivo: 'src/lib/brevo-email.ts → sendWelcomeRegistroEmail', trigger: 'api/auth/create-user' },
+  { accion: 'Pago completado (Stripe)', plantilla: 'Bienvenida (credenciales)', archivo: 'src/lib/brevo-email.ts → sendWelcomeEmail', trigger: 'webhook Stripe + complete-purchase' },
+  { accion: 'Pago fallido', plantilla: 'Recuperación pago', archivo: 'src/lib/brevo-email.ts → sendPaymentFailedRecoveryEmail', trigger: 'payment_intent.payment_failed' },
+  { accion: 'Otros / transaccional', plantilla: 'Transaccional', archivo: 'src/lib/brevo-email.ts → sendEmail', trigger: 'Cualquier llamada en código' },
+] as const
+
 const TEMPLATES_UI = [
   { id: 'bienvenida', label: 'Bienvenida' },
+  { id: 'bienvenida_registro', label: 'Bienvenida registro' },
   { id: 'recuperacion', label: 'Recuperación pago' },
   { id: 'transaccional', label: 'Transaccional' },
 ] as const
@@ -93,7 +104,7 @@ export function BrevoEmailsClient() {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   // Envío de email de prueba por plantilla
-  const [testEmail, setTestEmail] = useState({ bienvenida: '', recuperacion: '', transaccional: '' })
+  const [testEmail, setTestEmail] = useState<Record<string, string>>({ bienvenida: '', bienvenida_registro: '', recuperacion: '', transaccional: '' })
   const [sendingTest, setSendingTest] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [showRecipients, setShowRecipients] = useState<Record<string, boolean>>({})
@@ -150,7 +161,12 @@ export function BrevoEmailsClient() {
         setTestEmail((prev) => ({ ...prev, [templateId]: '' }))
         fetchData()
       } else {
-        setTestResult({ type: 'err', text: data.error || 'Error al enviar' })
+        let msg = data.error || 'Error al enviar'
+        if (data.diagnostic) {
+          msg += ` — BREVO_API_KEY: ${data.diagnostic.BREVO_API_KEY}; BREVO_SENDER_EMAIL: ${data.diagnostic.BREVO_SENDER_EMAIL}`
+        }
+        if (data.hint) msg += ` (${data.hint})`
+        setTestResult({ type: 'err', text: msg })
       }
     } catch (e) {
       setTestResult({ type: 'err', text: e instanceof Error ? e.message : 'Error de red' })
@@ -167,6 +183,38 @@ export function BrevoEmailsClient() {
 
   return (
     <div className="space-y-8">
+      {/* Plantillas por acción: qué plantilla se usa en cada flujo */}
+      <div className="rounded-2xl border border-white/10 bg-zinc-900/80 shadow-xl overflow-hidden">
+        <div className="p-6 border-b border-white/5">
+          <h2 className="text-xl font-black text-white tracking-tight">Plantillas por acción</h2>
+          <p className="text-sm text-zinc-500 mt-0.5">
+            Qué plantilla se envía en cada flujo y dónde editarla.
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/10 bg-zinc-800/50">
+                <th className="text-left py-3 px-4 font-bold text-zinc-400">Acción</th>
+                <th className="text-left py-3 px-4 font-bold text-zinc-400">Plantilla</th>
+                <th className="text-left py-3 px-4 font-bold text-zinc-400">Dónde se edita</th>
+                <th className="text-left py-3 px-4 font-bold text-zinc-400">Se dispara en</th>
+              </tr>
+            </thead>
+            <tbody>
+              {PLANTILLAS_POR_ACCION.map((row) => (
+                <tr key={row.accion} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="py-3 px-4 font-medium text-white">{row.accion}</td>
+                  <td className="py-3 px-4 text-bear-blue">{row.plantilla}</td>
+                  <td className="py-3 px-4 text-zinc-400 font-mono text-xs">{row.archivo}</td>
+                  <td className="py-3 px-4 text-zinc-500 text-xs">{row.trigger}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Plantillas de este proyecto, modo de obtención y filtros activos */}
       <div className="rounded-2xl border border-white/10 bg-zinc-900/80 p-4 space-y-2">
         <p className="text-sm text-zinc-400">
@@ -198,6 +246,20 @@ export function BrevoEmailsClient() {
         )}
       </div>
 
+      {summary && summary.brevo_configured === false && summary.brevo_diagnostic && (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4">
+          <p className="font-bold text-amber-300">Brevo no está configurado correctamente</p>
+          <p className="text-sm text-amber-200/90 mt-1">
+            <span className="font-mono">BREVO_API_KEY</span>: {summary.brevo_diagnostic.BREVO_API_KEY}
+            {' · '}
+            <span className="font-mono">BREVO_SENDER_EMAIL</span>: {summary.brevo_diagnostic.BREVO_SENDER_EMAIL}
+          </p>
+          <p className="text-xs text-zinc-400 mt-2">
+            En Render: Environment. En local: .env.local. Tras cambiar variables en Render, haz un nuevo Deploy para que se apliquen.
+          </p>
+        </div>
+      )}
+
       {/* Plantillas: envío de prueba, analíticas y edición */}
       <div className="rounded-2xl border border-white/10 bg-zinc-900/80 shadow-xl overflow-hidden">
         <div className="p-6 border-b border-white/5">
@@ -206,7 +268,7 @@ export function BrevoEmailsClient() {
             Envía un email de prueba, revisa a cuántos usuarios se ha enviado cada plantilla y a quién. Puedes modificar el contenido en el código.
           </p>
         </div>
-        <div className="p-6 grid gap-6 md:grid-cols-3">
+        <div className="p-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {TEMPLATES_UI.map((t) => {
             const stats = summary?.by_template?.[t.id]
             const recipients = stats?.unique_recipients ?? []

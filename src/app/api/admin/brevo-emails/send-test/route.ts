@@ -9,9 +9,11 @@ import { createServerClient } from '@/lib/supabase/server'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import {
   sendWelcomeEmail,
+  sendWelcomeRegistroEmail,
   sendPaymentFailedRecoveryEmail,
   sendEmail,
   isBrevoEmailConfigured,
+  getBrevoConfigDiagnostic,
 } from '@/lib/brevo-email'
 
 async function isAdmin(req: NextRequest): Promise<boolean> {
@@ -23,7 +25,7 @@ async function isAdmin(req: NextRequest): Promise<boolean> {
   return (profile as { role?: string } | null)?.role === 'admin'
 }
 
-const TEMPLATES = ['bienvenida', 'recuperacion', 'transaccional'] as const
+const TEMPLATES = ['bienvenida', 'bienvenida_registro', 'recuperacion', 'transaccional'] as const
 
 export async function POST(req: NextRequest) {
   const ok = await isAdmin(req)
@@ -32,7 +34,15 @@ export async function POST(req: NextRequest) {
   }
 
   if (!isBrevoEmailConfigured()) {
-    return NextResponse.json({ error: 'Brevo no está configurado (BREVO_API_KEY, BREVO_SENDER_EMAIL)' }, { status: 400 })
+    const diag = getBrevoConfigDiagnostic()
+    return NextResponse.json({
+      error: 'Brevo no está configurado',
+      diagnostic: {
+        BREVO_API_KEY: diag.apiKey,
+        BREVO_SENDER_EMAIL: diag.senderEmail,
+      },
+      hint: 'En Render: Environment. En local: .env.local. Redeploy tras cambiar variables.',
+    }, { status: 400 })
   }
 
   let body: { template?: string; to?: string }
@@ -46,7 +56,7 @@ export async function POST(req: NextRequest) {
   const to = (body.to || '').trim()
 
   if (!TEMPLATES.includes(template as any)) {
-    return NextResponse.json({ error: 'template debe ser: bienvenida, recuperacion o transaccional' }, { status: 400 })
+    return NextResponse.json({ error: 'template debe ser: bienvenida, bienvenida_registro, recuperacion o transaccional' }, { status: 400 })
   }
   if (!to || !to.includes('@')) {
     return NextResponse.json({ error: 'to debe ser un email válido' }, { status: 400 })
@@ -64,6 +74,14 @@ export async function POST(req: NextRequest) {
     })
     if (result.success) {
       return NextResponse.json({ success: true, message: 'Email de bienvenida enviado', messageId: result.messageId })
+    }
+    return NextResponse.json({ error: result.error || 'Error al enviar' }, { status: 500 })
+  }
+
+  if (template === 'bienvenida_registro') {
+    const result = await sendWelcomeRegistroEmail({ to, name: 'Prueba Admin' })
+    if (result.success) {
+      return NextResponse.json({ success: true, message: 'Email bienvenida registro enviado', messageId: result.messageId })
     }
     return NextResponse.json({ error: result.error || 'Error al enviar' }, { status: 500 })
   }

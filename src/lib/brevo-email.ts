@@ -15,6 +15,27 @@ export function isBrevoEmailConfigured(): boolean {
   )
 }
 
+/** Diagnóstico para admin: qué falta o falla (sin revelar valores). */
+export function getBrevoConfigDiagnostic(): { apiKey: string; senderEmail: string; ok: boolean } {
+  const apiKey =
+    !BREVO_API_KEY || BREVO_API_KEY.length === 0
+      ? 'no definida'
+      : BREVO_API_KEY.length < 20
+        ? `muy corta (${BREVO_API_KEY.length} caracteres, mínimo 20)`
+        : 'OK'
+  const senderEmail =
+    !BREVO_SENDER_EMAIL || BREVO_SENDER_EMAIL.length === 0
+      ? 'no definida'
+      : !BREVO_SENDER_EMAIL.includes('@')
+        ? 'inválida (debe contener @)'
+        : 'OK'
+  return {
+    apiKey,
+    senderEmail,
+    ok: apiKey === 'OK' && senderEmail === 'OK',
+  }
+}
+
 export interface SendWelcomeEmailResult {
   success: boolean
   messageId?: string
@@ -236,6 +257,51 @@ export async function sendPaymentFailedRecoveryEmail(params: {
   }
 }
 
+/**
+ * Plantilla "Modo Bestia": email de bienvenida al registrarse (cuenta nueva).
+ * Se envía desde api/auth/create-user al crear usuario.
+ */
+export async function sendWelcomeRegistroEmail(params: {
+  to: string
+  name?: string
+}): Promise<SendTransactionalEmailResult> {
+  if (!isBrevoEmailConfigured()) {
+    return { success: false, error: 'Brevo email not configured' }
+  }
+  const displayName = (params.name || params.to.split('@')[0] || 'DJ').trim().replace(/[<>"&]/g, '')
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
+  const subject = '🔥 ¡Bienvenido a la Élite! Tu acceso a Bear Beat'
+  const welcomeHtml = `
+<div style="font-family: 'Arial', sans-serif; background-color: #000000; color: #ffffff; padding: 40px; max-width: 600px; margin: 0 auto; border: 1px solid #333; border-radius: 12px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1 style="color: #00f0ff; text-transform: uppercase; font-size: 32px; margin: 0; letter-spacing: -1px;">BEAR<span style="color: #ffffff;">BEAT</span></h1>
+    <p style="color: #666; font-size: 12px; letter-spacing: 2px; margin-top: 5px;">THE PRO DJ TOOLKIT</p>
+  </div>
+  <div style="background-color: #111; padding: 30px; border-radius: 8px; border-left: 4px solid #00f0ff;">
+    <h2 style="margin-top: 0; font-size: 24px;">¡Ya estás dentro, ${escapeHtml(displayName)}! 🎧</h2>
+    <p style="color: #ccc; line-height: 1.6; font-size: 16px;">
+      Acabas de dar el paso que separa a los aficionados de los profesionales. Bienvenido a la plataforma definitiva de Video Remixes.
+    </p>
+    <p style="color: #ccc; line-height: 1.6; font-size: 16px;">
+      Tu cuenta está activa y lista para detonar. No pierdas tiempo.
+    </p>
+    <div style="text-align: center; margin: 40px 0;">
+      <a href="${appUrl}/dashboard" style="background-color: #00f0ff; color: #000000; padding: 18px 40px; text-decoration: none; font-weight: 900; text-transform: uppercase; border-radius: 50px; display: inline-block; font-size: 18px; box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);">
+        ACCEDER A MI PANEL 🚀
+      </a>
+    </div>
+  </div>
+  <div style="margin-top: 40px; text-align: center; color: #666; font-size: 12px;">
+    <p style="margin: 0;">Bear Beat · Video Remixes para DJs</p>
+  </div>
+</div>
+  `.trim()
+  return sendEmail(params.to, subject, welcomeHtml, {
+    name: params.name || displayName,
+    tags: ['welcome', 'registro', 'elite'],
+  })
+}
+
 /** Evento de actividad transaccional Brevo (API v3/smtp/statistics/events) */
 export interface BrevoEmailEvent {
   date: string
@@ -255,6 +321,8 @@ export interface BrevoEmailEvent {
 export const PROJECT_EMAIL_TAGS = [
   'welcome',
   'credentials',
+  'registro',
+  'elite',
   'payment_failed',
   'recovery',
   'transactional',
@@ -264,6 +332,8 @@ export const PROJECT_EMAIL_TAGS = [
 export const TEMPLATE_LABEL_BY_TAG: Record<string, string> = {
   welcome: 'Bienvenida',
   credentials: 'Bienvenida',
+  registro: 'Bienvenida registro',
+  elite: 'Bienvenida registro',
   payment_failed: 'Recuperación pago',
   recovery: 'Recuperación pago',
   transactional: 'Transaccional',
@@ -272,6 +342,7 @@ export const TEMPLATE_LABEL_BY_TAG: Record<string, string> = {
 /** Agrupa tags por plantilla para filtros */
 export const TEMPLATE_TO_TAGS: Record<string, string[]> = {
   bienvenida: ['welcome', 'credentials'],
+  bienvenida_registro: ['welcome', 'registro', 'elite'],
   recuperacion: ['payment_failed', 'recovery'],
   transaccional: ['transactional'],
 }

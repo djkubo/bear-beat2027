@@ -9,6 +9,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import {
   getBrevoEmailEvents,
+  getBrevoConfigDiagnostic,
   type BrevoEmailEvent,
   PROJECT_EMAIL_TAGS,
   TEMPLATE_LABEL_BY_TAG,
@@ -132,6 +133,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const brevoDiagnostic = getBrevoConfigDiagnostic()
+
   const summary = {
     total_events: projectEvents.length,
     total_events_before_filter: events.length,
@@ -145,8 +148,11 @@ export async function GET(req: NextRequest) {
     used_tag_filter: usedTagFilter,
     raw_events_from_api: events.length,
     by_template: byTemplateStats,
+    brevo_configured: brevoDiagnostic.ok,
+    brevo_diagnostic: { BREVO_API_KEY: brevoDiagnostic.apiKey, BREVO_SENDER_EMAIL: brevoDiagnostic.senderEmail },
     project_templates: [
       { id: 'bienvenida', label: 'Bienvenida', tags: TEMPLATE_TO_TAGS.bienvenida },
+      { id: 'bienvenida_registro', label: 'Bienvenida registro', tags: TEMPLATE_TO_TAGS.bienvenida_registro },
       { id: 'recuperacion', label: 'Recuperación pago', tags: TEMPLATE_TO_TAGS.recuperacion },
       { id: 'transaccional', label: 'Transaccional', tags: TEMPLATE_TO_TAGS.transaccional },
     ],
