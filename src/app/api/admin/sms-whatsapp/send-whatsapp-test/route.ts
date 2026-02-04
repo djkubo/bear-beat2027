@@ -111,6 +111,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'WhatsApp enviado', messageId: result.sid })
   } catch (e: unknown) {
     const err = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: err }, { status: 500 })
+    const isFromChannelError = /could not find a Channel|63007|From address/i.test(err)
+    const hint = isFromChannelError
+      ? 'El número que tienes en TWILIO_WHATSAPP_NUMBER no está habilitado para WhatsApp. Para pruebas: Twilio Console → Messaging → Try it out → Send WhatsApp → usa el número del Sandbox (ej. whatsapp:+14155238886). Para producción: solicita WhatsApp en tu número en Twilio.'
+      : undefined
+    return NextResponse.json({ error: err, hint }, { status: 500 })
   }
 }

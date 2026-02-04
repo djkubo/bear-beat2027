@@ -138,7 +138,7 @@ export function SMSWhatsAppClient() {
         if (data.diagnostic) {
           msg += ` — ${JSON.stringify(data.diagnostic)}`
         }
-        if (data.hint) msg += ` (${data.hint})`
+        if (data.hint) msg += `\n\n💡 ${data.hint}`
         setWaResult({ type: 'err', text: msg })
       }
     } catch (e) {
@@ -189,8 +189,11 @@ export function SMSWhatsAppClient() {
       {/* Diagnóstico WhatsApp (Twilio) */}
       <div className="rounded-2xl border border-white/10 bg-zinc-900/80 p-6">
         <h2 className="text-xl font-black text-white tracking-tight mb-2">WhatsApp (Twilio)</h2>
-        <p className="text-sm text-zinc-500 mb-4">
-          <code className="bg-zinc-800 px-1 rounded">TWILIO_ACCOUNT_SID</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_AUTH_TOKEN</code> y <strong>uno</strong> de: <code className="bg-zinc-800 px-1 rounded">TWILIO_WHATSAPP_NUMBER</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_PHONE_NUMBER</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_WHATSAPP_SENDER</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_WHATSAPP_FROM</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_FROM_NUMBER</code>. Valor ej.: <code className="bg-zinc-800 px-1 rounded">whatsapp:+14155238886</code> o <code className="bg-zinc-800 px-1 rounded">+5215512345678</code>.
+        <p className="text-sm text-zinc-500 mb-2">
+          <code className="bg-zinc-800 px-1 rounded">TWILIO_ACCOUNT_SID</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_AUTH_TOKEN</code> y el número <strong>From</strong> en una de: <code className="bg-zinc-800 px-1 rounded">TWILIO_WHATSAPP_NUMBER</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_PHONE_NUMBER</code>, etc.
+        </p>
+        <p className="text-sm text-amber-200/90 mb-4">
+          <strong>Importante:</strong> Para WhatsApp no sirve cualquier número de Twilio. En <strong>pruebas</strong> usa el número del <strong>Sandbox</strong>: Twilio Console → Messaging → Try it out → Send WhatsApp → copia el &quot;From&quot; (ej. <code className="bg-zinc-800 px-1 rounded">whatsapp:+14155238886</code>) y ponlo en <code className="bg-zinc-800 px-1 rounded">TWILIO_WHATSAPP_NUMBER</code>. El destinatario debe haber enviado antes &quot;join &lt;código&gt;&quot; a ese número. Para producción hay que solicitar WhatsApp en tu número.
         </p>
         {config.whatsapp.configured ? (
           <p className="text-emerald-400 font-medium">
@@ -268,7 +271,7 @@ export function SMSWhatsAppClient() {
           </button>
           {smsResult && (
             <div
-              className={`rounded-lg border px-4 py-3 text-sm ${
+              className={`rounded-lg border px-4 py-3 text-sm whitespace-pre-line ${
                 smsResult.type === 'ok'
                   ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
                   : 'border-red-500/30 bg-red-500/10 text-red-300'
@@ -332,7 +335,7 @@ export function SMSWhatsAppClient() {
           </button>
           {waResult && (
             <div
-              className={`rounded-lg border px-4 py-3 text-sm ${
+              className={`rounded-lg border px-4 py-3 text-sm whitespace-pre-line ${
                 waResult.type === 'ok'
                   ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
                   : 'border-red-500/30 bg-red-500/10 text-red-300'
