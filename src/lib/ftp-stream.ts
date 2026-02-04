@@ -1,5 +1,7 @@
 /**
- * Stream de archivos desde FTP (Hetzner Storage Box).
+ * Stream de archivos desde FTP (Hetzner Storage Box / Bunny FTP).
+ *
+ * Connection type: Passive (PASV). basic-ftp usa solo modo pasivo por defecto.
  *
  * ESTRUCTURA EN LA RAÍZ DEL FTP (tal como está en Hetzner):
  *
@@ -23,7 +25,7 @@
  * - video: path "Bachata/Artist - Title.mp4" → cd(FTP_BASE), luego RETR "Bachata/Artist - Title.mp4".
  * - zip:   path "Bachata.zip"                 → sin cd, RETR desde raíz.
  *
- * Variables: FTP_HOST, FTP_USER, FTP_PASSWORD (o HETZNER_FTP_*), FTP_BASE_PATH (default "Videos Enero 2026").
+ * Variables: FTP_HOST, FTP_USER, FTP_PASSWORD (o HETZNER_FTP_*), FTP_BASE_PATH (default "Videos Enero 2026"), FTP_PORT (default 21).
  */
 
 import { Client } from 'basic-ftp'
@@ -38,9 +40,12 @@ export function isFtpConfigured(): boolean {
   return !!(host && user && pass !== undefined)
 }
 
+const FTP_PORT = process.env.FTP_PORT ? parseInt(process.env.FTP_PORT, 10) : 21
+
 function getFtpOptions() {
   return {
     host: process.env.FTP_HOST || process.env.HETZNER_FTP_HOST!,
+    port: FTP_PORT,
     user: process.env.FTP_USER || process.env.HETZNER_FTP_USER!,
     password: process.env.FTP_PASSWORD || process.env.HETZNER_FTP_PASSWORD!,
     secure: process.env.FTP_SECURE === 'true' || process.env.FTP_USE_TLS === 'true',

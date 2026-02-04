@@ -42,8 +42,8 @@ export async function GET(req: NextRequest) {
 
     if (isBunnyConfigured()) {
       try {
-        // Portadas en Hetzner están en la raíz (Género/archivo.jpg); videos bajo FTP_BASE_PATH
-    const bunnyPath = buildBunnyPath(pathThumb, false)
+        // Con prefijo: Videos Enero 2026/Genre/archivo.jpg (estructura local y sync desde disco)
+    const bunnyPath = buildBunnyPath(pathThumb, true)
         if (bunnyPath) {
           const signedUrl = generateSignedUrl(bunnyPath, 3600)
           if (signedUrl?.startsWith('http') && signedUrl.length > 20) {

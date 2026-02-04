@@ -64,13 +64,18 @@ Ejemplo 1TB con 500 descargas de 500MB:
 
 ```env
 BUNNY_API_KEY=tu_api_key_del_dashboard
-BUNNY_STORAGE_ZONE=bear-beat
+# Nombre exacto de la zona en Bunny (ej. bearbeat, tal cual en "FTP & API Access" → Username)
+BUNNY_STORAGE_ZONE=bearbeat
+# Password de "FTP & API Access" (no el Read-only)
 BUNNY_STORAGE_PASSWORD=password_de_storage_zone
-BUNNY_CDN_URL=https://bear-beat.b-cdn.net
+BUNNY_CDN_URL=https://bearbeat.b-cdn.net
 BUNNY_TOKEN_KEY=genera_una_clave_secreta_aqui
+BUNNY_PACK_PATH_PREFIX=Videos Enero 2026
 BUNNY_STREAM_LIBRARY_ID=12345
 BUNNY_STREAM_API_KEY=stream_api_key
 ```
+
+Referencia técnica (hostname, puerto, passive, sync): [docs/BUNNY_STORAGE.md](docs/BUNNY_STORAGE.md).
 
 ---
 
@@ -169,11 +174,13 @@ bear-beat-demos/              # Stream Library (videos de demo)
 
 ### Opción B: FTP (masivo)
 ```
-Host: storage.bunnycdn.com
-Usuario: bear-beat
-Password: tu_storage_password
-Puerto: 21 (FTP) o 22 (SFTP)
+Hostname: storage.bunnycdn.com
+Usuario: nombre de tu zona (ej. bearbeat — exactamente como en Bunny)
+Password: el Password de "FTP & API Access" (no el Read-only)
+Puerto: 21
+Connection type: Passive
 ```
+Ver [docs/BUNNY_STORAGE.md](docs/BUNNY_STORAGE.md) para referencia completa.
 
 ### Opción C: API (programático)
 ```bash

@@ -33,6 +33,11 @@ yarn-error.log*
 .env
 .env.production
 
+# Bunny (solo en tu máquina, no subir)
+bunny-storage-credenciales.txt
+bunny-storage-password.txt
+bunny-storage-zone.txt
+
 # Accesos privados (nunca subir)
 HETZNER_ACCESOS_PRIVADO.md
 

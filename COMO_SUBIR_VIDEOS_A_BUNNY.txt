@@ -1,0 +1,68 @@
+============================================
+  CÓMO SUBIR VIDEOS (Y PORTADAS/ZIP) A BUNNY
+============================================
+
+REFERENCIA TÉCNICA COMPLETA
+  → docs/BUNNY_STORAGE.md (hostname, puerto, passive, credenciales, errores)
+
+--------------------------------------------
+1. CREDENCIALES (primera vez o si cambias)
+--------------------------------------------
+
+Opción A – En .env.local (recomendado)
+  BUNNY_STORAGE_ZONE=bearbeat
+  BUNNY_STORAGE_PASSWORD=el_Password_de_FTP_&_API_Access
+
+  • Zona: nombre exacto de tu Storage Zone en Bunny (en este proyecto: bearbeat).
+  • Password: el de "FTP & API Access" → "Password" (NO el "Read-only password").
+
+Opción B – Archivo bunny-storage-credenciales.txt
+  Línea 1: nombre de la zona (ej. bearbeat)
+  Línea 2: Password (FTP & API Access, no Read-only)
+  Línea 3 (opcional): ny o uk si tu zona está en esa región
+
+  El archivo está en .gitignore; no se sube al repo.
+
+En Bunny: Storage → tu zona → pestaña "FTP & API Access".
+  Hostname: storage.bunnycdn.com
+  Port: 21
+  Connection type: Passive
+
+--------------------------------------------
+2. CÓMO EJECUTAR (siempre)
+--------------------------------------------
+
+Con el disco "Extreme Pro" (o la carpeta de videos) conectado:
+
+  cd "/Users/gustavogarcia/Documents/CURSOR/BEAR BEAT 2027 3.0"
+  npm run db:sync-local-to-bunny
+
+Ruta por defecto: /Volumes/Extreme Pro/Videos Enero 2026
+
+Para usar otra carpeta:
+  npm run db:sync-local-to-bunny -- "/ruta/a/tu/carpeta"
+
+Opciones:
+  --dry-run     solo lista lo que subiría, no sube
+  --limit N     sube solo los primeros N archivos (pruebas)
+
+--------------------------------------------
+3. QUÉ SUBE
+--------------------------------------------
+
+  • Videos: .mp4, .mov, .avi, .mkv
+  • Portadas: .jpg, .jpeg
+  • ZIP por género: .zip
+
+Estructura en Bunny: BUNNY_PACK_PATH_PREFIX/Género/archivo
+  Por defecto: "Videos Enero 2026/Bachata/Artista - Título.mp4", etc.
+
+--------------------------------------------
+4. SI DA 401 UNAUTHORIZED
+--------------------------------------------
+
+  • BUNNY_STORAGE_ZONE debe ser exactamente el nombre de la zona en Bunny (bearbeat, no bear-beat si en Bunny aparece sin guion).
+  • BUNNY_STORAGE_PASSWORD = el Password principal, no el Read-only.
+  • En Bunny: "Reset password" en FTP & API Access y pega la nueva en .env.local.
+
+Ver: docs/BUNNY_STORAGE.md y docs/BUNNY_STORAGE_CREDENTIALES.md

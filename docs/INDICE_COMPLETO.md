@@ -94,6 +94,7 @@ Documentación maestra: todo lo que hay en el proyecto, dónde está y cómo usa
 | PAYPAL_*, NEXT_PUBLIC_PAYPAL_* | PayPal. |
 | OPENAI_API_KEY, OPENAI_CHAT_MODEL | RAG (chatbot, sync-knowledge). Default: `gpt-5.2`. Ver [CONFIGURACION_IA_Y_PRODUCCION.md](./CONFIGURACION_IA_Y_PRODUCCION.md). |
 | FTP_HOST, FTP_USER, FTP_PASSWORD (o HETZNER_*) | Sync FTP, demo proxy. |
+| BUNNY_STORAGE_ZONE, BUNNY_STORAGE_PASSWORD | Bunny Storage (sync-local-to-bunny, API). Zona = nombre exacto en Bunny (ej. bearbeat); Password = FTP & API Access, no Read-only. Ver [BUNNY_STORAGE.md](./BUNNY_STORAGE.md). |
 | BUNNY_PULL_ZONE, BUNNY_SECURITY_KEY | Descargas CDN (Token Auth, 307 redirect). |
 | BUNNY_CDN_URL, BUNNY_TOKEN_KEY | Legacy descargas CDN. |
 | NEXT_PUBLIC_FB_PIXEL_ID, FB_ACCESS_TOKEN (o FACEBOOK_CAPI_ACCESS_TOKEN) | Meta Pixel + CAPI. |
@@ -116,6 +117,7 @@ Ver `.env.example` y DOCUMENTACION_COMPLETA.md §16.
 | npx tsx scripts/feed-brain.ts | Alimenta RAG: catálogo (videos) + reglas (precios, FTP, Drive) → documents. |
 | npx tsx scripts/sync-knowledge.ts | Ingesta RAG: páginas estáticas + catálogo + reglas → documents. |
 | npm run deploy:env | Sube variables .env.local a Render. |
+| npm run db:sync-local-to-bunny | Sube videos/portadas/ZIP desde disco local a Bunny Storage. Requiere BUNNY_STORAGE_ZONE y BUNNY_STORAGE_PASSWORD en .env.local. Ver [BUNNY_STORAGE.md](./BUNNY_STORAGE.md) y COMO_SUBIR_VIDEOS_A_BUNNY.txt. |
 | node scripts/run-supabase-sql.js supabase/migrations/<archivo>.sql | Ejecutar migración con DATABASE_URL. |
 
 ---
@@ -129,7 +131,7 @@ Ver `.env.example` y DOCUMENTACION_COMPLETA.md §16.
 | **Limpieza y referencias** | [LIMPIEZA_Y_REFERENCIAS.md](./LIMPIEZA_Y_REFERENCIAS.md) – Código eliminado (page-view-tracker, FileExplorer), APIs sin uso en UI, docs actualizados. |
 | **Pagos (Stripe, PayPal)** | [PRUEBAS_STRIPE_Y_PAYPAL_SANDBOX.md](./PRUEBAS_STRIPE_Y_PAYPAL_SANDBOX.md), [WEBHOOK_STRIPE_CONFIG.md](./WEBHOOK_STRIPE_CONFIG.md) |
 | **Embudo / CRO** | [EMBUDO_Y_SECCIONES_A_FONDO.md](./EMBUDO_Y_SECCIONES_A_FONDO.md), [CRO_EMBUDO_COPY.md](./CRO_EMBUDO_COPY.md) |
-| **Bunny / Hetzner / FTP** | [BUNNY_HETZNER_INTEGRACION.md](./BUNNY_HETZNER_INTEGRACION.md), [BUNNY_PULL_ZONE_SETUP.md](./BUNNY_PULL_ZONE_SETUP.md), [HETZNER_FTP_REAL.md](./HETZNER_FTP_REAL.md) |
+| **Bunny / Hetzner / FTP** | [BUNNY_HETZNER_INTEGRACION.md](./BUNNY_HETZNER_INTEGRACION.md), [BUNNY_STORAGE.md](./BUNNY_STORAGE.md) (hostname, puerto, passive, sync), [BUNNY_STORAGE_CREDENTIALES.md](./BUNNY_STORAGE_CREDENTIALES.md), [BUNNY_PULL_ZONE_SETUP.md](./BUNNY_PULL_ZONE_SETUP.md), [HETZNER_FTP_REAL.md](./HETZNER_FTP_REAL.md) |
 | **Supabase** | [VERIFICACION_RENDER_Y_SUPABASE.md](./VERIFICACION_RENDER_Y_SUPABASE.md), [CHECKLIST_SUPABASE_PRODUCCION.md](./CHECKLIST_SUPABASE_PRODUCCION.md), [SUPABASE_CHECKLIST_NADA_FALTA.md](./SUPABASE_CHECKLIST_NADA_FALTA.md) |
 | **Admin / auth** | [ADMIN_TEST_BEARBEAT.md](./ADMIN_TEST_BEARBEAT.md), [SISTEMA_AUTH_ADMIN.md](../SISTEMA_AUTH_ADMIN.md) |
 | **Chatbot / ManyChat / IA** | [CONFIGURACION_IA_Y_PRODUCCION.md](./CONFIGURACION_IA_Y_PRODUCCION.md), [SISTEMA_CHATBOT.md](../SISTEMA_CHATBOT.md), [INTEGRACION_MANYCHAT.md](../INTEGRACION_MANYCHAT.md) |

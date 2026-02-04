@@ -40,6 +40,8 @@
 |-----------|-------------|
 | [DONDE_SACAR_CLAVES_ENV.md](./DONDE_SACAR_CLAVES_ENV.md) | **Manual de claves:** lista de todas las variables de .env.local, obligatorias y opcionales, con enlaces y pasos para obtener cada una (Supabase, Stripe, PayPal, Bunny, Twilio, etc.). |
 | [BUNNY_HETZNER_INTEGRACION.md](./BUNNY_HETZNER_INTEGRACION.md) | **Maestro:** Demos, portadas, descargas, descargas por carpeta, FTP – variables, estructura en Bunny/Hetzner, comprobaciones para que no haya fallos. |
+| [BUNNY_STORAGE.md](./BUNNY_STORAGE.md) | **Referencia Bunny Storage:** hostname (storage.bunnycdn.com), puerto 21, Passive, credenciales (Password vs Read-only), zona (bearbeat), script sync-local-to-bunny, variables, errores 401. |
+| [BUNNY_STORAGE_CREDENTIALES.md](./BUNNY_STORAGE_CREDENTIALES.md) | Credenciales Bunny (FTP & API Access): qué variable usar, Password vs Read-only. |
 | [BUNNY_PULL_ZONE_SETUP.md](./BUNNY_PULL_ZONE_SETUP.md) | Configuración Bunny CDN (pull zone, demos). |
 | [HETZNER_FTP_REAL.md](./HETZNER_FTP_REAL.md) | FTP real con Hetzner Storage Box (subcuentas por compra). |
 | [VIDEOS_HETZNER.md](./VIDEOS_HETZNER.md) | Videos y estructura en Hetzner. |

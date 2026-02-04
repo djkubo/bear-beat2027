@@ -138,6 +138,7 @@ const PROJECT_RENDER_KEYS = [
   'BUNNY_TOKEN_KEY',
   'BUNNY_PACK_PATH_PREFIX',
   'BUNNY_PACK_PREFIX',
+  'BUNNY_STORAGE_API_KEY',
   'BUNNY_PULL_ZONE',
   'BUNNY_SECURITY_KEY',
   'BUNNY_STREAM_LIBRARY_ID',
@@ -233,7 +234,7 @@ async function main() {
   }
 
   // Bunny: si no están en .env.local, tomar de process.env (p. ej. .env)
-  const BUNNY_KEYS = ['BUNNY_CDN_URL', 'NEXT_PUBLIC_BUNNY_CDN_URL', 'BUNNY_API_KEY', 'BUNNY_STORAGE_ZONE', 'BUNNY_STORAGE_PASSWORD', 'BUNNY_TOKEN_KEY', 'BUNNY_PACK_PATH_PREFIX']
+  const BUNNY_KEYS = ['BUNNY_CDN_URL', 'NEXT_PUBLIC_BUNNY_CDN_URL', 'BUNNY_API_KEY', 'BUNNY_STORAGE_ZONE', 'BUNNY_STORAGE_PASSWORD', 'BUNNY_STORAGE_API_KEY', 'BUNNY_TOKEN_KEY', 'BUNNY_PACK_PATH_PREFIX']
   const hasKey = (k) => vars.some((v) => v.key === k)
   const isPlaceholder = (v) => !v || /^tu_|^xxx$|^\.\.\.$|clave_secreta|password_de|^re_$/i.test(String(v).trim())
   function isValidBunnyCdnUrl(url) {
