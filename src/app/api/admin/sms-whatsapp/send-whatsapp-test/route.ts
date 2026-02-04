@@ -10,18 +10,34 @@ import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import twilio from 'twilio'
 import { WHATSAPP_TEMPLATES } from '../route'
 
+const TWILIO_WHATSAPP_ENV_KEYS = [
+  'TWILIO_WHATSAPP_NUMBER',
+  'TWILIO_PHONE_NUMBER',
+  'TWILIO_WHATSAPP_SENDER',
+  'TWILIO_WHATSAPP_FROM',
+  'TWILIO_FROM_NUMBER',
+] as const
+
+function getTwilioWhatsAppFromNumber(): string {
+  for (const key of TWILIO_WHATSAPP_ENV_KEYS) {
+    const v = (process.env[key] || '').trim()
+    if (v) return v
+  }
+  return ''
+}
+
 function isTwilioWhatsAppConfigured(): boolean {
   return Boolean(
     process.env.TWILIO_ACCOUNT_SID &&
     process.env.TWILIO_AUTH_TOKEN &&
-    (process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER)
+    getTwilioWhatsAppFromNumber()
   )
 }
 
 function getTwilioWhatsAppDiagnostic(): { accountSid: string; authToken: string; whatsappNumber: string } {
   const sid = (process.env.TWILIO_ACCOUNT_SID || '').trim()
   const token = (process.env.TWILIO_AUTH_TOKEN || '').trim()
-  const wa = (process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER || '').trim()
+  const wa = getTwilioWhatsAppFromNumber()
   return {
     accountSid: !sid ? 'no definido' : sid.length < 30 ? 'formato incorrecto' : 'OK',
     authToken: !token ? 'no definido' : 'OK',
@@ -85,7 +101,8 @@ export async function POST(req: NextRequest) {
       process.env.TWILIO_ACCOUNT_SID!,
       process.env.TWILIO_AUTH_TOKEN!
     )
-    const from = process.env.TWILIO_WHATSAPP_NUMBER || `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`
+    const fromRaw = getTwilioWhatsAppFromNumber()
+    const from = fromRaw.startsWith('whatsapp:') ? fromRaw : `whatsapp:${fromRaw}`
     const result = await client.messages.create({
       body: content,
       from,

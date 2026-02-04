@@ -8,14 +8,36 @@ import { createServerClient } from '@/lib/supabase/server'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import { getBrevoSmsConfigDiagnostic, isBrevoSmsConfigured } from '@/lib/brevo-sms'
 
-function getTwilioWhatsAppDiagnostic(): { accountSid: string; authToken: string; whatsappNumber: string; ok: boolean } {
+/** Nombres de env que pueden tener el número de WhatsApp (Twilio). Se usa el primero que exista. */
+const TWILIO_WHATSAPP_ENV_KEYS = [
+  'TWILIO_WHATSAPP_NUMBER',
+  'TWILIO_PHONE_NUMBER',
+  'TWILIO_WHATSAPP_SENDER',
+  'TWILIO_WHATSAPP_FROM',
+  'TWILIO_FROM_NUMBER',
+] as const
+
+function getTwilioWhatsAppFromNumber(): { value: string; usedKey: string | null } {
+  for (const key of TWILIO_WHATSAPP_ENV_KEYS) {
+    const v = (process.env[key] || '').trim()
+    if (v) return { value: v, usedKey: key }
+  }
+  return { value: '', usedKey: null }
+}
+
+function getTwilioWhatsAppDiagnostic(): { accountSid: string; authToken: string; whatsappNumber: string; whatsappUsedKey: string | null; ok: boolean } {
   const sid = (process.env.TWILIO_ACCOUNT_SID || '').trim()
   const token = (process.env.TWILIO_AUTH_TOKEN || '').trim()
-  const wa = (process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER || '').trim()
+  const { value: wa, usedKey: whatsappUsedKey } = getTwilioWhatsAppFromNumber()
+  const whatsappNumber =
+    !wa
+      ? `no definido (prueba: ${TWILIO_WHATSAPP_ENV_KEYS.join(', ')})`
+      : 'OK'
   return {
     accountSid: !sid ? 'no definido' : sid.length < 30 ? 'formato incorrecto' : 'OK',
     authToken: !token ? 'no definido' : 'OK',
-    whatsappNumber: !wa ? 'no definido (TWILIO_WHATSAPP_NUMBER o TWILIO_PHONE_NUMBER)' : wa.startsWith('whatsapp:') ? 'OK' : 'OK',
+    whatsappNumber,
+    whatsappUsedKey,
     ok: Boolean(sid && token && wa),
   }
 }
@@ -61,6 +83,7 @@ export async function GET(req: NextRequest) {
         TWILIO_ACCOUNT_SID: whatsappDiag.accountSid,
         TWILIO_AUTH_TOKEN: whatsappDiag.authToken,
         TWILIO_WHATSAPP_NUMBER: whatsappDiag.whatsappNumber,
+        whatsappUsedKey: whatsappDiag.whatsappUsedKey,
       },
     },
     sms_templates: SMS_TEMPLATES,

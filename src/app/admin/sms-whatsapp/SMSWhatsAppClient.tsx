@@ -187,17 +187,27 @@ export function SMSWhatsAppClient() {
       <div className="rounded-2xl border border-white/10 bg-zinc-900/80 p-6">
         <h2 className="text-xl font-black text-white tracking-tight mb-2">WhatsApp (Twilio)</h2>
         <p className="text-sm text-zinc-500 mb-4">
-          Variables: <code className="bg-zinc-800 px-1 rounded">TWILIO_ACCOUNT_SID</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_AUTH_TOKEN</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_WHATSAPP_NUMBER</code> (ej. whatsapp:+14155238886).
+          <code className="bg-zinc-800 px-1 rounded">TWILIO_ACCOUNT_SID</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_AUTH_TOKEN</code> y <strong>uno</strong> de: <code className="bg-zinc-800 px-1 rounded">TWILIO_WHATSAPP_NUMBER</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_PHONE_NUMBER</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_WHATSAPP_SENDER</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_WHATSAPP_FROM</code>, <code className="bg-zinc-800 px-1 rounded">TWILIO_FROM_NUMBER</code>. Valor ej.: <code className="bg-zinc-800 px-1 rounded">whatsapp:+14155238886</code> o <code className="bg-zinc-800 px-1 rounded">+5215512345678</code>.
         </p>
         {config.whatsapp.configured ? (
-          <p className="text-emerald-400 font-medium">Configurado correctamente</p>
+          <p className="text-emerald-400 font-medium">
+            Configurado correctamente
+            {(config.whatsapp.diagnostic as Record<string, string>)?.whatsappUsedKey && (
+              <span className="text-zinc-500 font-normal"> (usando {(config.whatsapp.diagnostic as Record<string, string>).whatsappUsedKey})</span>
+            )}
+          </p>
         ) : (
           <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
-            <p className="font-bold text-amber-300">Twilio WhatsApp no está configurado</p>
+            <p className="font-bold text-amber-300">Twilio WhatsApp: número de envío no detectado</p>
             <p className="text-sm text-amber-200/90 mt-1">
-              {Object.entries(config.whatsapp.diagnostic).map(([k, v]) => (
-                <span key={k}><span className="font-mono">{k}</span>: {v}{' · '}</span>
-              ))}
+              {Object.entries(config.whatsapp.diagnostic)
+                .filter(([k]) => k !== 'whatsappUsedKey')
+                .map(([k, v]) => (
+                  <span key={k}><span className="font-mono">{k}</span>: {v}{' · '}</span>
+                ))}
+            </p>
+            <p className="text-xs text-zinc-400 mt-2">
+              En Render: Environment. Nombre exacto de la variable (ej. TWILIO_PHONE_NUMBER o TWILIO_WHATSAPP_NUMBER). Tras cambiar, haz un nuevo Deploy.
             </p>
           </div>
         )}
