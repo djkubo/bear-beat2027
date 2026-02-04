@@ -164,9 +164,13 @@ export default function HomeLanding() {
     setDownloadingVideoId(null)
   }
 
-  /** URL de portada en HOME: siempre relativa. Placeholder estático para no depender del CDN (evita 502/503 en producción). */
-  const DEMO_THUMB_PLACEHOLDER = '/thumbnails-cache/Bachata_Dalvin%20La%20Melodia%20-%20Chiquilla%20Bonita%20(10A%20%E2%80%93%20124%20BPM).jpg'
-  const getThumbnailUrl = (_video: Video): string => DEMO_THUMB_PLACEHOLDER
+  /** Portada dinámica: ruta relativa a la API. Sin baseUrl para que el navegador resuelva contra el dominio actual. */
+  const getThumbnailUrl = (video: Video): string => {
+    if (video.path) {
+      return `/api/thumbnail-cdn?path=${encodeURIComponent(video.path)}`
+    }
+    return '/logos/BBIMAGOTIPO_Mesa de trabajo 1.png'
+  }
   const videoRef = useRef<HTMLVideoElement>(null)
   const inventory = useVideoInventory()
   const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted ?? '0 B'
