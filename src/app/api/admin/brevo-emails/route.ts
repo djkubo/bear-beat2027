@@ -153,6 +153,7 @@ export async function GET(req: NextRequest) {
     project_templates: [
       { id: 'bienvenida', label: 'Bienvenida', tags: TEMPLATE_TO_TAGS.bienvenida },
       { id: 'bienvenida_registro', label: 'Bienvenida registro', tags: TEMPLATE_TO_TAGS.bienvenida_registro },
+      { id: 'confirmacion_pago', label: 'Confirmación pago', tags: TEMPLATE_TO_TAGS.confirmacion_pago },
       { id: 'recuperacion', label: 'Recuperación pago', tags: TEMPLATE_TO_TAGS.recuperacion },
       { id: 'transaccional', label: 'Transaccional', tags: TEMPLATE_TO_TAGS.transaccional },
     ],

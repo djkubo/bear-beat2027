@@ -10,6 +10,7 @@ import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import {
   sendWelcomeEmail,
   sendWelcomeRegistroEmail,
+  sendPaymentConfirmationEmail,
   sendPaymentFailedRecoveryEmail,
   sendEmail,
   isBrevoEmailConfigured,
@@ -25,7 +26,7 @@ async function isAdmin(req: NextRequest): Promise<boolean> {
   return (profile as { role?: string } | null)?.role === 'admin'
 }
 
-const TEMPLATES = ['bienvenida', 'bienvenida_registro', 'recuperacion', 'transaccional'] as const
+const TEMPLATES = ['bienvenida', 'bienvenida_registro', 'confirmacion_pago', 'recuperacion', 'transaccional'] as const
 
 export async function POST(req: NextRequest) {
   const ok = await isAdmin(req)
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
   const to = (body.to || '').trim()
 
   if (!TEMPLATES.includes(template as any)) {
-    return NextResponse.json({ error: 'template debe ser: bienvenida, bienvenida_registro, recuperacion o transaccional' }, { status: 400 })
+    return NextResponse.json({ error: 'template debe ser: bienvenida, bienvenida_registro, confirmacion_pago, recuperacion o transaccional' }, { status: 400 })
   }
   if (!to || !to.includes('@')) {
     return NextResponse.json({ error: 'to debe ser un email válido' }, { status: 400 })
@@ -82,6 +83,19 @@ export async function POST(req: NextRequest) {
     const result = await sendWelcomeRegistroEmail({ to, name: 'Prueba Admin' })
     if (result.success) {
       return NextResponse.json({ success: true, message: 'Email bienvenida registro enviado', messageId: result.messageId })
+    }
+    return NextResponse.json({ error: result.error || 'Error al enviar' }, { status: 500 })
+  }
+
+  if (template === 'confirmacion_pago') {
+    const result = await sendPaymentConfirmationEmail({
+      to,
+      userName: 'Prueba Admin',
+      amount: 350,
+      orderId: 'PRUEBA-ADMIN-' + Date.now(),
+    })
+    if (result.success) {
+      return NextResponse.json({ success: true, message: 'Email confirmación de pago enviado', messageId: result.messageId })
     }
     return NextResponse.json({ error: result.error || 'Error al enviar' }, { status: 500 })
   }

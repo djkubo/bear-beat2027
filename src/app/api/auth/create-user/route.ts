@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendWelcomeRegistroEmail } from '@/lib/brevo-email'
+import { sendSms } from '@/lib/brevo-sms'
 import type { Database } from '@/types/database'
 
 type UserInsert = Database['public']['Tables']['users']['Insert']
@@ -69,6 +70,19 @@ export async function POST(req: NextRequest) {
     } catch (mailErr) {
       console.error('create-user: welcome email failed', mailErr)
       // No fallar el registro si el email falla
+    }
+
+    // --- SMS BIENVENIDA ---
+    const phoneClean = typeof phone === 'string' ? phone.trim() : ''
+    if (phoneClean) {
+      try {
+        const smsBody = 'BearBeat: Bienvenido a la Élite 🐺. Tus accesos están en tu email. Revísalo ya (incluso Spam). Vamos a romperla. 🔥'
+        await sendSms(phoneClean, smsBody, undefined, { tag: 'welcome' })
+        console.log('📱 SMS de bienvenida enviado a:', phoneClean)
+      } catch (smsError) {
+        console.error('❌ Error enviando SMS:', smsError)
+        // No bloqueamos el flujo, solo reportamos
+      }
     }
 
     return NextResponse.json({

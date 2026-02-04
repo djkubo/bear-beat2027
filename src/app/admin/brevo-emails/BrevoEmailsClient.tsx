@@ -82,7 +82,8 @@ const PAGE_SIZE = 100
 /** Qué plantilla se usa en cada acción (para que veas qué tenemos en cada flujo). */
 const PLANTILLAS_POR_ACCION = [
   { accion: 'Registro (cuenta nueva)', plantilla: 'Bienvenida registro (Modo Bestia)', archivo: 'src/lib/brevo-email.ts → sendWelcomeRegistroEmail', trigger: 'api/auth/create-user' },
-  { accion: 'Pago completado (Stripe)', plantilla: 'Bienvenida (credenciales)', archivo: 'src/lib/brevo-email.ts → sendWelcomeEmail', trigger: 'webhook Stripe + complete-purchase' },
+  { accion: 'Pago completado (Stripe)', plantilla: 'Bienvenida (credenciales)', archivo: 'src/lib/brevo-email.ts → sendWelcomeEmail', trigger: 'webhook Stripe checkout.session.completed' },
+  { accion: 'Pago confirmado (Stripe/PayPal)', plantilla: 'Confirmación pago (Modo Élite)', archivo: 'src/lib/brevo-email.ts → sendPaymentConfirmationEmail', trigger: 'webhook Stripe + complete-purchase/activate' },
   { accion: 'Pago fallido', plantilla: 'Recuperación pago', archivo: 'src/lib/brevo-email.ts → sendPaymentFailedRecoveryEmail', trigger: 'payment_intent.payment_failed' },
   { accion: 'Otros / transaccional', plantilla: 'Transaccional', archivo: 'src/lib/brevo-email.ts → sendEmail', trigger: 'Cualquier llamada en código' },
 ] as const
@@ -90,6 +91,7 @@ const PLANTILLAS_POR_ACCION = [
 const TEMPLATES_UI = [
   { id: 'bienvenida', label: 'Bienvenida' },
   { id: 'bienvenida_registro', label: 'Bienvenida registro' },
+  { id: 'confirmacion_pago', label: 'Confirmación pago' },
   { id: 'recuperacion', label: 'Recuperación pago' },
   { id: 'transaccional', label: 'Transaccional' },
 ] as const
@@ -104,7 +106,7 @@ export function BrevoEmailsClient() {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   // Envío de email de prueba por plantilla
-  const [testEmail, setTestEmail] = useState<Record<string, string>>({ bienvenida: '', bienvenida_registro: '', recuperacion: '', transaccional: '' })
+  const [testEmail, setTestEmail] = useState<Record<string, string>>({ bienvenida: '', bienvenida_registro: '', confirmacion_pago: '', recuperacion: '', transaccional: '' })
   const [sendingTest, setSendingTest] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [showRecipients, setShowRecipients] = useState<Record<string, boolean>>({})

@@ -302,6 +302,60 @@ export async function sendWelcomeRegistroEmail(params: {
   })
 }
 
+/**
+ * Email de confirmación de pago "Modo Élite" (dark/neon).
+ * Enviar cuando se confirma el pago (Stripe webhook o complete-purchase/activate).
+ */
+export async function sendPaymentConfirmationEmail(params: {
+  to: string
+  userName?: string
+  amount: number | string
+  orderId: string
+}): Promise<SendTransactionalEmailResult> {
+  if (!isBrevoEmailConfigured()) {
+    return { success: false, error: 'Brevo email not configured' }
+  }
+  const userName = (params.userName || params.to.split('@')[0] || 'Cliente').trim()
+  const amountStr = typeof params.amount === 'number' ? String(params.amount) : params.amount
+  const orderId = (params.orderId || 'CONFIRMADA').trim()
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
+  const subject = `🐺 Acceso Liberado: Tu Orden #${orderId}`
+  const paymentHtml = `
+  <div style="font-family: 'Arial', sans-serif; background-color: #050505; color: #ffffff; padding: 40px; max-width: 600px; margin: 0 auto; border: 1px solid #333; border-radius: 12px;">
+    <div style="text-align: center; border-bottom: 1px solid #222; padding-bottom: 20px; margin-bottom: 30px;">
+      <h1 style="color: #00f0ff; text-transform: uppercase; font-size: 28px; margin: 0; letter-spacing: -1px;">PAGO <span style="color: #ffffff;">CONFIRMADO</span></h1>
+      <p style="color: #444; font-size: 10px; letter-spacing: 3px; margin-top: 5px; text-transform: uppercase;">Transacción Segura • Bear Beat</p>
+    </div>
+    <div style="background-color: #111; padding: 30px; border-radius: 8px; border-left: 4px solid #00ff88;">
+      <h2 style="margin-top: 0; font-size: 22px; color: #fff;">Todo listo, ${escapeHtml(userName)}. 💸</h2>
+      <p style="color: #ccc; line-height: 1.6; font-size: 16px;">
+        Tu inversión de <strong>$${escapeHtml(amountStr)}</strong> ha sido recibida correctamente. No compraste solo música, compraste tiempo y reputación.
+      </p>
+      <p style="color: #ccc; line-height: 1.6; font-size: 16px;">
+        Tu cuenta tiene luz verde para descargas ilimitadas. Haz que valga la pena.
+      </p>
+      <div style="background: #000; padding: 15px; margin: 20px 0; border-radius: 6px; border: 1px solid #222; font-family: monospace; color: #888;">
+        <p style="margin: 5px 0;">ID REF: <span style="color: #fff;">${escapeHtml(orderId)}</span></p>
+        <p style="margin: 5px 0;">ESTADO: <span style="color: #00ff88;">APROBADO ✅</span></p>
+      </div>
+      <div style="text-align: center; margin: 40px 0;">
+        <a href="${appUrl}/dashboard" style="background-color: #00ff88; color: #000000; padding: 18px 40px; text-decoration: none; font-weight: 900; text-transform: uppercase; border-radius: 50px; display: inline-block; font-size: 18px; box-shadow: 0 0 25px rgba(0, 255, 136, 0.4);">
+          IR A MI DASHBOARD ⚡
+        </a>
+      </div>
+    </div>
+    <div style="margin-top: 30px; text-align: center; color: #444; font-size: 12px;">
+      <p>Este correo sirve como comprobante de pago digital.</p>
+      <p>Bear Beat 2027 | The Elite DJ Network</p>
+    </div>
+  </div>
+  `.trim()
+  return sendEmail(params.to, subject, paymentHtml, {
+    name: userName,
+    tags: ['payment', 'confirmation', 'elite'],
+  })
+}
+
 /** Evento de actividad transaccional Brevo (API v3/smtp/statistics/events) */
 export interface BrevoEmailEvent {
   date: string
@@ -323,6 +377,8 @@ export const PROJECT_EMAIL_TAGS = [
   'credentials',
   'registro',
   'elite',
+  'payment',
+  'confirmation',
   'payment_failed',
   'recovery',
   'transactional',
@@ -334,6 +390,8 @@ export const TEMPLATE_LABEL_BY_TAG: Record<string, string> = {
   credentials: 'Bienvenida',
   registro: 'Bienvenida registro',
   elite: 'Bienvenida registro',
+  payment: 'Confirmación pago',
+  confirmation: 'Confirmación pago',
   payment_failed: 'Recuperación pago',
   recovery: 'Recuperación pago',
   transactional: 'Transaccional',
@@ -343,6 +401,7 @@ export const TEMPLATE_LABEL_BY_TAG: Record<string, string> = {
 export const TEMPLATE_TO_TAGS: Record<string, string[]> = {
   bienvenida: ['welcome', 'credentials'],
   bienvenida_registro: ['welcome', 'registro', 'elite'],
+  confirmacion_pago: ['payment', 'confirmation'],
   recuperacion: ['payment_failed', 'recovery'],
   transaccional: ['transactional'],
 }

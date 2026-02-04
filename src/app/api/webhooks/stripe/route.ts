@@ -10,7 +10,7 @@ import {
   isHetznerFtpConfigured,
 } from '@/lib/hetzner-robot'
 import { isFtpConfigured } from '@/lib/ftp-stream'
-import { sendEmail, sendPaymentFailedRecoveryEmail } from '@/lib/brevo-email'
+import { sendEmail, sendPaymentFailedRecoveryEmail, sendPaymentConfirmationEmail } from '@/lib/brevo-email'
 import { sendSms } from '@/lib/brevo-sms'
 
 function generateRandomPassword(): string {
@@ -413,6 +413,19 @@ export async function POST(req: NextRequest) {
               completed_at: new Date().toISOString(),
             }).eq('stripe_session_id', session.id)
             console.log('Webhook: compra auto-activada para', customerEmail, 'pack_id', packId)
+            if (customerEmail && customerEmail.includes('@')) {
+              try {
+                await sendPaymentConfirmationEmail({
+                  to: customerEmail,
+                  userName: customerName || undefined,
+                  amount: amountPaid,
+                  orderId: session.id,
+                })
+                console.log('Email confirmación de pago (Modo Élite) enviado a', customerEmail)
+              } catch (e) {
+                console.warn('sendPaymentConfirmationEmail (non-critical):', e)
+              }
+            }
           }
         } else {
           console.error('Webhook: no se encontró usuario para', customerEmail, '(devolvemos 500 para reintento)')

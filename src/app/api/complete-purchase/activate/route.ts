@@ -6,6 +6,7 @@ import {
   isHetznerFtpConfigured,
 } from '@/lib/hetzner-robot'
 import { isFtpConfigured } from '@/lib/ftp-stream'
+import { sendPaymentConfirmationEmail } from '@/lib/brevo-email'
 
 function generatePassword(): string {
   const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -199,6 +200,20 @@ export async function POST(req: NextRequest) {
       ...(utm_campaign && { utm_campaign }),
       ...(utm_source && { traffic_source: utm_source }),
     })
+
+    if (!insertError && customerEmail && customerEmail.includes('@')) {
+      try {
+        await sendPaymentConfirmationEmail({
+          to: customerEmail,
+          userName: name || undefined,
+          amount: amountPaid,
+          orderId: paymentIntent || sessionId,
+        })
+        console.log('Email confirmación de pago (Modo Élite) enviado a', customerEmail)
+      } catch (e) {
+        console.warn('sendPaymentConfirmationEmail (non-critical):', e)
+      }
+    }
 
     if (insertError) {
       // Idempotencia: unique violation (user_id, pack_id) = ya activado
