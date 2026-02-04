@@ -161,14 +161,16 @@ async function main() {
     } else if (dryRun && toUpload.length > 0) {
       toUpload.forEach((f) => console.log('  ', f.relativePath, `(${(f.size / 1024 / 1024).toFixed(2)} MB)`));
     }
-    if (doThumbs) await client.cd('..');
+    if (doThumbs) await client.cd('..'); // volver a raíz para listar portadas
   }
 
   // --- 2) Portadas en raíz del FTP (Género/archivo.jpg) → Bunny en la raíz
   if (doThumbs) {
-    if (doVideos) await client.cd('..'); // volver a raíz (estábamos en FTP_BASE)
+    // (si hicimos videos, ya estamos en raíz por el cd('..') anterior)
     const rootList = await client.list();
-    const thumbDirs = rootList.filter((f) => f.isDirectory && !f.name.startsWith('.'));
+    const thumbDirs = rootList.filter(
+      (f) => f.isDirectory && !f.name.startsWith('.') && f.name !== FTP_BASE
+    );
     const thumbFiles = [];
     for (const dir of thumbDirs) {
       try {

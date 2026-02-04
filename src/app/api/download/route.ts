@@ -104,10 +104,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2) Fallback: Bunny CDN
+    // 2) Fallback: Bunny CDN (solo si el archivo existe; si no, no redirigir a 404)
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
-      // ZIP: sin prefijo (false). Video: con prefijo (true).
       const bunnyPath = buildBunnyPath(sanitizedPath, !isZip)
       let signedUrl: string
       try {
@@ -117,17 +116,25 @@ export async function GET(req: NextRequest) {
         signedUrl = ''
       }
       if (signedUrl) {
-        try {
-          await supabase.from('downloads').insert({
-            user_id: user.id,
-            pack_id: purchases[0].pack_id,
-            file_path: sanitizedPath,
-            download_method: 'web',
-          })
-        } catch {
-          // ignorar
+        const head = await fetch(signedUrl, { method: 'HEAD', cache: 'no-store' })
+        if (head.ok) {
+          try {
+            await supabase.from('downloads').insert({
+              user_id: user.id,
+              pack_id: purchases[0].pack_id,
+              file_path: sanitizedPath,
+              download_method: 'web',
+            })
+          } catch {
+            // ignorar
+          }
+          return NextResponse.redirect(signedUrl, 302)
         }
-        return NextResponse.redirect(signedUrl, 302)
+        if (head.status === 404) {
+          console.warn('[download] Archivo no existe en Bunny (404), path:', sanitizedPath)
+        } else {
+          return NextResponse.redirect(signedUrl, 302)
+        }
       }
     }
 

@@ -73,12 +73,12 @@ export function TrackingScripts() {
         />
       )}
 
-      {/* ManyChat Widget */}
+      {/* ManyChat Widget: lazyOnload evita el warning "preloaded but not used" (no preload, se carga en idle). */}
       {MANYCHAT_ID && (
         <Script
           id="manychat-widget"
           src={`https://widget.manychat.com/${MANYCHAT_ID}.js`}
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
       )}
 

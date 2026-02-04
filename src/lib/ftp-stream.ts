@@ -1,13 +1,29 @@
 /**
  * Stream de archivos desde FTP (Hetzner Storage Box).
- * Usado cuando Bunny CDN no está configurado: demos, descargas y portadas se sirven por proxy.
  *
- * Estructura esperada en el FTP:
- * - Videos:  {FTP_BASE}/{Genre}/{video.mp4}  → ej. "Videos Enero 2026/Bachata/Artist - Title.mp4"
- * - Portadas: {Genre}/{file.jpg} en la raíz   → ej. "Bachata/Artist - Title.jpg" (subidas por upload-assets)
- * - ZIPs:     {Genre}.zip en la raíz          → ej. "Bachata.zip", "Pack_Completo_Enero_2026.zip"
+ * ESTRUCTURA EN LA RAÍZ DEL FTP (tal como está en Hetzner):
  *
- * Variables: FTP_HOST, FTP_USER, FTP_PASSWORD (o HETZNER_FTP_*), FTP_BASE_PATH (opcional).
+ *   / (raíz)
+ *   ├── Bachata/              ← carpeta por género, DENTRO van los JPG (portadas)
+ *   │   ├── Artist - Title.jpg
+ *   │   └── ...
+ *   ├── Cumbia/
+ *   │   └── *.jpg
+ *   ├── Bachata.zip           ← todos los ZIP en la raíz
+ *   ├── Cumbia.zip
+ *   └── Videos Enero 2026/    ← carpeta de videos (FTP_BASE)
+ *       ├── Bachata/          ← DENTRO van los MP4
+ *       │   ├── Artist - Title.mp4
+ *       │   └── ...
+ *       └── Cumbia/
+ *           └── *.mp4
+ *
+ * Cómo se usa cada tipo:
+ * - thumb: path "Bachata/Artist - Title.jpg" → sin cd, RETR desde raíz.
+ * - video: path "Bachata/Artist - Title.mp4" → cd(FTP_BASE), luego RETR "Bachata/Artist - Title.mp4".
+ * - zip:   path "Bachata.zip"                 → sin cd, RETR desde raíz.
+ *
+ * Variables: FTP_HOST, FTP_USER, FTP_PASSWORD (o HETZNER_FTP_*), FTP_BASE_PATH (default "Videos Enero 2026").
  */
 
 import { Client } from 'basic-ftp'
@@ -31,6 +47,8 @@ function getFtpOptions() {
     secureOptions: process.env.FTP_INSECURE !== 'true' ? undefined : { rejectUnauthorized: false },
   }
 }
+
+const FTP_FIRST_BYTE_TIMEOUT_MS = 28_000
 
 /**
  * Descarga un archivo del FTP y devuelve un stream legible.
@@ -86,6 +104,85 @@ export async function streamFileFromFtp(
     })
 
   return pass
+}
+
+/**
+ * Igual que streamFileFromFtp pero espera a tener conexión FTP y primer byte antes de resolver.
+ * Así el reproductor de video recibe datos de inmediato y no hace timeout.
+ * Si el archivo no existe o hay error, rechaza la promesa (para que demo-url pueda hacer fallback a Bunny).
+ */
+export function streamFileFromFtpOnceReady(
+  relativePath: string,
+  type: 'video' | 'thumb' | 'zip'
+): Promise<PassThrough> {
+  const pathSafe = relativePath.replace(/\.\./g, '').replace(/^\/+/, '').trim()
+  if (!pathSafe) return Promise.reject(new Error('Path vacío'))
+
+  const client = new Client(120_000)
+  const pass = new PassThrough()
+  const resultStream = new PassThrough()
+
+  const cleanup = () => {
+    try {
+      client.close()
+    } catch {
+      // ignore
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      cleanup()
+      pass.destroy()
+      reject(new Error('FTP timeout: no se recibió el primer byte a tiempo'))
+    }, FTP_FIRST_BYTE_TIMEOUT_MS)
+
+    const onFirstData = (chunk: Buffer | string) => {
+      clearTimeout(timeout)
+      resultStream.write(chunk)
+      pass.pipe(resultStream, { end: true })
+      resolve(resultStream)
+    }
+
+    pass.once('data', onFirstData)
+    pass.once('error', (err) => {
+      clearTimeout(timeout)
+      resultStream.destroy(err)
+      reject(err)
+    })
+
+    const opts = getFtpOptions()
+    client
+      .access({
+        ...opts,
+        secure: opts.secure,
+        secureOptions: opts.secure ? { rejectUnauthorized: false } : undefined,
+      })
+      .then(async () => {
+        if (type === 'video') {
+          try {
+            await client.cd(FTP_BASE)
+          } catch (e) {
+            cleanup()
+            pass.destroy(e instanceof Error ? e : new Error(String(e)))
+            return
+          }
+        }
+        client
+          .downloadTo(pass, pathSafe)
+          .then(() => cleanup())
+          .catch((e) => {
+            pass.destroy(e instanceof Error ? e : new Error(String(e)))
+            cleanup()
+          })
+      })
+      .catch((e) => {
+        clearTimeout(timeout)
+        cleanup()
+        pass.destroy()
+        reject(e instanceof Error ? e : new Error(String(e)))
+      })
+  })
 }
 
 /**

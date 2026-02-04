@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateSignedUrl, isBunnyConfigured, buildBunnyPath, getBunnyConfigStatus } from '@/lib/bunny'
-import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
+import { isFtpConfigured, streamFileFromFtpOnceReady, getContentType } from '@/lib/ftp-stream'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,10 +25,10 @@ export async function GET(req: NextRequest) {
     }
     pathNorm = pathNorm.replace(/^Videos Enero 2026\/?/i, '').trim() || pathNorm
 
-    // 1) Prioridad: FTP (Hetzner)
+    // 1) Prioridad: FTP (Hetzner). Esperamos primer byte para que el reproductor no haga timeout.
     if (isFtpConfigured()) {
       try {
-        const stream = await streamFileFromFtp(pathNorm, 'video')
+        const stream = await streamFileFromFtpOnceReady(pathNorm, 'video')
         const { Readable } = await import('stream')
         const webStream = Readable.toWeb(stream) as ReadableStream
         const contentType = getContentType(pathNorm)
@@ -45,14 +45,22 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2) Fallback: Bunny CDN
+    // 2) Fallback: Bunny CDN (solo si el archivo existe allí; si no, evitamos redirigir a 404)
     if (isBunnyConfigured()) {
       const bunnyPath = buildBunnyPath(pathNorm, true)
       if (bunnyPath) {
         try {
           const signedUrl = generateSignedUrl(bunnyPath, DEMO_EXPIRY_SECONDS)
           if (signedUrl && signedUrl.startsWith('http') && signedUrl.length > 20) {
-            return NextResponse.redirect(signedUrl)
+            const head = await fetch(signedUrl, { method: 'HEAD', cache: 'no-store' })
+            if (head.ok) return NextResponse.redirect(signedUrl)
+            if (head.status === 404) {
+              console.warn('[demo-url] Archivo no existe en Bunny (404), path:', pathNorm)
+              // no redirigir a una URL que devolverá 404
+            } else {
+              // 403 u otro: puede ser que Bunny no permita HEAD; redirigir igual
+              return NextResponse.redirect(signedUrl)
+            }
           }
         } catch (e) {
           console.warn('[demo-url] Bunny signed URL failed:', (e as Error)?.message || e, 'path:', pathNorm)
@@ -76,7 +84,14 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'Demo no disponible', reason: 'file_not_found', path: pathNorm },
+      {
+        error: 'Demo no disponible',
+        reason: 'file_not_found',
+        path: pathNorm,
+        hint: isFtpConfigured()
+          ? 'El archivo no está en Bunny. Sube los videos a Bunny Storage o verifica la ruta en Hetzner.'
+          : 'Configura FTP (Hetzner) en Render (FTP_HOST, FTP_USER, FTP_PASSWORD) para servir demos desde tu almacenamiento.',
+      },
       { status: 503 }
     )
   } catch (e) {
