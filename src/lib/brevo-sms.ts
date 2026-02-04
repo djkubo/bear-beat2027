@@ -39,11 +39,16 @@ export function getBrevoSmsConfigDiagnostic(): { apiKey: string; sender: string;
 
 /**
  * Normaliza número para Brevo: debe ser E.164 (ej. +5215512345678).
+ * México: 10 dígitos (ej. 5512345678) → +5215512345678
  */
 function toE164(phone: string): string {
   const cleaned = phone.replace(/\D/g, '')
-  if (phone.startsWith('+')) return phone
-  if (cleaned.startsWith('52')) return `+${cleaned}`
+  if (!cleaned) return phone
+  if (phone.startsWith('+')) return `+${cleaned}`
+  if (cleaned.startsWith('52') && cleaned.length >= 12) return `+${cleaned}`
+  // México: 10 dígitos sin código país → +52
+  if (cleaned.length === 10 && cleaned.startsWith('1') === false) return `+52${cleaned}`
+  if (cleaned.length === 11 && cleaned.startsWith('1')) return `+52${cleaned}` // 1 55 1234 5678
   return `+${cleaned}`
 }
 

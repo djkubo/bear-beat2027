@@ -83,7 +83,10 @@ export function SMSWhatsAppClient() {
       })
       const data = await res.json()
       if (data.success) {
-        setSmsResult({ type: 'ok', text: data.message || 'SMS enviado' })
+        setSmsResult({
+          type: 'ok',
+          text: (data.message || 'SMS enviado') + (data.messageId ? ` (ID: ${data.messageId}). Si no llega, revisa en Brevo → SMS → Estadísticas o que el remitente esté aprobado.` : ''),
+        })
         setSmsTo('')
         setSmsCustomMessage('')
       } else {
@@ -207,7 +210,7 @@ export function SMSWhatsAppClient() {
                 ))}
             </p>
             <p className="text-xs text-zinc-400 mt-2">
-              En Render: Environment. Nombre exacto de la variable (ej. TWILIO_PHONE_NUMBER o TWILIO_WHATSAPP_NUMBER). Tras cambiar, haz un nuevo Deploy.
+              En Render: Dashboard → Environment. Añade <strong>una</strong> variable con el nombre exacto (ej. <code>TWILIO_PHONE_NUMBER</code>) y valor tu número Twilio (ej. <code>+14155238886</code> o <code>whatsapp:+14155238886</code>). Luego ejecuta <code>node scripts/render-set-env.js</code> desde tu repo (con RENDER_API_KEY en .env.local) para subir env y disparar deploy, o haz Manual Deploy en Render.
             </p>
           </div>
         )}

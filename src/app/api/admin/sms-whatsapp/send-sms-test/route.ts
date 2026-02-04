@@ -64,5 +64,8 @@ export async function POST(req: NextRequest) {
   if (result.success) {
     return NextResponse.json({ success: true, message: 'SMS enviado', messageId: result.messageId })
   }
-  return NextResponse.json({ error: result.error || 'Error al enviar' }, { status: 500 })
+  return NextResponse.json({
+    error: result.error || 'Error al enviar',
+    hint: 'Revisa en Brevo: SMS activado, remitente aprobado, número en formato E.164 (ej. +5215512345678).',
+  }, { status: 500 })
 }

@@ -120,6 +120,9 @@ const PROJECT_RENDER_KEYS = [
   'TWILIO_VERIFY_SERVICE_SID',
   'TWILIO_PHONE_NUMBER',
   'TWILIO_WHATSAPP_NUMBER',
+  'TWILIO_WHATSAPP_SENDER',
+  'TWILIO_WHATSAPP_FROM',
+  'TWILIO_FROM_NUMBER',
   'DEV_OTP_BYPASS_CODE',
   'BREVO_API_KEY',
   'BREVO_SENDER_EMAIL',
@@ -288,6 +291,19 @@ async function main() {
   if (!vars.some((v) => v.key === 'FIX_ADMIN_SECRET')) {
     vars.push({ key: 'FIX_ADMIN_SECRET', value: overrides.FIX_ADMIN_SECRET })
     console.log('   (FIX_ADMIN_SECRET fijo para /fix-admin)')
+  }
+
+  // Brevo remitente: si no están en .env.local, usar valores por defecto (thebearbeat.com)
+  const BREVO_DEFAULTS = {
+    BREVO_SENDER_EMAIL: 'noreply@thebearbeat.com',
+    BREVO_SENDER_NAME: 'Bear Beat',
+  }
+  for (const [key, defaultValue] of Object.entries(BREVO_DEFAULTS)) {
+    if (!vars.some((v) => v.key === key)) {
+      const val = process.env[key] || defaultValue
+      vars.push({ key, value: val })
+      console.log('   (Brevo por defecto)', key)
+    }
   }
 
   // REQUIRED_KEYS: si falta alguna en vars, subir con valor por defecto para que Render no quede incompleto
