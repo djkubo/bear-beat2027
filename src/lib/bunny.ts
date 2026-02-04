@@ -1,7 +1,9 @@
 /**
  * BunnyCDN – URLs firmadas (Token Authentication)
- * Hetzner Storage Box como origen; BunnyCDN Pull Zone como entrega.
- * Variables: NEXT_PUBLIC_BUNNY_CDN_URL, BUNNY_TOKEN_KEY
+ * Origen: Hetzner Storage Box (WebDAV). La Pull Zone de Bunny debe tener como Origin URL
+ * la URL de tu Storage Box (ej. https://u123456.your-storagebox.de) para que Bunny jale
+ * todos los archivos de Hetzner; no hace falta subir nada a Bunny Storage.
+ * Variables: NEXT_PUBLIC_BUNNY_CDN_URL, BUNNY_TOKEN_KEY, BUNNY_PACK_PATH_PREFIX
  * Fórmula: token = Base64(SHA256(BUNNY_TOKEN_KEY + path + expires))
  */
 

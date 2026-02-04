@@ -2,7 +2,9 @@
 
 Para que los demos apunten a `https://tu-zona.b-cdn.net` y no den 503 en Next.js.
 
-**Documento maestro de integración (demos, portadas, descargas, FTP):** [BUNNY_HETZNER_INTEGRACION.md](./BUNNY_HETZNER_INTEGRACION.md).
+**En Bear Beat todo está en Hetzner.** Configura la Pull Zone con **Origin URL = tu Hetzner Storage Box (WebDAV)** para que Bunny jale los archivos de Hetzner. Ver [BUNNY_ORIGEN_HETZNER.md](./BUNNY_ORIGEN_HETZNER.md).
+
+**Documento maestro:** [BUNNY_HETZNER_INTEGRACION.md](./BUNNY_HETZNER_INTEGRACION.md).
 
 ---
 

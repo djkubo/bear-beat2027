@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateSignedUrl, isBunnyConfigured, buildBunnyPath } from '@/lib/bunny'
-import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
 import { getPublicAppOrigin } from '@/lib/utils'
-import { Readable } from 'stream'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,9 +12,18 @@ function redirectToPlaceholder(req: NextRequest) {
   return NextResponse.redirect(url)
 }
 
+/** Extensiones de video que se mapean a .jpg para portada. */
+const VIDEO_EXT = /\.(mp4|mov|avi|mkv|webm)$/i
+
+function toThumbPath(path: string): string {
+  if (VIDEO_EXT.test(path)) return path.replace(VIDEO_EXT, '.jpg')
+  return path
+}
+
 /**
- * GET /api/thumbnail-cdn?path=Genre/filename.jpg
- * Prioridad: 1) FTP (Hetzner), 2) Bunny CDN. Portadas desde Hetzner si están ahí.
+ * GET /api/thumbnail-cdn?path=Genre/filename.jpg o Genre/filename.mp4
+ * Solo redirecciones (nunca stream) para evitar 502 en Render.
+ * Prioridad: 1) Bunny CDN, 2) placeholder.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -31,38 +38,28 @@ export async function GET(req: NextRequest) {
       pathNorm = pathParam.replace(/^\//, '').trim()
     }
     pathNorm = pathNorm.replace(/^Videos Enero 2026\/?/i, '').trim() || pathNorm
+    const pathThumb = toThumbPath(pathNorm)
 
-    // 1) Prioridad: FTP (Hetzner)
-    if (isFtpConfigured()) {
-      try {
-        const stream = await streamFileFromFtp(pathNorm, 'thumb')
-        const webStream = Readable.toWeb(stream) as ReadableStream
-        const contentType = getContentType(pathNorm)
-        return new NextResponse(webStream, {
-          headers: {
-            'Content-Type': contentType,
-            'Cache-Control': 'public, max-age=86400',
-            'X-Content-Type-Options': 'nosniff',
-          },
-        })
-      } catch (e) {
-        console.warn('[thumbnail-cdn] FTP no tuvo la portada, intentando Bunny:', (e as Error)?.message || e)
-      }
-    }
-
-    // 2) Fallback: Bunny CDN
     if (isBunnyConfigured()) {
       try {
-        // Las portadas están en la raíz, así que pasamos 'false' para NO usar el prefijo.
-        const bunnyPath = buildBunnyPath(pathNorm, false)
+        // Portadas en Hetzner están en la raíz (Género/archivo.jpg); videos bajo FTP_BASE_PATH
+    const bunnyPath = buildBunnyPath(pathThumb, false)
         if (bunnyPath) {
           const signedUrl = generateSignedUrl(bunnyPath, 3600)
-          if (signedUrl && signedUrl.startsWith('http') && signedUrl.length > 20) {
-            return NextResponse.redirect(signedUrl)
+          if (signedUrl?.startsWith('http') && signedUrl.length > 20) {
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 4000)
+            const head = await fetch(signedUrl, {
+              method: 'HEAD',
+              cache: 'no-store',
+              signal: controller.signal,
+            })
+            clearTimeout(timeoutId)
+            if (head.ok) return NextResponse.redirect(signedUrl)
           }
         }
-      } catch (e) {
-        console.warn('[thumbnail-cdn] Bunny signed URL failed:', (e as Error)?.message || e)
+      } catch {
+        // timeout, red o Bunny no disponible → placeholder
       }
     }
 

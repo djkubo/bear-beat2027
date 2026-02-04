@@ -2,6 +2,8 @@
 
 Documento de referencia para que **demos**, **portadas**, **descargas**, **descargas por carpeta** y **FTP** funcionen sin fallos. El usuario debe poder: entrar → ver → pagar → descargar.
 
+**Todo está en Hetzner; Bunny debe usar Hetzner como origen.** Ver [BUNNY_ORIGEN_HETZNER.md](./BUNNY_ORIGEN_HETZNER.md) para configurar la Pull Zone con Origin URL = Storage Box (WebDAV).
+
 ---
 
 ## 1. Resumen por funcionalidad
