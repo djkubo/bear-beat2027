@@ -249,13 +249,43 @@ export interface BrevoEmailEvent {
 }
 
 /**
+ * Tags que usa este proyecto al enviar (bienvenida, recuperación, transaccional).
+ * Sirve para filtrar en la API de estadísticas y mostrar solo nuestros envíos.
+ */
+export const PROJECT_EMAIL_TAGS = [
+  'welcome',
+  'credentials',
+  'payment_failed',
+  'recovery',
+  'transactional',
+] as const
+
+/** Nombre de plantilla por tag (para la UI) */
+export const TEMPLATE_LABEL_BY_TAG: Record<string, string> = {
+  welcome: 'Bienvenida',
+  credentials: 'Bienvenida',
+  payment_failed: 'Recuperación pago',
+  recovery: 'Recuperación pago',
+  transactional: 'Transaccional',
+}
+
+/** Agrupa tags por plantilla para filtros */
+export const TEMPLATE_TO_TAGS: Record<string, string[]> = {
+  bienvenida: ['welcome', 'credentials'],
+  recuperacion: ['payment_failed', 'recovery'],
+  transaccional: ['transactional'],
+}
+
+/**
  * Obtiene la actividad de emails transaccionales desde Brevo (últimos N días).
+ * Si se pasan tags, la API de Brevo filtra por esos tags (solo eventos con al menos uno de esos tags).
  */
 export async function getBrevoEmailEvents(params: {
   days?: number
   startDate?: string
   endDate?: string
   limit?: number
+  tags?: string[]
 }): Promise<{ events: BrevoEmailEvent[]; error?: string }> {
   if (!BREVO_API_KEY || BREVO_API_KEY.length < 20) {
     return { events: [], error: 'Brevo not configured' }
@@ -269,6 +299,9 @@ export async function getBrevoEmailEvents(params: {
     url.searchParams.set('endDate', params.endDate)
   } else {
     url.searchParams.set('days', String(params.days ?? 30))
+  }
+  if (params.tags?.length) {
+    params.tags.forEach((tag) => url.searchParams.append('tags', tag))
   }
   try {
     const res = await fetch(url.toString(), {

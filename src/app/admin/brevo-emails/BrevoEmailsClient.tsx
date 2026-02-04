@@ -7,16 +7,21 @@ interface EmailRow {
   to: string
   event: string
   tag: string | null
+  templateLabel: string | null
   from: string | null
 }
 
 interface Summary {
   total_events: number
+  total_events_before_filter?: number
   unique_emails_shown: number
   tags: string[]
   event_type_counts?: Record<string, number>
   filtered_by_sender?: boolean
   sender_email?: string | null
+  filtered_by_template?: boolean
+  template_filter?: string | null
+  project_templates?: { id: string; label: string; tags: string[] }[]
 }
 
 const EVENT_LABELS: Record<string, string> = {
@@ -66,6 +71,7 @@ const PAGE_SIZE = 100
 export function BrevoEmailsClient() {
   const [days, setDays] = useState(30)
   const [eventFilter, setEventFilter] = useState<string>('')
+  const [templateFilter, setTemplateFilter] = useState<string>('')
   const [summary, setSummary] = useState<Summary | null>(null)
   const [emails, setEmails] = useState<EmailRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -80,6 +86,7 @@ export function BrevoEmailsClient() {
       params.set('days', String(days))
       params.set('full', '1')
       if (eventFilter) params.set('event', eventFilter)
+      if (templateFilter) params.set('template', templateFilter)
       const res = await fetch(`/api/admin/brevo-emails?${params.toString()}`)
       const data = await res.json()
       if (data.error) {
@@ -98,7 +105,7 @@ export function BrevoEmailsClient() {
     } finally {
       setLoading(false)
     }
-  }, [days, eventFilter])
+  }, [days, eventFilter, templateFilter])
 
   useEffect(() => {
     fetchData()
@@ -112,14 +119,25 @@ export function BrevoEmailsClient() {
 
   return (
     <div className="space-y-8">
-      {/* Aviso: solo correos de este proyecto */}
-      {summary?.filtered_by_sender && summary?.sender_email && (
-        <div className="rounded-2xl border border-bear-blue/30 bg-bear-blue/10 p-4">
-          <p className="text-sm text-zinc-300">
-            <strong className="text-bear-blue">Solo correos de este proyecto:</strong> se muestran únicamente los enviados desde <span className="font-mono text-white">{summary.sender_email}</span>.
+      {/* Plantillas de este proyecto y filtros activos */}
+      <div className="rounded-2xl border border-white/10 bg-zinc-900/80 p-4 space-y-2">
+        <p className="text-sm text-zinc-400">
+          <strong className="text-white">Solo correos de este proyecto:</strong> se pide a Brevo únicamente eventos con los tags que usamos aquí (bienvenida, recuperación de pago, transaccional). Opcionalmente se filtra también por remitente <span className="font-mono text-bear-blue">BREVO_SENDER_EMAIL</span>.
+        </p>
+        {summary?.project_templates && summary.project_templates.length > 0 && (
+          <p className="text-sm text-zinc-500">
+            Plantillas: {summary.project_templates.map((t) => t.label).join(' · ')}
           </p>
-        </div>
-      )}
+        )}
+        {summary?.filtered_by_sender && summary?.sender_email && (
+          <p className="text-sm text-zinc-300">
+            Remitente: <span className="font-mono text-white">{summary.sender_email}</span>
+            {typeof summary?.total_events_before_filter === 'number' && summary.total_events_before_filter !== summary.total_events && (
+              <span className="text-zinc-500"> · {summary.total_events_before_filter.toLocaleString()} con nuestros tags → {summary.total_events.toLocaleString()} tras filtro remitente</span>
+            )}
+          </p>
+        )}
+      </div>
 
       {/* Filtros - misma tarjeta que el resto del admin */}
       <div className="rounded-2xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
@@ -135,6 +153,21 @@ export function BrevoEmailsClient() {
               <option value={7}>Últimos 7 días</option>
               <option value={30}>Últimos 30 días</option>
               <option value={90}>Últimos 90 días</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-zinc-400">
+            <span className="text-zinc-500">Plantilla:</span>
+            <select
+              value={templateFilter}
+              onChange={(e) => setTemplateFilter(e.target.value)}
+              className="rounded-xl border border-white/10 bg-zinc-800 px-4 py-2.5 text-white focus:border-bear-blue focus:outline-none focus:ring-1 focus:ring-bear-blue/30"
+            >
+              <option value="">Todas</option>
+              {summary?.project_templates?.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
             </select>
           </label>
           <label className="flex items-center gap-2 text-sm text-zinc-400">
@@ -211,6 +244,7 @@ export function BrevoEmailsClient() {
                   <tr>
                     <th className="text-left py-3 px-4 font-bold text-zinc-400">Fecha</th>
                     <th className="text-left py-3 px-4 font-bold text-zinc-400">Para</th>
+                    <th className="text-left py-3 px-4 font-bold text-zinc-400">Plantilla</th>
                     <th className="text-left py-3 px-4 font-bold text-zinc-400">Evento</th>
                     <th className="text-left py-3 px-4 font-bold text-zinc-400">Remitente</th>
                   </tr>
@@ -264,7 +298,12 @@ export function BrevoEmailsClient() {
                       </span>
                       <span className="text-xs text-zinc-500 shrink-0">{formatDate(row.date)}</span>
                     </div>
-                    <p className="font-medium text-white text-sm break-all">{row.to}</p>
+                    {row.templateLabel && (
+                      <span className="rounded bg-bear-blue/20 px-2 py-0.5 text-xs text-bear-blue font-bold">
+                        {row.templateLabel}
+                      </span>
+                    )}
+                    <p className="font-medium text-white text-sm break-all mt-1">{row.to}</p>
                     {row.from && (
                       <p className="text-xs text-zinc-500 mt-1 truncate">De: {row.from}</p>
                     )}

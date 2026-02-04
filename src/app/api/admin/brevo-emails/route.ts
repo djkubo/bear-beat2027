@@ -7,7 +7,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
-import { getBrevoEmailEvents, type BrevoEmailEvent } from '@/lib/brevo-email'
+import {
+  getBrevoEmailEvents,
+  type BrevoEmailEvent,
+  PROJECT_EMAIL_TAGS,
+  TEMPLATE_LABEL_BY_TAG,
+  TEMPLATE_TO_TAGS,
+} from '@/lib/brevo-email'
 
 async function isAdmin(req: NextRequest): Promise<boolean> {
   const supabase = await createServerClient()
@@ -30,19 +36,32 @@ export async function GET(req: NextRequest) {
   const endDate = searchParams.get('endDate') || undefined
   const full = searchParams.get('full') === '1' || searchParams.get('full') === 'true'
   const eventFilter = searchParams.get('event') || undefined
+  const templateFilter = searchParams.get('template') || undefined
 
+  // Pedir a Brevo solo eventos con nuestros tags (plantillas de este proyecto)
+  const tagsToRequest = [...PROJECT_EMAIL_TAGS]
   const { events, error } = await getBrevoEmailEvents({
     days: startDate && endDate ? undefined : (Number.isFinite(days) ? days : 90),
     startDate,
     endDate,
     limit: 5000,
+    tags: tagsToRequest,
   })
 
   if (error) {
     return NextResponse.json({ error, summary: null, emails: [] }, { status: 200 })
   }
 
-  // Solo correos enviados desde este proyecto (remitente configurado en .env)
+  // Filtro por plantilla: si template=bienvenida|recuperacion|transaccional, solo eventos con esos tags
+  const templateTags = templateFilter && TEMPLATE_TO_TAGS[templateFilter.toLowerCase()]
+    ? TEMPLATE_TO_TAGS[templateFilter.toLowerCase()]
+    : null
+  const byTemplate =
+    templateTags?.length
+      ? events.filter((ev) => ev.tag && templateTags.includes(ev.tag))
+      : events
+
+  // Opcional: además filtrar por remitente (por si algún evento sin tag se coló)
   const senderEmail = (process.env.BREVO_SENDER_EMAIL || '').trim().toLowerCase()
   const normalizeFrom = (from: string | undefined): string => {
     if (!from) return ''
@@ -51,8 +70,8 @@ export async function GET(req: NextRequest) {
   }
   const projectEvents =
     senderEmail && senderEmail.includes('@')
-      ? events.filter((ev) => normalizeFrom(ev.from) === senderEmail)
-      : events
+      ? byTemplate.filter((ev) => normalizeFrom(ev.from) === senderEmail)
+      : byTemplate
 
   // Conteo por tipo de evento para el resumen (solo de este proyecto)
   const eventTypeCounts: Record<string, number> = {}
@@ -83,11 +102,19 @@ export async function GET(req: NextRequest) {
 
   const summary = {
     total_events: projectEvents.length,
+    total_events_before_filter: events.length,
     unique_emails_shown: list.length,
     tags: [...new Set(projectEvents.map((e) => e.tag).filter(Boolean))] as string[],
     event_type_counts: eventTypeCounts,
     filtered_by_sender: Boolean(senderEmail && senderEmail.includes('@')),
     sender_email: senderEmail || null,
+    filtered_by_template: Boolean(templateFilter),
+    template_filter: templateFilter || null,
+    project_templates: [
+      { id: 'bienvenida', label: 'Bienvenida', tags: TEMPLATE_TO_TAGS.bienvenida },
+      { id: 'recuperacion', label: 'Recuperación pago', tags: TEMPLATE_TO_TAGS.recuperacion },
+      { id: 'transaccional', label: 'Transaccional', tags: TEMPLATE_TO_TAGS.transaccional },
+    ],
   }
 
   return NextResponse.json({
@@ -97,6 +124,7 @@ export async function GET(req: NextRequest) {
       to: e.email,
       event: e.event,
       tag: e.tag || null,
+      templateLabel: (e.tag && TEMPLATE_LABEL_BY_TAG[e.tag]) || null,
       from: e.from || null,
     })),
   })
