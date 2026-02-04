@@ -383,11 +383,11 @@ export default function CheckoutPage() {
                     />
                   </div>
 
-                  <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4 mb-4 flex gap-3 items-start">
+                  <div className="bg-amber-500/15 border-2 border-amber-500/60 rounded-xl p-4 mb-4 flex gap-3 items-start">
                     <span className="text-2xl">⚠️</span>
                     <div>
-                      <h4 className="font-bold text-yellow-400 text-sm uppercase">Atención DJ</h4>
-                      <p className="text-yellow-200/80 text-sm">Tu acceso y contraseña llegarán a este correo. Escríbelo sin errores.</p>
+                      <h4 className="font-bold text-amber-300 text-sm">Importante: Tu acceso llegará a este email</h4>
+                      <p className="text-amber-200/90 text-sm mt-0.5">Escribe bien tu correo; ahí recibirás el enlace y la contraseña.</p>
                     </div>
                   </div>
 

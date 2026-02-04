@@ -430,6 +430,7 @@ export default function HomeLanding() {
 
                 <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-4 py-2">
                   <div className="text-center lg:text-left">
+                    <p className="text-sm text-zinc-500 line-through mb-0.5">$1,500 MXN</p>
                     <div className="text-4xl lg:text-5xl font-black text-white flex items-baseline justify-center lg:justify-start gap-1">
                       <span className="text-xl text-bear-blue">$</span>{priceMXN}
                       <span className="text-lg font-bold text-zinc-400 ml-1">MXN</span>

@@ -8,7 +8,7 @@ const DEMO_EXPIRY_SECONDS = 1800 // 30 min
 
 /**
  * GET /api/demo-url?path=Genre/Video.mp4
- * Bunny: redirige a URL firmada. Si no está configurado: 503 con mensaje claro de qué variable falta.
+ * Prioridad: 1) FTP (Hetzner), 2) Bunny CDN. Los archivos se sirven desde Hetzner si están ahí.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -25,33 +25,48 @@ export async function GET(req: NextRequest) {
     }
     pathNorm = pathNorm.replace(/^Videos Enero 2026\/?/i, '').trim() || pathNorm
 
-    if (!isBunnyConfigured()) {
-      const status = getBunnyConfigStatus()
-      console.warn('[demo-url] Bunny no configurado o inválido:', { missing: status.missing, invalid: status.invalid })
-      if (isFtpConfigured()) {
+    // 1) Prioridad: FTP (Hetzner)
+    if (isFtpConfigured()) {
+      try {
+        const stream = await streamFileFromFtp(pathNorm, 'video')
+        const { Readable } = await import('stream')
+        const webStream = Readable.toWeb(stream) as ReadableStream
+        const contentType = getContentType(pathNorm)
+        return new NextResponse(webStream, {
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': 'private, max-age=300',
+            'Accept-Ranges': 'bytes',
+            'X-Content-Type-Options': 'nosniff',
+          },
+        })
+      } catch (e) {
+        console.warn('[demo-url] FTP no tuvo el archivo, intentando Bunny:', (e as Error)?.message || e)
+      }
+    }
+
+    // 2) Fallback: Bunny CDN
+    if (isBunnyConfigured()) {
+      const bunnyPath = buildBunnyPath(pathNorm, true)
+      if (bunnyPath) {
         try {
-          const stream = await streamFileFromFtp(pathNorm, 'video')
-          const { Readable } = await import('stream')
-          const webStream = Readable.toWeb(stream) as ReadableStream
-          const contentType = getContentType(pathNorm)
-          return new NextResponse(webStream, {
-            headers: {
-              'Content-Type': contentType,
-              'Cache-Control': 'private, max-age=300',
-              'Accept-Ranges': 'bytes',
-              'X-Content-Type-Options': 'nosniff',
-            },
-          })
+          const signedUrl = generateSignedUrl(bunnyPath, DEMO_EXPIRY_SECONDS)
+          if (signedUrl && signedUrl.startsWith('http') && signedUrl.length > 20) {
+            return NextResponse.redirect(signedUrl)
+          }
         } catch (e) {
-          console.error('demo-url FTP:', e)
-          return NextResponse.json({ error: 'Error al cargar el demo', reason: 'ftp_error' }, { status: 503 })
+          console.warn('[demo-url] Bunny signed URL failed:', (e as Error)?.message || e, 'path:', pathNorm)
         }
       }
+    }
+
+    if (!isFtpConfigured() && !isBunnyConfigured()) {
+      const status = getBunnyConfigStatus()
       return NextResponse.json(
         {
           error: 'Demos no disponibles',
-          reason: 'bunny_not_configured',
-          message: status.invalid.length > 0 ? 'Revisa que las variables de Bunny en Render sean correctas.' : 'Configura en Render (Environment) las variables de BunnyCDN.',
+          reason: 'no_source',
+          message: 'Configura FTP (Hetzner) o Bunny CDN en Render (Environment).',
           missing: status.missing,
           invalid: status.invalid,
           hints: status.hints,
@@ -60,22 +75,10 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Solo videos: siempre con prefijo "Videos Enero 2026" (BUNNY_PACK_PATH_PREFIX)
-    const bunnyPath = buildBunnyPath(pathNorm, true)
-    if (!bunnyPath) {
-      return NextResponse.json({ error: 'Path inválido', reason: 'empty_path' }, { status: 400 })
-    }
-    try {
-      const signedUrl = generateSignedUrl(bunnyPath, DEMO_EXPIRY_SECONDS)
-      if (!signedUrl || !signedUrl.startsWith('http') || signedUrl.length < 20) {
-        console.warn('[demo-url] URL firmada inválida. No redirigir.')
-        return NextResponse.json({ error: 'Demo no disponible', reason: 'invalid_signed_url' }, { status: 503 })
-      }
-      return NextResponse.redirect(signedUrl)
-    } catch (e) {
-      console.error('[demo-url] Bunny signed URL failed:', (e as Error)?.message || e, 'path:', pathNorm)
-      return NextResponse.json({ error: 'Demo no disponible', reason: 'bunny_error' }, { status: 503 })
-    }
+    return NextResponse.json(
+      { error: 'Demo no disponible', reason: 'file_not_found', path: pathNorm },
+      { status: 503 }
+    )
   } catch (e) {
     console.error('[demo-url] Unhandled:', (e as Error)?.message || e)
     return NextResponse.json({ error: 'Demo no disponible' }, { status: 503 })

@@ -75,80 +75,12 @@ export async function GET(req: NextRequest) {
       ? 'inline'
       : `attachment; filename="${filename.replace(/"/g, '\\"')}"`
 
-    if (isBunnyConfigured()) {
-      const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
-      // Todo bajo el mismo prefijo en Bunny (BUNNY_PACK_PATH_PREFIX/Genre/video.mp4 o Genre.zip)
-      const bunnyPath = buildBunnyPath(sanitizedPath, true)
-      let signedUrl: string
-      try {
-        signedUrl = bunnyPath ? generateSignedUrl(bunnyPath, expiresIn) : ''
-      } catch (e) {
-        console.error('[download] Bunny signed URL failed:', (e as Error)?.message || e, 'path:', sanitizedPath)
-        signedUrl = ''
-      }
-      if (signedUrl) {
-        try {
-          await supabase.from('downloads').insert({
-            user_id: user.id,
-            pack_id: purchases[0].pack_id,
-            file_path: sanitizedPath,
-            download_method: 'web',
-          })
-        } catch {
-          // ignorar
-        }
-        // Redirect: el navegador descarga desde Bunny directamente (evita 502/timeout en Render)
-        return NextResponse.redirect(signedUrl, 302)
-      }
-      // Bunny falló: fallback a FTP si está configurado
-      if (isFtpConfigured()) {
-        try {
-          const type = isZip ? 'zip' : 'video'
-          const stream = await streamFileFromFtp(sanitizedPath, type)
-          const webStream = Readable.toWeb(stream) as ReadableStream
-          const contentType = getContentType(sanitizedPath)
-          const filename = sanitizedPath.split('/').pop() || 'download'
-          try {
-            await supabase.from('downloads').insert({
-              user_id: user.id,
-              pack_id: purchases[0].pack_id,
-              file_path: sanitizedPath,
-              download_method: 'web',
-            })
-          } catch {
-            // ignorar
-          }
-          return new NextResponse(webStream, {
-            headers: {
-              'Content-Type': contentType,
-              'Cache-Control': 'private, max-age=3600',
-              'Content-Disposition': disposition,
-              'X-Content-Type-Options': 'nosniff',
-            },
-          })
-        } catch (ftpErr) {
-          console.error('download FTP fallback:', ftpErr)
-        }
-      }
-      const supportUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/contenido` : '/contenido'
-      return NextResponse.json(
-        {
-          error: 'La descarga no está disponible en este momento.',
-          message: 'El servidor de descargas no respondió. Por favor intenta más tarde o descarga por FTP desde tu panel. Si el problema continúa, contacta a soporte.',
-          supportUrl,
-          redirect: '/dashboard',
-        },
-        { status: 503 }
-      )
-    }
-
+    // 1) Prioridad: FTP (Hetzner)
     if (isFtpConfigured()) {
       try {
         const type = isZip ? 'zip' : 'video'
         const stream = await streamFileFromFtp(sanitizedPath, type)
         const webStream = Readable.toWeb(stream) as ReadableStream
-        const contentType = getContentType(sanitizedPath)
-        const filename = sanitizedPath.split('/').pop() || 'download'
         try {
           await supabase.from('downloads').insert({
             user_id: user.id,
@@ -167,20 +99,56 @@ export async function GET(req: NextRequest) {
             'X-Content-Type-Options': 'nosniff',
           },
         })
-      } catch (e) {
-        console.error('download FTP:', e)
-        return NextResponse.json(
-          { error: 'Error al descargar. Intenta de nuevo o usa FTP.' },
-          { status: 502 }
-        )
+      } catch (ftpErr) {
+        console.warn('[download] FTP no tuvo el archivo, intentando Bunny:', (ftpErr as Error)?.message || ftpErr)
       }
+    }
+
+    // 2) Fallback: Bunny CDN
+    if (isBunnyConfigured()) {
+      const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
+      // ZIP: sin prefijo (false). Video: con prefijo (true).
+      const bunnyPath = buildBunnyPath(sanitizedPath, !isZip)
+      let signedUrl: string
+      try {
+        signedUrl = bunnyPath ? generateSignedUrl(bunnyPath, expiresIn) : ''
+      } catch (e) {
+        console.error('[download] Bunny signed URL failed:', (e as Error)?.message || e, 'path:', sanitizedPath)
+        signedUrl = ''
+      }
+      if (signedUrl) {
+        try {
+          await supabase.from('downloads').insert({
+            user_id: user.id,
+            pack_id: purchases[0].pack_id,
+            file_path: sanitizedPath,
+            download_method: 'web',
+          })
+        } catch {
+          // ignorar
+        }
+        return NextResponse.redirect(signedUrl, 302)
+      }
+    }
+
+    const supportUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/contenido` : '/contenido'
+    if (isFtpConfigured() || isBunnyConfigured()) {
+      return NextResponse.json(
+        {
+          error: 'La descarga no está disponible en este momento.',
+          message: 'El archivo no se encontró en FTP (Hetzner) ni en Bunny. Intenta más tarde o descarga por FTP desde tu panel.',
+          supportUrl,
+          redirect: '/dashboard',
+        },
+        { status: 503 }
+      )
     }
 
     return NextResponse.json(
       {
         error: 'Descargas no disponibles',
-        reason: 'bunny_not_configured',
-        message: 'Configura Bunny CDN o FTP (FTP_HOST, FTP_USER, FTP_PASSWORD) en el servidor.',
+        reason: 'no_source',
+        message: 'Configura FTP (Hetzner) o Bunny CDN (FTP_HOST, FTP_USER, FTP_PASSWORD o BUNNY_*) en Render.',
       },
       { status: 503 }
     )

@@ -17,7 +17,9 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-const DEFAULT_GREETING = '¡Hola! 👋 ¿Tienes dudas sobre el pack o quieres ver el catálogo?';
+const DEFAULT_GREETING = 'Hey DJ! 🔥 ¿Quieres ver la lista de tracks del Pack 2026 antes de que suba de precio?';
+const MANYCHAT_GREETING = (name: string) =>
+  `¡Hola ${name.trim()}! 👋 Veo que vienes del chat. Tu Pack 2026 está reservado. ¿Te ayudo a activar tu cuenta ahora mismo?`;
 
 /** Altura disponible para la ventana del chat (viewport visible - teclado en móvil). */
 function useVisualViewportHeight() {
@@ -54,16 +56,16 @@ export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoO
   const viewportHeight = useVisualViewportHeight();
   const checkoutAutoOpenDone = useRef(false);
 
-  // ManyChat: saludo personalizado y auto-apertura si vienen del chat
+  // ManyChat: saludo por nombre (vienen del chat) o venta agresiva
   useEffect(() => {
     const userName = getCookie(BB_USER_NAME_COOKIE);
     const mcId = getCookie(BB_MC_ID_COOKIE);
-    if (userName && userName.trim()) {
-      const greeting = `¡Hola ${userName.trim()}! 👋 ¿Te ayudo a activar tu cuenta o a resolver alguna duda?`;
-      setMessages(prev => prev.length === 1 && prev[0].role === 'assistant'
-        ? [{ role: 'assistant', content: greeting }]
-        : prev);
-    }
+    const greeting = userName?.trim()
+      ? MANYCHAT_GREETING(userName)
+      : DEFAULT_GREETING;
+    setMessages(prev => prev.length === 1 && prev[0].role === 'assistant'
+      ? [{ role: 'assistant', content: greeting }]
+      : prev);
     if (mcId) {
       setFromManyChat(true);
       const t = setTimeout(() => {
