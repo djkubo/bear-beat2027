@@ -42,22 +42,34 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error, summary: null, emails: [] }, { status: 200 })
   }
 
-  // Conteo por tipo de evento para el resumen
+  // Solo correos enviados desde este proyecto (remitente configurado en .env)
+  const senderEmail = (process.env.BREVO_SENDER_EMAIL || '').trim().toLowerCase()
+  const normalizeFrom = (from: string | undefined): string => {
+    if (!from) return ''
+    const match = from.match(/<([^>]+)>/)
+    return (match ? match[1] : from).trim().toLowerCase()
+  }
+  const projectEvents =
+    senderEmail && senderEmail.includes('@')
+      ? events.filter((ev) => normalizeFrom(ev.from) === senderEmail)
+      : events
+
+  // Conteo por tipo de evento para el resumen (solo de este proyecto)
   const eventTypeCounts: Record<string, number> = {}
-  for (const ev of events) {
+  for (const ev of projectEvents) {
     const t = ev.event || 'unknown'
     eventTypeCounts[t] = (eventTypeCounts[t] ?? 0) + 1
   }
 
   let list: BrevoEmailEvent[]
   if (full) {
-    list = [...events].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    list = [...projectEvents].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     if (eventFilter) {
       list = list.filter((e) => (e.event || '').toLowerCase() === eventFilter.toLowerCase())
     }
   } else {
     const byKey = new Map<string, BrevoEmailEvent>()
-    for (const ev of events) {
+    for (const ev of projectEvents) {
       const key = ev.messageId || `${ev.date}|${ev.email}|${ev.tag || ''}`
       const existing = byKey.get(key)
       if (!existing || new Date(ev.date) > new Date(existing.date)) {
@@ -70,10 +82,12 @@ export async function GET(req: NextRequest) {
   }
 
   const summary = {
-    total_events: events.length,
-    unique_emails_shown: full ? list.length : list.length,
-    tags: [...new Set(events.map((e) => e.tag).filter(Boolean))] as string[],
+    total_events: projectEvents.length,
+    unique_emails_shown: list.length,
+    tags: [...new Set(projectEvents.map((e) => e.tag).filter(Boolean))] as string[],
     event_type_counts: eventTypeCounts,
+    filtered_by_sender: Boolean(senderEmail && senderEmail.includes('@')),
+    sender_email: senderEmail || null,
   }
 
   return NextResponse.json({

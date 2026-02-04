@@ -15,6 +15,8 @@ interface Summary {
   unique_emails_shown: number
   tags: string[]
   event_type_counts?: Record<string, number>
+  filtered_by_sender?: boolean
+  sender_email?: string | null
 }
 
 const EVENT_LABELS: Record<string, string> = {
@@ -110,6 +112,15 @@ export function BrevoEmailsClient() {
 
   return (
     <div className="space-y-8">
+      {/* Aviso: solo correos de este proyecto */}
+      {summary?.filtered_by_sender && summary?.sender_email && (
+        <div className="rounded-2xl border border-bear-blue/30 bg-bear-blue/10 p-4">
+          <p className="text-sm text-zinc-300">
+            <strong className="text-bear-blue">Solo correos de este proyecto:</strong> se muestran únicamente los enviados desde <span className="font-mono text-white">{summary.sender_email}</span>.
+          </p>
+        </div>
+      )}
+
       {/* Filtros - misma tarjeta que el resto del admin */}
       <div className="rounded-2xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
         <h2 className="text-lg font-black text-white mb-4 tracking-tight">Filtros</h2>
