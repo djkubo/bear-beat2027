@@ -272,6 +272,31 @@ export default async function AdminDashboardPage() {
           </div>
         )}
 
+        {/* Tarjeta Emails Brevo - enlace rápido */}
+        <div className="mb-8">
+          <a
+            href="/admin/brevo-emails"
+            className="block rounded-2xl p-6 border border-white/5 bg-zinc-900/80 hover:border-bear-blue/50 hover:bg-zinc-800/50 shadow-xl transition-all"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-bear-blue/20 text-3xl">
+                  📧
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-white tracking-tight">Emails Brevo</h2>
+                  <p className="text-sm text-zinc-500 mt-0.5">
+                    Entregas, aperturas, clics y rebotes de correos transaccionales
+                  </p>
+                </div>
+              </div>
+              <span className="shrink-0 rounded-lg bg-bear-blue/20 px-4 py-2 text-sm font-bold text-bear-blue">
+                Ver actividad →
+              </span>
+            </div>
+          </a>
+        </div>
+
         {/* Fuentes de Tráfico */}
         <div className="mb-8">
           <div className="rounded-2xl p-6 border border-white/5 bg-zinc-900/80 shadow-xl">
@@ -308,6 +333,7 @@ export default async function AdminDashboardPage() {
             { href: '/admin/manychat', icon: '🤖', label: 'ManyChat' },
             { href: '/admin/pending', icon: '⏳', label: 'Pendientes' },
             { href: '/admin/mensajes', icon: '✉️', label: 'Mensajes' },
+            { href: '/admin/brevo-emails', icon: '📧', label: 'Emails Brevo' },
             { href: '/admin/push', icon: '📱', label: 'Push' },
             { href: '/admin/settings', icon: '⚙️', label: 'Config' },
           ].map(({ href, icon, label }) => (

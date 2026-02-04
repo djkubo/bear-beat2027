@@ -28,6 +28,8 @@ export async function GET(req: NextRequest) {
   const days = searchParams.get('days') ? parseInt(searchParams.get('days')!, 10) : 90
   const startDate = searchParams.get('startDate') || undefined
   const endDate = searchParams.get('endDate') || undefined
+  const full = searchParams.get('full') === '1' || searchParams.get('full') === 'true'
+  const eventFilter = searchParams.get('event') || undefined
 
   const { events, error } = await getBrevoEmailEvents({
     days: startDate && endDate ? undefined : (Number.isFinite(days) ? days : 90),
@@ -37,28 +39,41 @@ export async function GET(req: NextRequest) {
   })
 
   if (error) {
-    return NextResponse.json({ error, events: [] }, { status: 200 })
+    return NextResponse.json({ error, summary: null, emails: [] }, { status: 200 })
   }
 
-  // Un email puede tener varios eventos (requests, delivered, opened…). Agrupamos por messageId
-  // y nos quedamos con el más reciente por (email, tag) para mostrar "enviados".
-  const byKey = new Map<string, BrevoEmailEvent>()
+  // Conteo por tipo de evento para el resumen
+  const eventTypeCounts: Record<string, number> = {}
   for (const ev of events) {
-    const key = ev.messageId || `${ev.date}|${ev.email}|${ev.tag || ''}`
-    const existing = byKey.get(key)
-    if (!existing || new Date(ev.date) > new Date(existing.date)) {
-      byKey.set(key, ev)
-    }
+    const t = ev.event || 'unknown'
+    eventTypeCounts[t] = (eventTypeCounts[t] ?? 0) + 1
   }
 
-  const list = Array.from(byKey.values()).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  )
+  let list: BrevoEmailEvent[]
+  if (full) {
+    list = [...events].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    if (eventFilter) {
+      list = list.filter((e) => (e.event || '').toLowerCase() === eventFilter.toLowerCase())
+    }
+  } else {
+    const byKey = new Map<string, BrevoEmailEvent>()
+    for (const ev of events) {
+      const key = ev.messageId || `${ev.date}|${ev.email}|${ev.tag || ''}`
+      const existing = byKey.get(key)
+      if (!existing || new Date(ev.date) > new Date(existing.date)) {
+        byKey.set(key, ev)
+      }
+    }
+    list = Array.from(byKey.values()).sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    )
+  }
 
   const summary = {
     total_events: events.length,
-    unique_emails_shown: list.length,
+    unique_emails_shown: full ? list.length : list.length,
     tags: [...new Set(events.map((e) => e.tag).filter(Boolean))] as string[],
+    event_type_counts: eventTypeCounts,
   }
 
   return NextResponse.json({
