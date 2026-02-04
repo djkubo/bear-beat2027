@@ -68,7 +68,7 @@ const LOCAL_ORIGIN_REGEX = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+
 
 /**
  * Devuelve la URL base pública de la app para redirects y enlaces en el servidor.
- * NUNCA usar req.nextUrl.origin en producción si puede ser 0.0.0.0 o localhost.
+ * NUNCA devuelve 0.0.0.0 ni localhost; en ese caso devuelve '' (rutas relativas).
  */
 export function getPublicAppOrigin(request?: { headers?: Headers; nextUrl?: { origin: string }; url?: string }): string {
   const app = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
