@@ -190,8 +190,8 @@ export interface SendTransactionalEmailResult {
 }
 
 /**
- * Email de recuperación cuando el pago falla (payment_intent.payment_failed).
- * Mensaje directo: "Tu pago falló, pero te guardé los videos 10 mins más. Intenta con otra tarjeta aquí."
+ * Email de recuperación "Acceso Pausado" cuando el pago falla (payment_intent.payment_failed).
+ * Diseño dark/rojo: PAGO RECHAZADO, link para reintentar. Misma plantilla en webhook y en Admin → Enviar prueba.
  */
 export async function sendPaymentFailedRecoveryEmail(params: {
   to: string
@@ -201,60 +201,29 @@ export async function sendPaymentFailedRecoveryEmail(params: {
   if (!isBrevoEmailConfigured()) {
     return { success: false, error: 'Brevo email not configured' }
   }
-
   const displayName = (params.name || params.to.split('@')[0] || 'DJ').trim()
-
+  const subject = '⚠️ Acción Requerida: Tu acceso a Bear Beat está en espera'
   const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 560px; margin: 0 auto; padding: 24px;">
-  <h2 style="color: #0ea5e9;">Bear Beat – Tu pago no pasó</h2>
-  <p>Hola <strong>${escapeHtml(displayName)}</strong>,</p>
-  <p>Tu intento de pago no se completó, pero <strong>te guardamos los videos 10 minutos más</strong>.</p>
-  <p>Puedes intentar con otra tarjeta, OXXO o SPEI desde el mismo enlace:</p>
-  <p><a href="${escapeHtml(params.recoveryUrl)}" style="display: inline-block; background: #0ea5e9; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold;">Intentar de nuevo →</a></p>
-  <p style="color: #64748b; font-size: 14px;">Si el problema continúa, responde este correo y te ayudamos.</p>
-  <p>— El equipo Bear Beat</p>
-</body>
-</html>
-`.trim()
-
-  const textContent = [
-    `Bear Beat – Tu pago no pasó`,
-    ``,
-    `Hola ${displayName},`,
-    `Tu intento de pago no se completó. Te guardamos los videos 10 minutos más.`,
-    `Intenta con otra tarjeta aquí: ${params.recoveryUrl}`,
-    ``,
-    `— Bear Beat`,
-  ].join('\n')
-
-  try {
-    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'content-type': 'application/json',
-        'api-key': BREVO_API_KEY,
-      },
-      body: JSON.stringify({
-        sender: { name: BREVO_SENDER_NAME, email: BREVO_SENDER_EMAIL },
-        to: [{ email: params.to, name: displayName }],
-        subject: 'Bear Beat: Tu pago falló – Intenta de nuevo (te guardamos el precio 10 min)',
-        htmlContent,
-        textContent,
-        tags: ['payment_failed', 'recovery'],
-      }),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (res.ok && (data.messageId ?? data.message_id)) {
-      return { success: true, messageId: String(data.messageId ?? data.message_id ?? '') }
-    }
-    return { success: false, error: data.message ?? data.code ?? `HTTP ${res.status}` }
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : String(e) }
-  }
+<div style="font-family: sans-serif; background: #000; color: #fff; padding: 40px; border-radius: 10px; border: 1px solid #333;">
+  <h2 style="color: #ff3333; margin-top: 0;">⛔ PAGO RECHAZADO</h2>
+  <p style="color: #ccc;">Hola ${escapeHtml(displayName)},</p>
+  <p style="color: #ccc;">Intentamos procesar tu acceso al arsenal, pero <strong>tu banco rechazó la operación</strong>.</p>
+  <div style="background: #220000; border-left: 4px solid #ff3333; padding: 15px; margin: 20px 0; color: #ffaaaa;">
+    <strong>No te preocupes:</strong> Esto pasa a veces por seguridad del banco o fondos insuficientes. Tu cuenta no ha sido cobrada.
+  </div>
+  <p style="color: #fff; font-weight: bold;">Hemos guardado tu precio de oferta por 15 minutos más.</p>
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="${escapeHtml(params.recoveryUrl)}" style="background: #ff3333; color: #fff; padding: 15px 40px; text-decoration: none; font-weight: 900; border-radius: 50px; text-transform: uppercase;">
+      REINTENTAR PAGO AHORA ↻
+    </a>
+  </div>
+  <p style="color: #666; font-size: 12px; text-align: center;">Si el problema persiste, intenta con otra tarjeta o usa PayPal.</p>
+</div>
+  `.trim()
+  return sendEmail(params.to, subject, htmlContent, {
+    name: displayName,
+    tags: ['payment_failed', 'recovery'],
+  })
 }
 
 /**
