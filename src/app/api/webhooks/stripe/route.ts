@@ -10,6 +10,8 @@ import {
   isHetznerFtpConfigured,
 } from '@/lib/hetzner-robot'
 import { isFtpConfigured } from '@/lib/ftp-stream'
+import { sendEmail, sendPaymentFailedRecoveryEmail } from '@/lib/brevo-email'
+import { sendSms } from '@/lib/brevo-sms'
 
 function generateRandomPassword(): string {
   const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -67,6 +69,61 @@ export async function POST(req: NextRequest) {
       )
     } catch (e) {
       console.warn('CAPI Purchase failed (non-critical):', e)
+    }
+  }
+
+  // payment_intent.payment_failed – recuperación: email/SMS con link para reintentar
+  if (event.type === 'payment_intent.payment_failed') {
+    const pi = event.data.object as {
+      id: string
+      receipt_email?: string
+      metadata?: { customer_email?: string; customer_phone?: string; customer_name?: string; pack_slug?: string }
+    }
+    let customerEmail = (pi.receipt_email || pi.metadata?.customer_email || '').trim()
+    let customerPhone = (pi.metadata?.customer_phone || '').trim()
+    let customerName = (pi.metadata?.customer_name || '').trim()
+    let packSlug = pi.metadata?.pack_slug || 'enero-2026'
+    if (!customerEmail && pi.id) {
+      try {
+        const sessions = await stripe.checkout.sessions.list({ payment_intent: pi.id, limit: 1 })
+        const session = sessions.data[0]
+        if (session?.customer_details?.email) {
+          customerEmail = session.customer_details.email
+          customerPhone = (session.customer_details.phone || '').trim()
+          customerName = (session.customer_details.name || '').trim()
+          packSlug = (session.metadata?.pack_slug as string) || packSlug
+        }
+      } catch (_) {}
+    }
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || 'https://bear-beat2027.onrender.com'
+    const recoveryLink = `${baseUrl}/checkout?pack=${encodeURIComponent(packSlug)}`
+
+    if (customerEmail && customerEmail.includes('@')) {
+      try {
+        const emailResult = await sendPaymentFailedRecoveryEmail({
+          to: customerEmail,
+          name: customerName || undefined,
+          recoveryUrl: recoveryLink,
+        })
+        if (emailResult.success) {
+          console.log('Email de recuperación (pago fallido) enviado a', customerEmail)
+        } else {
+          console.warn('Email recuperación no enviado:', emailResult.error)
+        }
+      } catch (e) {
+        console.warn('sendPaymentFailedRecoveryEmail (non-critical):', e)
+      }
+    }
+
+    if (customerPhone && customerPhone.length >= 10) {
+      try {
+        await sendSms(
+          customerPhone,
+          'BearBeat: 🛑 Tu banco rechazó el pago. Te guardé el precio de $350 por 15 mins. Intenta aquí: https://bear-beat2027.onrender.com/checkout',
+          undefined,
+          { tag: 'payment_failed' }
+        )
+      } catch (_) {}
     }
   }
 
@@ -238,6 +295,45 @@ export async function POST(req: NextRequest) {
                 name: customerName || null,
               })
               if (!existingPending) console.log('Usuario Auth creado (email confirmado):', customerEmail)
+              // Email de éxito (Neuroventas): copy de élite + credenciales
+              const loginUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || 'https://bear-beat2027.onrender.com/login'
+              const customerDisplayName = (customerName || customerEmail.split('@')[0] || 'DJ').trim()
+              const emailHtml = `
+  <h1>¡Bienvenido a la Élite, ${customerDisplayName}! 💿</h1>
+  <p>Tu pago entró perfecto. Ya eres parte del 1% de DJs que invierten en su carrera.</p>
+  <p><strong>Tus Credenciales de Acceso:</strong></p>
+  <ul>
+    <li>Usuario: <strong>${customerEmail}</strong></li>
+    <li>Contraseña: <strong>${tempPassword}</strong></li>
+  </ul>
+  <p><a href="${loginUrl}" style="background:#00f2ea; color:black; padding:10px 20px; text-decoration:none; font-weight:bold; border-radius:5px;">👉 ENTRAR AL PANEL AHORA</a></p>
+  <p><em>PD: Guarda este correo. Tienes garantía total.</em></p>
+              `.trim()
+              try {
+                const emailResult = await sendEmail(
+                  customerEmail,
+                  '⚠️ TUS ACCESOS: Pack Video Remixes 2026 (IMPORTANTE)',
+                  emailHtml,
+                  { name: customerDisplayName, tags: ['welcome', 'credentials'] }
+                )
+                if (emailResult.success) {
+                  console.log('Email de acceso (Neuroventas) enviado a', customerEmail)
+                } else {
+                  console.warn('Email de acceso no enviado:', emailResult.error)
+                }
+              } catch (e) {
+                console.warn('sendEmail (non-critical):', e)
+              }
+              if (customerPhone && typeof customerPhone === 'string' && customerPhone.trim()) {
+                try {
+                  await sendSms(
+                    customerPhone.trim(),
+                    `Bear Beat: Tu acceso está listo. Revisa tu correo (${customerEmail}) para usuario y contraseña.`,
+                    undefined,
+                    { tag: 'welcome' }
+                  )
+                } catch (_) {}
+              }
             } else if (createErr?.message?.includes('already') || createErr?.message?.includes('registered')) {
               const { data: list } = await (admin.auth as any).admin.listUsers({ page: 1, perPage: 1000 })
               const authUser = list?.users?.find((u: { email?: string }) => u.email === customerEmail)

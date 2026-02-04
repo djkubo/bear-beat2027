@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerClient } from '@/lib/supabase/server'
 import { parseAttributionCookie } from '@/lib/attribution'
+import { upsertSubscriber, addTagByName } from '@/lib/manychat'
 
 /** OXXO/SPEI (customer_balance) requieren customer en Stripe. Buscar o crear por email. */
 async function getOrCreateStripeCustomer(email: string): Promise<string> {
@@ -59,22 +60,35 @@ export async function POST(req: NextRequest) {
     }
     
     let pack: any = null
-    try {
-      pack = await getPackWithVideoCount(supabase, packSlug)
-      if (!pack) {
-        pack = {
-          id: 1,
-          slug: packSlug,
-          name: 'Pack Enero 2026',
-          total_videos: 0,
-          price_mxn: 350,
-          price_usd: 19,
-          status: 'available',
-        }
+    const isDownsell99 = packSlug === 'pack-prueba-99' || packSlug === 'prueba-99'
+    if (isDownsell99) {
+      pack = {
+        id: 0,
+        slug: 'pack-prueba-99',
+        name: 'Pack de Prueba (50 Videos)',
+        total_videos: 50,
+        price_mxn: 99,
+        price_usd: 6,
+        status: 'available',
       }
-    } catch (e) {
-      console.log('DB not available, using fallback pack')
-      pack = { id: 1, slug: packSlug, name: 'Pack Enero 2026', total_videos: 0, price_mxn: 350, price_usd: 19, status: 'available' }
+    } else {
+      try {
+        pack = await getPackWithVideoCount(supabase, packSlug)
+        if (!pack) {
+          pack = {
+            id: 1,
+            slug: packSlug,
+            name: 'Pack Enero 2026',
+            total_videos: 0,
+            price_mxn: 350,
+            price_usd: 19,
+            status: 'available',
+          }
+        }
+      } catch (e) {
+        console.log('DB not available, using fallback pack')
+        pack = { id: 1, slug: packSlug, name: 'Pack Enero 2026', total_videos: 0, price_mxn: 350, price_usd: 19, status: 'available' }
+      }
     }
     
     // Precio según moneda
@@ -121,6 +135,25 @@ export async function POST(req: NextRequest) {
     if (!baseUrl) {
       return NextResponse.json({ error: 'NEXT_PUBLIC_APP_URL no configurada' }, { status: 500 })
     }
+
+    // ManyChat: etiquetar "inició_checkout_web" para flujo de recuperación de carrito (30 min)
+    if (emailForCustomer && emailForCustomer.includes('@')) {
+      try {
+        const nameParts = (loggedUser?.name || '').split(' ')
+        const subscriber = await upsertSubscriber({
+          email: emailForCustomer,
+          first_name: nameParts[0] || 'Cliente',
+          last_name: nameParts.slice(1).join(' ') || '',
+        })
+        if (subscriber) {
+          await addTagByName(subscriber.id, 'inició_checkout_web')
+          console.log('ManyChat: inició_checkout_web tagged for', emailForCustomer)
+        }
+      } catch (mcErr) {
+        console.warn('ManyChat inició_checkout_web (non-critical):', (mcErr as Error)?.message)
+      }
+    }
+
     // Configuración base de la sesión
     const sessionConfig: any = {
       mode: 'payment',

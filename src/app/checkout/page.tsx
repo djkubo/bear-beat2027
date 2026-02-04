@@ -30,10 +30,14 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null
 }
 
+const DOWNSELL_PACK_SLUG = 'pack-prueba-99'
+const DOWNSELL_PRICE_MXN = 99
+
 export default function CheckoutPage() {
   const searchParams = useSearchParams()
   const packSlug = searchParams.get('pack') || 'enero-2026'
   const inventory = useVideoInventory()
+  const isDownsell = packSlug === DOWNSELL_PACK_SLUG || packSlug === 'prueba-99'
 
   const [step, setStep] = useState<Step>('select')
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null)
@@ -43,6 +47,7 @@ export default function CheckoutPage() {
   const [reservationSeconds, setReservationSeconds] = useState(RESERVATION_MINUTES * 60)
   const [checkoutEmail, setCheckoutEmail] = useState<string | null>(null)
   const [checkoutName, setCheckoutName] = useState<string>('')
+  const [showExitModal, setShowExitModal] = useState(false)
 
   // Email para Stripe Customer (OXXO/SPEI requieren customer): usuario logueado o invitado
   useEffect(() => {
@@ -85,20 +90,37 @@ export default function CheckoutPage() {
 
   // Tarjeta usa Checkout nativo de Stripe (redirect). Ya no usamos PaymentElement ni create-payment-intent.
 
-  const price = currency === 'mxn' ? 350 : 19
+  const price = isDownsell
+    ? (currency === 'mxn' ? DOWNSELL_PRICE_MXN : 6)
+    : (currency === 'mxn' ? 350 : 19)
   const currencyLabel = currency === 'mxn' ? 'MXN' : 'USD'
+  const packDisplayName = isDownsell ? 'Pack de Prueba (50 Videos)' : 'Pack Enero 2026'
 
   useEffect(() => {
     trackPageView('checkout')
-    trackStartCheckout(packSlug, 'Pack Enero 2026', price, checkoutEmail ?? undefined)
-  }, [packSlug])
+    trackStartCheckout(packSlug, packDisplayName, price, checkoutEmail ?? undefined)
+  }, [packSlug, packDisplayName, price, checkoutEmail])
 
   useEffect(() => {
     fbTrackInitiateCheckout(
-      { content_name: 'Pack Enero 2026', content_ids: [packSlug], value: price, currency: currencyLabel, num_items: 1 },
+      { content_name: packDisplayName, content_ids: [packSlug], value: price, currency: currencyLabel, num_items: 1 },
       checkoutEmail ? { email: checkoutEmail } : undefined
     )
-  }, [packSlug, price, currencyLabel, checkoutEmail])
+  }, [packSlug, price, currencyLabel, checkoutEmail, packDisplayName])
+
+  // Exit intent: mouse sale por arriba (cerrar pestaña) → modal downsell $99 (una vez por sesión)
+  useEffect(() => {
+    if (isDownsell || step !== 'select') return
+    const key = 'bb_exit_modal_shown'
+    const handler = (e: MouseEvent) => {
+      if (e.clientY <= 10 && typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1')
+        setShowExitModal(true)
+      }
+    }
+    document.addEventListener('mouseout', handler)
+    return () => document.removeEventListener('mouseout', handler)
+  }, [isDownsell, step])
 
   useEffect(() => {
     if (selectedMethod === 'card' || selectedMethod === 'paypal') {
@@ -155,6 +177,44 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-[#020202] text-white flex flex-col overflow-x-hidden min-w-0">
+      {/* Modal Exit Intent: downsell Pack Prueba $99 */}
+      <AnimatePresence>
+        {showExitModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            onClick={() => setShowExitModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-zinc-900 border-2 border-amber-500/50 rounded-2xl p-6 max-w-md w-full shadow-[0_0_40px_rgba(245,158,11,0.2)]"
+            >
+              <p className="text-3xl mb-3">🎁</p>
+              <h2 className="text-2xl font-black text-white mb-2">¡ESPERA! ¿$350 es mucho?</h2>
+              <p className="text-zinc-300 mb-6">Llévate el Pack de Prueba (50 Videos) por solo <strong className="text-amber-400">$99 MXN</strong>.</p>
+              <div className="flex flex-col gap-3">
+                <Link href={`/checkout?pack=${DOWNSELL_PACK_SLUG}`} onClick={() => setShowExitModal(false)}>
+                  <button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-4 rounded-xl transition">
+                    Sí, quiero el Pack de Prueba por $99 MXN
+                  </button>
+                </Link>
+                <button
+                  onClick={() => setShowExitModal(false)}
+                  className="w-full py-2 text-zinc-400 hover:text-white text-sm"
+                >
+                  No, seguir con el pack completo
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <header className="border-b border-white/10 bg-black py-4">
         <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <Link href="/#catalogo" className="flex items-center gap-2 order-2 sm:order-1">
@@ -210,7 +270,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-bold text-white text-lg">Pack Enero 2026 · Video Remixes</h3>
+                      <h3 className="font-bold text-white text-lg">{packDisplayName} · Video Remixes</h3>
                       <ul className="mt-2 space-y-1 text-sm text-gray-300">
                         <li className="flex items-center gap-2">
                           <Check className="h-4 w-4 text-green-400 shrink-0" strokeWidth={2.5} />
@@ -230,8 +290,8 @@ export default function CheckoutPage() {
                         </li>
                       </ul>
                       <div className="flex items-baseline gap-3 mt-3">
-                        <span className="text-sm text-gray-500 line-through">$1,500 MXN</span>
-                        <span className="text-2xl font-black text-bear-blue">$350 MXN</span>
+                        {!isDownsell && <span className="text-sm text-gray-500 line-through">$1,500 MXN</span>}
+                        <span className="text-2xl font-black text-bear-blue">${price} {currencyLabel}</span>
                       </div>
                     </div>
                   </div>

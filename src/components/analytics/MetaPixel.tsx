@@ -333,6 +333,7 @@ export function fbTrackAddPaymentInfo(data: {
 
 /**
  * Purchase - Cuando el usuario completa una compra (EL MÁS IMPORTANTE)
+ * Envía siempre value y currency reales para que Meta identifique clientes High Ticket (ballena).
  * Si se pasa event_id (p. ej. session.id o payment_intent.id), se usa para deduplicación con CAPI.
  */
 export function fbTrackPurchase(data: {
@@ -351,7 +352,7 @@ export function fbTrackPurchase(data: {
     content_type: data.content_type || 'product',
     num_items: data.num_items || 1,
     value: data.value,
-    currency: data.currency || 'MXN',
+    currency: (data.currency || 'MXN').toUpperCase(),
     order_id: data.order_id,
   }
   if (data.event_id) {

@@ -103,3 +103,18 @@ export function getDemoCdnUrl(path: string, baseUrl?: string | null): string {
   if (base) return base
   return pathEncoded ? `/api/demo/${pathEncoded}` : ''
 }
+
+/**
+ * Si la URL es absoluta a localhost/0.0.0.0, devuelve solo pathname+search (ruta relativa).
+ * Evita ERR_CONNECTION_REFUSED cuando el servidor devuelve 0.0.0.0 en redirects.
+ */
+export function toRelativeApiUrl(url: string | undefined | null): string {
+  if (!url || typeof url !== 'string' || url.startsWith('/')) return url || ''
+  try {
+    const u = new URL(url)
+    if (LOCAL_ORIGIN_REGEX.test(u.origin)) return u.pathname + u.search
+  } catch {
+    // ignore
+  }
+  return url
+}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { toRelativeApiUrl } from '@/lib/utils'
 
 // ==========================================
 // REPRODUCTOR PROTEGIDO - Anti-descarga
@@ -44,6 +45,8 @@ export function ProtectedPlayer({
   const containerRef = useRef<HTMLDivElement>(null)
 
   const demoUrlByPath = demoPath ? `/api/demo-url?path=${encodeURIComponent(demoPath)}` : null
+  const thumbnailSrc = toRelativeApiUrl(thumbnail)
+  const previewSrc = toRelativeApiUrl(previewUrl)
 
   // Bloquear click derecho
   const handleContextMenu = (e: React.MouseEvent) => {
