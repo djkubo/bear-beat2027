@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerClient } from '@/lib/supabase/server'
+import { sendEmail, buildAccessLiberatedEmailHtml, getDashboardUrl } from '@/lib/brevo-email'
+import { sendSms } from '@/lib/brevo-sms'
 
 async function getPackBySlug(supabase: Awaited<ReturnType<typeof createServerClient>>, packSlug: string) {
   const pack: { id: number; slug: string; name: string; total_videos: number } = {
@@ -158,7 +160,34 @@ export async function GET(req: NextRequest) {
 
       const supabase = await createServerClient()
       const pack = await getPackBySlug(supabase, packSlug)
-      const customerName = ''
+      const customerName = (pi.metadata?.customer_name as string) || ''
+      const customerPhone = (pi.metadata?.customer_phone as string)?.trim() || ''
+
+      if (customerEmail && customerEmail.includes('@')) {
+        try {
+          const html = buildAccessLiberatedEmailHtml(getDashboardUrl())
+          await sendEmail(
+            customerEmail,
+            '🐺 Acceso Liberado: Tu Pack Bear Beat está listo',
+            html,
+            { name: customerName || undefined, tags: ['payment', 'access_liberated', 'stripe_pi'] }
+          )
+        } catch (e) {
+          console.warn('verify-payment Stripe PI: email (non-critical):', e)
+        }
+      }
+      if (customerPhone && customerPhone.replace(/\D/g, '').length >= 10) {
+        try {
+          await sendSms(
+            customerPhone,
+            'BearBeat: Pago confirmado 💳. Tu arsenal está desbloqueado. Entra a tu panel y descarga todo ya. 🔥',
+            undefined,
+            { tag: 'payment_success' }
+          )
+        } catch (e) {
+          console.warn('verify-payment Stripe PI: SMS (non-critical):', e)
+        }
+      }
 
       return NextResponse.json({
         success: true,
@@ -171,7 +200,7 @@ export async function GET(req: NextRequest) {
         paymentIntent: pi.id,
         customerEmail,
         customerName,
-        customerPhone: '',
+        customerPhone,
         paymentStatus: 'paid',
         userId,
       })
