@@ -197,7 +197,6 @@ export function buildAccessLiberatedEmailHtml(dashboardUrl: string): string {
 
 /**
  * Envía un email transaccional con HTML libre (Neuroventas / copy agresivo).
- */
  * Para credenciales de acceso, ofertas, etc.
  */
 export async function sendEmail(
