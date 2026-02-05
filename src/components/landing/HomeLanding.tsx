@@ -406,10 +406,15 @@ export default function HomeLanding() {
 
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
 
-              {/* VIDEO (IZQUIERDA EN DESKTOP) */}
+              {/* VIDEO (IZQUIERDA EN DESKTOP) - Portada dinámica del primer video disponible */}
               <div className="order-last lg:order-first relative">
                 <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black aspect-video group cursor-pointer" onClick={() => document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' })}>
-                  <div className="absolute inset-0 bg-cover bg-center opacity-60 group-hover:scale-105 transition duration-700" style={{ backgroundImage: "url('/thumbnails-cache/Bachata_Dalvin La Melodia - Chiquilla Bonita (10A – 124 BPM).jpg')" }} />
+                  <div
+                    className="absolute inset-0 bg-cover bg-center opacity-60 group-hover:scale-105 transition duration-700"
+                    style={{
+                      backgroundImage: `url(${genres[0]?.videos?.[0] ? getThumbnailUrl(genres[0].videos[0]) : '/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png'})`,
+                    }}
+                  />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                     <div className="w-20 h-20 bg-bear-blue rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(8,225,247,0.6)] animate-pulse">
                       <Play className="w-8 h-8 text-black fill-black ml-1" />

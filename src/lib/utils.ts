@@ -89,10 +89,12 @@ export function getPublicAppOrigin(request?: { headers?: Headers; nextUrl?: { or
 
 /**
  * URL base. En cliente siempre '' (rutas relativas). ¡ESTO ES VITAL!
+ * Llama a getPublicAppOrigin solo si hay request.
  */
 export function getBaseUrl(request?: Parameters<typeof getPublicAppOrigin>[0]): string {
   if (typeof window !== 'undefined') return ''
-  return request ? getPublicAppOrigin(request) : getPublicAppOrigin()
+  if (!request) return ''
+  return getPublicAppOrigin(request)
 }
 
 /**

@@ -78,13 +78,9 @@ export async function GET(req: NextRequest) {
     // 1) Prioridad: Bunny CDN (respuesta rápida; evita que FTP cuelgue)
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
-      // ZIP: probar con prefijo y sin prefijo (en algunos setups está en raíz, en otros bajo la carpeta)
-      const withPrefix = buildBunnyPath(sanitizedPath, true)
-      const noPrefix = buildBunnyPath(sanitizedPath, false)
-      const pathVariants = isZip
-        ? [...new Set([withPrefix, noPrefix].filter(Boolean))]
-        : [withPrefix].filter(Boolean)
-      if (pathVariants.length === 0 && sanitizedPath) pathVariants.push(sanitizedPath)
+      // ZIPs en raíz (usePrefix false); videos en carpeta "Videos Enero 2026" (usePrefix true)
+      const bunnyPath = buildBunnyPath(sanitizedPath, !isZip)
+      const pathVariants = bunnyPath ? [bunnyPath] : (sanitizedPath ? [sanitizedPath] : [])
 
       let signedUrl = ''
       for (const bunnyPath of pathVariants) {

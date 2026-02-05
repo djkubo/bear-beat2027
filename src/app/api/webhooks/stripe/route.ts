@@ -126,13 +126,41 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // payment_intent.succeeded (pago con tarjeta / Elements)
+  // payment_intent.succeeded (pago con tarjeta / Elements) – Modo Bestia: SMS Bienvenida Élite
   if (event.type === 'payment_intent.succeeded') {
-    const pi = event.data.object as { id: string; amount: number; currency: string; receipt_email?: string; metadata?: { customer_email?: string; customer_name?: string } }
+    const pi = event.data.object as {
+      id: string
+      amount: number
+      currency: string
+      receipt_email?: string
+      metadata?: { customer_email?: string; customer_name?: string; customer_phone?: string }
+    }
     const email = pi.receipt_email || (pi.metadata?.customer_email as string)
+    let phone = (pi.metadata?.customer_phone as string)?.trim() || ''
+    if (!phone && pi.id) {
+      try {
+        const sessions = await stripe.checkout.sessions.list({ payment_intent: pi.id, limit: 1 })
+        if (sessions.data[0]?.customer_details?.phone) {
+          phone = String(sessions.data[0].customer_details.phone).trim()
+        }
+      } catch (_) {}
+    }
     const amount = (pi.amount || 0) / 100
     const currency = (pi.currency || 'mxn').toUpperCase()
     await sendCapiPurchase(pi.id, email, amount, currency)
+    if (phone && phone.replace(/\D/g, '').length >= 10) {
+      try {
+        await sendSms(
+          phone,
+          'BearBeat: Pago confirmado 💳. Tu arsenal está desbloqueado. Entra a tu panel y descarga todo ya. 🔥',
+          undefined,
+          { tag: 'payment_success' }
+        )
+        console.log('📱 SMS Bienvenida Élite enviado')
+      } catch (e) {
+        console.warn('SMS Bienvenida Élite (non-critical):', e)
+      }
+    }
     if (email && typeof email === 'string' && email.includes('@')) {
       try {
         const admin = createAdminClient()

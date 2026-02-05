@@ -42,8 +42,8 @@ export async function GET(req: NextRequest) {
 
     if (isBunnyConfigured()) {
       try {
-        // Con prefijo: Videos Enero 2026/Genre/archivo.jpg (estructura local y sync desde disco)
-    const bunnyPath = buildBunnyPath(pathThumb, true)
+        // Portadas en raíz del storage (sin prefijo de carpeta)
+        const bunnyPath = buildBunnyPath(pathThumb, false)
         if (bunnyPath) {
           const signedUrl = generateSignedUrl(bunnyPath, 3600)
           if (signedUrl?.startsWith('http') && signedUrl.length > 20) {

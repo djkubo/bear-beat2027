@@ -11,9 +11,8 @@ import { GlobalErrorBoundary } from '@/components/tracking/GlobalErrorBoundary'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Bear Beat | Video Remixes Exclusivos para DJs',
-  description: 'La membresía definitiva de video remixes para DJs profesionales. Intro, Outro y Clean versions en alta calidad.',
-  icons: { icon: '/favicon.png' },
+  title: 'Video Remixes para DJs 2026 | Bear Beat – +3,000 Videos por Género',
+  description: 'Video Remixes para DJs 2026: más de 3,000 videos organizados por género. Descarga masiva por carpetas o FTP (FileZilla, Air Explorer). Pago único. PayPal, tarjeta, OXXO, SPEI.',
 }
 
 export const viewport = {

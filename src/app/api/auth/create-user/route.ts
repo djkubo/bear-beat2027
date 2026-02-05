@@ -72,11 +72,13 @@ export async function POST(req: NextRequest) {
       // No fallar el registro si el email falla
     }
 
-    // --- SMS BIENVENIDA ---
+    // --- SMS BIENVENIDA (justo después de crear usuario) ---
     const phoneClean = typeof phone === 'string' ? phone.trim() : ''
-    if (phoneClean) {
+    const hasValidPhone = phoneClean && phoneClean.replace(/\D/g, '').length >= 10
+    if (hasValidPhone) {
       try {
-        const smsBody = 'BearBeat: Bienvenido a la Élite 🐺. Tus accesos están en tu email. Revísalo ya (incluso Spam). Vamos a romperla. 🔥'
+        const smsBody =
+          'BearBeat: Bienvenido a la Élite 🐺. Tus accesos están en tu email. Revísalo ya (incluso Spam). Vamos a romperla. 🔥'
         await sendSms(phoneClean, smsBody, undefined, { tag: 'welcome' })
         console.log('📱 SMS de bienvenida enviado a:', phoneClean)
       } catch (smsError) {
