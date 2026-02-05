@@ -307,6 +307,19 @@ export default function ContenidoPage() {
               </button>
             )}
           </div>
+          {hasAccess && (
+            <p className="mt-3 text-xs text-gray-500">
+              ¿No te descarga?{' '}
+              <a
+                href="/api/download/diagnostic"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-bear-blue hover:underline"
+              >
+                Revisa el diagnóstico
+              </a>
+            </p>
+          )}
         </div>
       </section>
 
