@@ -190,6 +190,83 @@ export async function POST(req: NextRequest) {
         }
       } catch (_) {}
     }
+
+    // OXXO / pagos asíncronos: checkout.session.completed llega al generar la referencia (unpaid). Cuando pagan, Stripe envía payment_intent.succeeded. Aquí activamos la compra.
+    const customerEmailForActivation = email || (pi.metadata?.customer_email as string)
+    if (customerEmailForActivation && typeof customerEmailForActivation === 'string' && customerEmailForActivation.includes('@')) {
+      try {
+        const sessions = await stripe.checkout.sessions.list({ payment_intent: pi.id, limit: 1 })
+        const session = sessions.data[0] as any
+        if (session?.metadata?.pack_id) {
+          const packId = Math.max(1, parseInt(session.metadata.pack_id || '1', 10) || 1)
+          const admin = createAdminClient()
+          const { data: userRow } = await (admin.from('users') as any).select('id').eq('email', customerEmailForActivation).maybeSingle()
+          const userId = userRow?.id
+          if (userId) {
+            const { data: existingPurchase } = await (admin as any).from('purchases').select('id').eq('user_id', userId).eq('pack_id', packId).maybeSingle()
+            if (!existingPurchase) {
+              const amountPaid = (session.amount_total || pi.amount) / 100
+              const currency = ((session.currency || pi.currency) || 'MXN').toUpperCase()
+              let ftp_username: string
+              let ftp_password: string
+              if (isHetznerFtpConfigured()) {
+                const storageboxId = process.env.HETZNER_STORAGEBOX_ID!
+                const subUsername = `u${storageboxId}-sub-${userId.slice(0, 8)}`
+                const subPassword = generateFtpPassword()
+                const result = await createStorageBoxSubaccount(storageboxId, subUsername, subPassword, true)
+                if (result.ok) {
+                  ftp_username = result.username
+                  ftp_password = result.password
+                } else {
+                  ftp_username = `dj_${userId.slice(0, 8)}`
+                  ftp_password = generateFtpPassword()
+                }
+              } else if (isFtpConfigured()) {
+                ftp_username = process.env.FTP_USER || process.env.HETZNER_FTP_USER!
+                ftp_password = process.env.FTP_PASSWORD || process.env.HETZNER_FTP_PASSWORD!
+              } else {
+                ftp_username = `dj_${userId.slice(0, 8)}`
+                ftp_password = generateFtpPassword()
+              }
+              const { error: insertErr } = await (admin as any).from('purchases').insert({
+                user_id: userId,
+                pack_id: packId,
+                amount_paid: amountPaid,
+                currency,
+                payment_provider: 'stripe',
+                payment_id: pi.id,
+                ftp_username,
+                ftp_password,
+              })
+              if (insertErr) {
+                console.error('Webhook payment_intent.succeeded: error insertando purchase', insertErr)
+                return NextResponse.json({ error: 'Activación fallida' }, { status: 500 })
+              }
+              if (session.id) {
+                await (admin as any).from('pending_purchases').update({
+                  user_id: userId,
+                  status: 'completed',
+                  completed_at: new Date().toISOString(),
+                }).eq('stripe_session_id', session.id)
+              }
+              console.log('Webhook: compra activada por payment_intent.succeeded (OXXO/async) para', customerEmailForActivation, 'pack_id', packId)
+              try {
+                await sendPaymentConfirmationEmail({
+                  to: customerEmailForActivation,
+                  userName: (session.customer_details?.name || pi.metadata?.customer_name as string) || undefined,
+                  amount: amountPaid,
+                  orderId: session.id || pi.id,
+                })
+              } catch (e) {
+                console.warn('sendPaymentConfirmationEmail (payment_intent.succeeded, non-critical):', e)
+              }
+            }
+          }
+        }
+      } catch (activateErr) {
+        console.error('Webhook payment_intent.succeeded: activación OXXO/async', activateErr)
+      }
+    }
   }
 
   // Procesar el evento
@@ -199,6 +276,12 @@ export async function POST(req: NextRequest) {
     const customerEmail = session.customer_details?.email
     const customerPhone = session.customer_details?.phone
     const customerName = session.customer_details?.name
+
+    // OXXO/transferencia: la sesión se completa al generar la referencia, no al pagar. Solo activar cuando esté pagado.
+    if (session.payment_status !== 'paid') {
+      console.log('checkout.session.completed con payment_status != paid (ej. OXXO pendiente), omitiendo activación:', session.id)
+      return NextResponse.json({ received: true })
+    }
 
     try {
       // Idempotencia: si ya existe pending y ya hay compra activada para este cliente+pack, solo confirmar
