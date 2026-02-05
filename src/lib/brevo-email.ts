@@ -140,8 +140,64 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;')
 }
 
+const GOOGLE_DRIVE_PACK_URL = 'https://drive.google.com/drive/folders/1jGj20PjgnsbWN1Zbs7sV37zxOUaQxlrd?usp=share_link'
+
+/** URL del dashboard (NEXT_PUBLIC_APP_URL + /dashboard). */
+export function getDashboardUrl(): string {
+  const base = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || 'https://bear-beat2027.onrender.com'
+  return `${base}/dashboard`
+}
+
+/** HTML del email "Acceso Liberado" (Panel Web + Google Drive). Compartido por webhook, rescate y verify-payment. */
+export function buildAccessLiberatedEmailHtml(dashboardUrl: string): string {
+  const dashboard = escapeHtml(dashboardUrl)
+  const drive = escapeHtml(GOOGLE_DRIVE_PACK_URL)
+  return `
+<div style="font-family: 'Arial', sans-serif; background-color: #050505; color: #ffffff; padding: 40px; max-width: 600px; margin: 0 auto; border: 1px solid #333; border-radius: 12px;">
+  <div style="text-align: center; border-bottom: 1px solid #222; padding-bottom: 20px; margin-bottom: 30px;">
+    <h1 style="color: #00f0ff; text-transform: uppercase; font-size: 28px; margin: 0; letter-spacing: -1px;">ACCESO <span style="color: #ffffff;">LIBERADO</span></h1>
+    <p style="color: #444; font-size: 10px; letter-spacing: 3px; margin-top: 5px; text-transform: uppercase;">BEAR BEAT 2027 • THE ELITE DJ NETWORK</p>
+  </div>
+
+  <div style="background-color: #111; padding: 30px; border-radius: 8px; border-left: 4px solid #00ff88;">
+    <h2 style="margin-top: 0; font-size: 22px; color: #fff;">El pago entró. El arsenal es tuyo. 🐺</h2>
+    
+    <p style="color: #ccc; line-height: 1.6; font-size: 16px;">
+      Confirmamos tu inversión. Tu cuenta en <strong>Bear Beat</strong> ha sido activada manualmente por nuestro equipo de soporte.
+    </p>
+
+    <p style="color: #ccc; line-height: 1.6; font-size: 16px;">
+      Tienes dos formas de acceder a tu material ahora mismo:
+    </p>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${dashboard}" 
+         style="background-color: #00ff88; color: #000000; padding: 15px 30px; text-decoration: none; font-weight: 900; text-transform: uppercase; border-radius: 50px; display: block; margin-bottom: 15px; font-size: 16px; box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);">
+        🚀 Entrar a mi Panel Web
+      </a>
+      
+      <a href="${drive}" 
+         style="background-color: #1a1a1a; color: #ffffff; border: 1px solid #444; padding: 15px 30px; text-decoration: none; font-weight: 700; text-transform: uppercase; border-radius: 50px; display: block; font-size: 14px;">
+        📂 Link Directo Google Drive
+      </a>
+    </div>
+
+    <p style="font-size: 12px; color: #666; text-align: center; margin-top: 20px;">
+      *Nota: Para entrar a la web, usa el email con el que pagaste. Si no recuerdas tu contraseña, usa la opción "Recuperar Contraseña".
+    </p>
+  </div>
+
+  <div style="margin-top: 30px; text-align: center; color: #444; font-size: 12px;">
+    <p>Gracias por confiar en la Élite.</p>
+    <p>Boca Raton, FL | Bear Beat 2027</p>
+  </div>
+</div>
+  `.trim()
+}
+
 /**
  * Envía un email transaccional con HTML libre (Neuroventas / copy agresivo).
+ */
  * Para credenciales de acceso, ofertas, etc.
  */
 export async function sendEmail(

@@ -362,6 +362,7 @@ export default async function AdminDashboardPage() {
             { href: '/admin/sms-whatsapp', icon: '📱', label: 'SMS y WhatsApp' },
             { href: '/admin/push', icon: '🔔', label: 'Push' },
             { href: '/admin/settings', icon: '⚙️', label: 'Config' },
+            { href: '/admin/rescue', icon: '🚑', label: 'Rescate pagos' },
           ].map(({ href, icon, label }) => (
             <a
               key={href}

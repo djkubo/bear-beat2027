@@ -1,13 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
-import { ManualRescueForm } from '@/app/admin/ManualRescueForm'
+import { ManualRescueForm } from '../ManualRescueForm'
 
-/**
- * Panel de admin: incluye herramienta de Rescate manual de pagos (pi_...).
- * El resto del admin está en /admin.
- */
-export default async function AdminPanelPage() {
+export default async function AdminRescuePage() {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -23,13 +19,13 @@ export default async function AdminPanelPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-8">
       <a href="/admin" className="text-sm text-bear-blue hover:underline mb-4 inline-block font-medium">
-        ← Panel completo en /admin
+        ← Volver al Panel
       </a>
       <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-1">
-        Admin Panel
+        🚑 Rescate manual de pagos
       </h1>
       <p className="text-zinc-500 text-sm mb-6">
-        Herramienta de rescate de pagos. Para usuarios, compras, packs, etc., ve a <a href="/admin" className="text-bear-blue hover:underline">/admin</a>.
+        Procesa Payment Intents (pi_...) que cobraron en Stripe pero no activaron. Se crea/usará el usuario por email, se insertará la compra y se enviará el correo de rescate por Brevo.
       </p>
       <ManualRescueForm />
     </div>

@@ -102,6 +102,20 @@ export async function GET(req: NextRequest) {
       const supabase = await createServerClient()
       const pack = await getPackBySlug(supabase, referenceId)
 
+      if (payerEmail && payerEmail.includes('@')) {
+        try {
+          const html = buildAccessLiberatedEmailHtml(getDashboardUrl())
+          await sendEmail(
+            payerEmail,
+            '🐺 Acceso Liberado: Tu Pack Bear Beat está listo',
+            html,
+            { name: payerName || undefined, tags: ['payment', 'access_liberated', 'paypal'] }
+          )
+        } catch (e) {
+          console.warn('verify-payment PayPal: email (non-critical):', e)
+        }
+      }
+
       return NextResponse.json({
         success: true,
         sessionId,
@@ -188,6 +202,32 @@ export async function GET(req: NextRequest) {
 
     const supabase = await createServerClient()
     const pack = await getPackBySlug(supabase, packSlug)
+
+    if (customerEmail && customerEmail.includes('@')) {
+      try {
+        const html = buildAccessLiberatedEmailHtml(getDashboardUrl())
+        await sendEmail(
+          customerEmail,
+          '🐺 Acceso Liberado: Tu Pack Bear Beat está listo',
+          html,
+          { name: customerName || undefined, tags: ['payment', 'access_liberated', 'stripe_session'] }
+        )
+      } catch (e) {
+        console.warn('verify-payment Stripe session: email (non-critical):', e)
+      }
+    }
+    if (customerPhone && customerPhone.replace(/\D/g, '').length >= 10) {
+      try {
+        await sendSms(
+          customerPhone,
+          'BearBeat: Pago confirmado 💳. Tu arsenal está desbloqueado. Entra a tu panel y descarga todo ya. 🔥',
+          undefined,
+          { tag: 'payment_success' }
+        )
+      } catch (e) {
+        console.warn('verify-payment: SMS (non-critical):', e)
+      }
+    }
 
     return NextResponse.json({
       success: true,

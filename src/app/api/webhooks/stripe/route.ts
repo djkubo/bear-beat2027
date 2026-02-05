@@ -10,7 +10,7 @@ import {
   isHetznerFtpConfigured,
 } from '@/lib/hetzner-robot'
 import { isFtpConfigured } from '@/lib/ftp-stream'
-import { sendEmail, sendPaymentFailedRecoveryEmail, sendPaymentConfirmationEmail } from '@/lib/brevo-email'
+import { sendEmail, sendPaymentFailedRecoveryEmail, buildAccessLiberatedEmailHtml, getDashboardUrl } from '@/lib/brevo-email'
 import { sendSms } from '@/lib/brevo-sms'
 
 function generateRandomPassword(): string {
@@ -251,14 +251,32 @@ export async function POST(req: NextRequest) {
               }
               console.log('Webhook: compra activada por payment_intent.succeeded (OXXO/async) para', customerEmailForActivation, 'pack_id', packId)
               try {
-                await sendPaymentConfirmationEmail({
-                  to: customerEmailForActivation,
-                  userName: (session.customer_details?.name || pi.metadata?.customer_name as string) || undefined,
-                  amount: amountPaid,
-                  orderId: session.id || pi.id,
-                })
+                const displayNamePi = (session.customer_details?.name || (pi.metadata?.customer_name as string) || customerEmailForActivation.split('@')[0] || 'DJ').trim()
+                const htmlPi = buildAccessLiberatedEmailHtml(getDashboardUrl())
+                await sendEmail(
+                  customerEmailForActivation,
+                  '🐺 Acceso Liberado: Tu Pack Bear Beat está listo',
+                  htmlPi,
+                  { name: displayNamePi, tags: ['payment', 'access_liberated'] }
+                )
+                console.log('Email Acceso Liberado (payment_intent.succeeded) enviado a', customerEmailForActivation)
               } catch (e) {
-                console.warn('sendPaymentConfirmationEmail (payment_intent.succeeded, non-critical):', e)
+                console.warn('sendEmail Acceso Liberado (payment_intent.succeeded, non-critical):', e)
+              }
+            } else {
+              // Usuario ya tenía compra (renovación/recompra): enviar email igual
+              try {
+                const displayNamePi = (session.customer_details?.name || (pi.metadata?.customer_name as string) || customerEmailForActivation.split('@')[0] || 'DJ').trim()
+                const htmlPi = buildAccessLiberatedEmailHtml(getDashboardUrl())
+                await sendEmail(
+                  customerEmailForActivation,
+                  '🐺 Acceso Liberado: Tu Pack Bear Beat está listo',
+                  htmlPi,
+                  { name: displayNamePi, tags: ['payment', 'access_liberated'] }
+                )
+                console.log('Email Acceso Liberado (recompra, payment_intent) enviado a', customerEmailForActivation)
+              } catch (e) {
+                console.warn('sendEmail Acceso Liberado recompra (non-critical):', e)
               }
             }
           }
@@ -298,6 +316,20 @@ export async function POST(req: NextRequest) {
         if (userId) {
           const { data: existingPurchase } = await (admin as any).from('purchases').select('id').eq('user_id', userId).eq('pack_id', packId).maybeSingle()
           if (existingPurchase) {
+            // Renovación/recompra: enviar email de acceso igual
+            try {
+              const displayName = (customerName || customerEmail.split('@')[0] || 'DJ').trim()
+              const html = buildAccessLiberatedEmailHtml(getDashboardUrl())
+              await sendEmail(
+                customerEmail,
+                '🐺 Acceso Liberado: Tu Pack Bear Beat está listo',
+                html,
+                { name: displayName, tags: ['payment', 'access_liberated'] }
+              )
+              console.log('Email Acceso Liberado (recompra) enviado a', customerEmail)
+            } catch (e) {
+              console.warn('sendEmail Acceso Liberado (non-critical):', e)
+            }
             return NextResponse.json({ received: true })
           }
         }
@@ -525,15 +557,17 @@ export async function POST(req: NextRequest) {
             console.log('Webhook: compra auto-activada para', customerEmail, 'pack_id', packId)
             if (customerEmail && customerEmail.includes('@')) {
               try {
-                await sendPaymentConfirmationEmail({
-                  to: customerEmail,
-                  userName: customerName || undefined,
-                  amount: amountPaid,
-                  orderId: session.id,
-                })
-                console.log('Email confirmación de pago (Modo Élite) enviado a', customerEmail)
+                const displayName = (customerName || customerEmail.split('@')[0] || 'DJ').trim()
+                const html = buildAccessLiberatedEmailHtml(getDashboardUrl())
+                await sendEmail(
+                  customerEmail,
+                  '🐺 Acceso Liberado: Tu Pack Bear Beat está listo',
+                  html,
+                  { name: displayName, tags: ['payment', 'access_liberated'] }
+                )
+                console.log('Email Acceso Liberado enviado a', customerEmail)
               } catch (e) {
-                console.warn('sendPaymentConfirmationEmail (non-critical):', e)
+                console.warn('sendEmail Acceso Liberado (non-critical):', e)
               }
             }
           }
