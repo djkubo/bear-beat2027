@@ -13,6 +13,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Bear Beat | Video Remixes Exclusivos para DJs',
   description: 'La membresía definitiva de video remixes para DJs profesionales. Intro, Outro y Clean versions en alta calidad.',
+  icons: { icon: '/favicon.png' },
 }
 
 export const viewport = {

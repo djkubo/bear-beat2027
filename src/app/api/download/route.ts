@@ -142,7 +142,12 @@ export async function GET(req: NextRequest) {
           // ignorar si la tabla no existe
         }
 
-        // Proxy con Content-Disposition: attachment para forzar descarga
+        // ZIP: redirigir a Bunny (evita 502 por timeout/memoria al hacer proxy de archivos grandes)
+        if (isZip) {
+          return NextResponse.redirect(signedUrl, 302)
+        }
+
+        // Video: proxy con Content-Disposition: attachment para forzar descarga (no abrir en pestaña)
         try {
           const bunnyRes = await fetch(signedUrl, { cache: 'no-store' })
           if (bunnyRes.ok && bunnyRes.body) {
