@@ -42,13 +42,18 @@ export async function GET(req: NextRequest) {
 
     if (isBunnyConfigured()) {
       try {
-        // Portadas en raíz del storage (sin prefijo de carpeta)
-        const bunnyPath = buildBunnyPath(pathThumb, false)
-        if (bunnyPath) {
+        // Probar con y sin prefijo: portadas en FTP están en raíz (Genre/file.jpg); algunos setups tienen bajo carpeta
+        const pathWithPrefix = buildBunnyPath(pathThumb, true)
+        const pathNoPrefix = buildBunnyPath(pathThumb, false)
+        const variants = [pathNoPrefix, pathWithPrefix].filter(Boolean)
+        if (variants.length === 0) variants.push(pathThumb)
+        for (const bunnyPath of variants) {
+          if (!bunnyPath) continue
           const signedUrl = generateSignedUrl(bunnyPath, 3600)
-          if (signedUrl?.startsWith('http') && signedUrl.length > 20) {
-            const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 4000)
+          if (!signedUrl?.startsWith('http') || signedUrl.length < 20) continue
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 4000)
+          try {
             const head = await fetch(signedUrl, {
               method: 'HEAD',
               cache: 'no-store',
@@ -56,6 +61,8 @@ export async function GET(req: NextRequest) {
             })
             clearTimeout(timeoutId)
             if (head.ok) return NextResponse.redirect(signedUrl)
+          } catch {
+            clearTimeout(timeoutId)
           }
         }
       } catch {

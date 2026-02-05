@@ -75,12 +75,15 @@ export async function GET(req: NextRequest) {
       ? 'inline'
       : `attachment; filename="${filename.replace(/"/g, '\\"')}"`
 
-    // 1) Prioridad: Bunny CDN (respuesta rápida; evita que FTP cuelgue)
+    // 1) Prioridad: Bunny CDN. Probar con y sin prefijo (ZIPs en raíz FTP; videos bajo "Videos Enero 2026")
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
-      // ZIPs en raíz (usePrefix false); videos en carpeta "Videos Enero 2026" (usePrefix true)
-      const bunnyPath = buildBunnyPath(sanitizedPath, !isZip)
-      const pathVariants = bunnyPath ? [bunnyPath] : (sanitizedPath ? [sanitizedPath] : [])
+      const withPrefix = buildBunnyPath(sanitizedPath, true)
+      const noPrefix = buildBunnyPath(sanitizedPath, false)
+      const pathVariants = isZip
+        ? [noPrefix, withPrefix].filter(Boolean)
+        : [withPrefix, noPrefix].filter(Boolean)
+      if (pathVariants.length === 0 && sanitizedPath) pathVariants.push(sanitizedPath)
 
       let signedUrl = ''
       for (const bunnyPath of pathVariants) {

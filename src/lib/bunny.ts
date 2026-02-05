@@ -112,8 +112,10 @@ export function getBunnyConfigStatus(): BunnyConfigStatus {
 
 /**
  * Genera URL firmada para BunnyCDN (demos y descargas).
- * Fórmula oficial Bunny: token = Base64(SHA256(securityKey + path + expires)); path = decoded.
- * La URL se construye con path decoded; el navegador la codifica al hacer la petición.
+ * Fórmula oficial (Advanced): token = Base64(SHA256(securityKey + path + expires)).
+ * Path = decoded, con barra inicial (ej. /Videos Enero 2026/Genre/file.mp4).
+ * Docs: https://docs.bunny.net/cdn/security/token-authentication/advanced
+ * Si recibes 403, en Bunny Pull Zone → Security asegura "Token Authentication" = Advanced (SHA256).
  */
 export function generateSignedUrl(
   filePath: string,
