@@ -191,6 +191,7 @@ export default function HomeLanding() {
     }).catch(() => {})
     trackPageView('home')
     checkUser()
+    loadStats() // Totales al instante (statsOnly) para que se vea bien tras sync
     loadData()
   }, [])
 
@@ -203,14 +204,27 @@ export default function HomeLanding() {
     }
   }
 
+  // Primero cargar solo totales (rápido) para que hero/stats muestren el número correcto tras el sync
+  const loadStats = async () => {
+    const slug = featuredPack?.slug ?? 'enero-2026'
+    try {
+      const res = await fetch(`/api/videos?pack=${encodeURIComponent(slug)}&statsOnly=1`, { cache: 'no-store' })
+      const data = await res.json()
+      if (data.success && data.pack) setPackInfo((prev) => ({ ...prev, ...data.pack }))
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   const loadData = async () => {
     try {
       const slug = featuredPack?.slug ?? 'enero-2026'
+      setLoading(true)
       const res = await fetch(`/api/videos?pack=${encodeURIComponent(slug)}`, { cache: 'no-store' })
       const data = await res.json()
       if (data.success) {
         setGenres(data.genres || [])
-        setPackInfo(data.pack)
+        if (data.pack) setPackInfo(data.pack)
       }
     } catch (e) {
       console.error(e)
@@ -220,19 +234,12 @@ export default function HomeLanding() {
   }
 
   useEffect(() => {
+    loadStats()
+  }, [featuredPack?.slug])
+
+  useEffect(() => {
     if (!featuredPack) return
-    const slug = featuredPack.slug
-    setLoading(true)
-    fetch(`/api/videos?pack=${encodeURIComponent(slug)}`, { cache: 'no-store' })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          setGenres(data.genres || [])
-          setPackInfo(data.pack)
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    loadData()
   }, [featuredPack?.slug])
 
   const totalVideos = packInfo?.totalVideos ?? inventory.count ?? 0
