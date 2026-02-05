@@ -75,36 +75,7 @@ export async function GET(req: NextRequest) {
       ? 'inline'
       : `attachment; filename="${filename.replace(/"/g, '\\"')}"`
 
-    // 1) Prioridad: FTP (Hetzner)
-    if (isFtpConfigured()) {
-      try {
-        const type = isZip ? 'zip' : 'video'
-        const stream = await streamFileFromFtp(sanitizedPath, type)
-        const webStream = Readable.toWeb(stream) as ReadableStream
-        try {
-          await supabase.from('downloads').insert({
-            user_id: user.id,
-            pack_id: purchases[0].pack_id,
-            file_path: sanitizedPath,
-            download_method: 'web',
-          })
-        } catch {
-          // ignorar
-        }
-        return new NextResponse(webStream, {
-          headers: {
-            'Content-Type': contentType,
-            'Cache-Control': 'private, max-age=3600',
-            'Content-Disposition': disposition,
-            'X-Content-Type-Options': 'nosniff',
-          },
-        })
-      } catch (ftpErr) {
-        console.warn('[download] FTP no tuvo el archivo, intentando Bunny:', (ftpErr as Error)?.message || ftpErr)
-      }
-    }
-
-    // 2) Fallback: Bunny CDN
+    // 1) Prioridad: Bunny CDN (respuesta rápida; evita que FTP cuelgue)
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
       // ZIP: probar con prefijo y sin prefijo (en algunos setups está en raíz, en otros bajo la carpeta)
@@ -167,15 +138,39 @@ export async function GET(req: NextRequest) {
             console.warn('[download] Bunny GET 404 (HEAD había ok), path:', sanitizedPath)
           }
         } catch (proxyErr) {
-          console.error('[download] Proxy Bunny falló:', (proxyErr as Error)?.message || proxyErr)
-          return NextResponse.json(
-            {
-              error: 'Error al descargar',
-              message: 'No se pudo obtener el archivo desde el CDN. Intenta de nuevo o descarga por FTP desde tu panel.',
-            },
-            { status: 503 }
-          )
+          console.warn('[download] Proxy Bunny falló, redirigiendo:', (proxyErr as Error)?.message || proxyErr)
         }
+        // Fallback: redirigir para que el navegador descargue desde Bunny
+        return NextResponse.redirect(signedUrl, 302)
+      }
+    }
+
+    // 2) Fallback: FTP (Hetzner)
+    if (isFtpConfigured()) {
+      try {
+        const type = isZip ? 'zip' : 'video'
+        const stream = await streamFileFromFtp(sanitizedPath, type)
+        const webStream = Readable.toWeb(stream) as ReadableStream
+        try {
+          await supabase.from('downloads').insert({
+            user_id: user.id,
+            pack_id: purchases[0].pack_id,
+            file_path: sanitizedPath,
+            download_method: 'web',
+          })
+        } catch {
+          // ignorar
+        }
+        return new NextResponse(webStream, {
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': 'private, max-age=3600',
+            'Content-Disposition': disposition,
+            'X-Content-Type-Options': 'nosniff',
+          },
+        })
+      } catch (ftpErr) {
+        console.warn('[download] FTP no tuvo el archivo:', (ftpErr as Error)?.message || ftpErr)
       }
     }
 
