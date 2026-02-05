@@ -47,13 +47,27 @@ export async function downloadFile(fileParam: string): Promise<void> {
     let err: Error
     try {
       const json = JSON.parse(text)
-      err = new Error(json.error || json.message || res.statusText)
+      const msg = [json.error, json.message].filter(Boolean).join(' — ') || res.statusText
+      err = new Error(msg || 'Error al descargar')
     } catch {
-      err = new Error(res.statusText || 'Error al descargar')
+      err = new Error(res.statusText || text || 'Error al descargar')
     }
     throw err
   }
-  const blob = await res.blob()
+
+  // Si la respuesta es JSON (ej. error que devolvió 200 por proxy/cache), mostrar mensaje
+  const contentType = res.headers.get('Content-Type') || ''
+  if (contentType.includes('application/json')) {
+    const json = await res.json().catch(() => ({}))
+    throw new Error((json.error || json.message || 'El servidor devolvió un error.').toString())
+  }
+
+  let blob: Blob
+  try {
+    blob = await res.blob()
+  } catch (e) {
+    throw new Error('La descarga se interrumpió. Prueba de nuevo o descarga por FTP desde tu panel.')
+  }
   const disposition = res.headers.get('Content-Disposition')
   let filename = fileParam.split('/').pop() || fileParam.split(/[/\\]/).pop() || 'download'
   if (disposition) {

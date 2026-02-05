@@ -142,25 +142,34 @@ export async function GET(req: NextRequest) {
           // ignorar si la tabla no existe
         }
 
-        // Video: hacer proxy con Content-Disposition: attachment para que el navegador descargue (no abra en pestaña)
-        // Zip: igual, proxy para forzar descarga y evitar problemas de redirección
-        const bunnyRes = await fetch(signedUrl, { cache: 'no-store' })
-        if (bunnyRes.ok && bunnyRes.body) {
-          return new NextResponse(bunnyRes.body, {
-            headers: {
-              'Content-Type': contentType,
-              'Cache-Control': 'private, max-age=3600',
-              'Content-Disposition': disposition,
-              'X-Content-Type-Options': 'nosniff',
-              ...(bunnyRes.headers.get('content-length') && {
-                'Content-Length': bunnyRes.headers.get('content-length')!,
-              }),
+        // Proxy con Content-Disposition: attachment para forzar descarga
+        try {
+          const bunnyRes = await fetch(signedUrl, { cache: 'no-store' })
+          if (bunnyRes.ok && bunnyRes.body) {
+            return new NextResponse(bunnyRes.body, {
+              headers: {
+                'Content-Type': contentType,
+                'Cache-Control': 'private, max-age=3600',
+                'Content-Disposition': disposition,
+                'X-Content-Type-Options': 'nosniff',
+                ...(bunnyRes.headers.get('content-length') && {
+                  'Content-Length': bunnyRes.headers.get('content-length')!,
+                }),
+              },
+            })
+          }
+          if (bunnyRes.status === 404) {
+            console.warn('[download] Bunny GET 404 (HEAD había ok), path:', sanitizedPath)
+          }
+        } catch (proxyErr) {
+          console.error('[download] Proxy Bunny falló:', (proxyErr as Error)?.message || proxyErr)
+          return NextResponse.json(
+            {
+              error: 'Error al descargar',
+              message: 'No se pudo obtener el archivo desde el CDN. Intenta de nuevo o descarga por FTP desde tu panel.',
             },
-          })
-        }
-        // Si el GET falla pero teníamos HEAD ok, redirigir como fallback
-        if (bunnyRes.status === 404) {
-          console.warn('[download] Bunny GET 404 (HEAD había ok), path:', sanitizedPath)
+            { status: 503 }
+          )
         }
       }
     }
@@ -187,7 +196,14 @@ export async function GET(req: NextRequest) {
       { status: 503 }
     )
   } catch (error: unknown) {
-    console.error('Download error:', error)
-    return NextResponse.json({ error: 'Error al descargar' }, { status: 500 })
+    const err = error instanceof Error ? error : new Error(String(error))
+    console.error('Download error:', err.message, err.stack)
+    return NextResponse.json(
+      {
+        error: 'Error al descargar',
+        message: err.message || 'Error interno. Revisa los logs en Render o descarga por FTP desde tu panel.',
+      },
+      { status: 500 }
+    )
   }
 }
