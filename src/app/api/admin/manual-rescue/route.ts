@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
               (pi.metadata?.pack_id as string) ||
                 (await stripe.checkout.sessions
                   .list({ payment_intent: piId, limit: 1 })
-                  .then((r) => (r.data[0] as any)?.metadata?.pack_id) ||
+                  .then((r) => (r.data[0] as any)?.metadata?.pack_id)) ||
                 '1',
               10
             )
