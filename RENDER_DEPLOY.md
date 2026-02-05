@@ -47,10 +47,18 @@ La lista completa de claves que el proyecto acepta en Render está en `scripts/r
 
 Sin `MANYCHAT_API_KEY` verás "Error de Conexión" en Admin → ManyChat.
 
-**Brevo (emails transaccionales y Admin → Emails Brevo):** Para enviar correos (bienvenida, recuperación de pago, transaccionales) y usar la página **Admin → Emails Brevo** (plantillas, envío de prueba, analíticas), añade en Render → Environment:
+**Brevo (emails transaccionales y Admin → Emails Brevo):** Para enviar correos (bienvenida, **Acceso Liberado**, recuperación de pago) y usar **Admin → Emails Brevo**, añade en Render → Environment:
 - `BREVO_API_KEY` = tu API Key de Brevo
 - `BREVO_SENDER_EMAIL` = email del remitente (ej. `noreply@tudominio.com`)
 - `BREVO_SENDER_NAME` = nombre del remitente (ej. `Bear Beat`)
+
+**SMS (Brevo):** Para que se envíen los SMS de confirmación de pago (opcional): `BREVO_SMS_API_KEY`, `BREVO_SMS_SENDER` (ver `scripts/render-set-env.js`).
+
+**Subir variables a Render desde tu máquina:** En la raíz del proyecto, pon en `.env.local` las variables que quieras subir y añade `RENDER_API_KEY` (desde Render → Account → API Keys). Luego ejecuta:
+```bash
+npm run deploy:env
+```
+Eso sincroniza las variables listadas en `scripts/render-set-env.js` a tu servicio bear-beat2027. Si no tienes API Key de Render, configura las variables a mano en Dashboard → tu servicio → Environment.
 
 ### FTP (acceso real tras pagar)
 

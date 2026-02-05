@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import { ManualRescueForm } from '../ManualRescueForm'
+import { SendAccessEmailForm } from '../SendAccessEmailForm'
 
 export default async function AdminRescuePage() {
   const supabase = await createServerClient()
@@ -25,9 +26,13 @@ export default async function AdminRescuePage() {
         🚑 Rescate manual de pagos
       </h1>
       <p className="text-zinc-500 text-sm mb-6">
-        Procesa Payment Intents (pi_...) que cobraron en Stripe pero no activaron. Se crea/usará el usuario por email, se insertará la compra y se enviará el correo de rescate por Brevo.
+        Procesa Payment Intents (pi_...) o órdenes PayPal que cobraron pero no activaron. Se crea/usará el usuario, se inserta la compra y se envía el email &quot;Acceso Liberado&quot;. O envía solo ese email a un correo abajo.
       </p>
-      <ManualRescueForm />
+
+      <div className="space-y-6">
+        <SendAccessEmailForm />
+        <ManualRescueForm />
+      </div>
     </div>
   )
 }
