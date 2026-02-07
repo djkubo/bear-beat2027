@@ -136,13 +136,11 @@ export default function VerifyEmailPage() {
 
           {/* Acciones secundarias */}
           <div className="space-y-3">
-            <Link href="/login" className="block">
-              <button
-                type="button"
-                className="w-full rounded-xl border-2 border-[#08E1F7] bg-transparent py-3.5 text-sm font-bold text-[#08E1F7] hover:bg-[#08E1F7]/10 transition-colors"
-              >
-                VOLVER AL INICIO DE SESIÓN
-              </button>
+            <Link
+              href="/login"
+              className="w-full rounded-xl border-2 border-[#08E1F7] bg-transparent py-3.5 text-sm font-bold text-[#08E1F7] hover:bg-[#08E1F7]/10 transition-colors inline-flex items-center justify-center"
+            >
+              VOLVER AL INICIO DE SESIÓN
             </Link>
             <div className="text-center">
               <button

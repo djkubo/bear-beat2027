@@ -32,15 +32,17 @@ export default function NotFound() {
 
         {/* Acciones */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/">
-            <button className="bg-bear-blue text-bear-black font-bold px-8 py-4 rounded-xl hover:bg-bear-blue/90 w-full sm:w-auto">
-              Ir al Inicio
-            </button>
+          <Link
+            href="/"
+            className="bg-bear-blue text-bear-black font-bold px-8 py-4 rounded-xl hover:bg-bear-blue/90 w-full sm:w-auto inline-flex items-center justify-center"
+          >
+            Ir al Inicio
           </Link>
-          <Link href="/contenido">
-            <button className="bg-white/10 text-white font-bold px-8 py-4 rounded-xl hover:bg-white/20 w-full sm:w-auto">
-              Ver Videos
-            </button>
+          <Link
+            href="/contenido"
+            className="bg-white/10 text-white font-bold px-8 py-4 rounded-xl hover:bg-white/20 w-full sm:w-auto inline-flex items-center justify-center"
+          >
+            Ver Videos
           </Link>
         </div>
 

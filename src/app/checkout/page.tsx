@@ -196,17 +196,19 @@ export default function CheckoutPage() {
             >
               <p className="text-3xl mb-3">🎁</p>
               <h2 className="text-2xl font-black text-white mb-2">¡ESPERA! ¿$350 es mucho?</h2>
-              <p className="text-zinc-300 mb-6">Llévate el Pack de Prueba (50 Videos) por solo <strong className="text-amber-400">$99 MXN</strong>.</p>
-              <div className="flex flex-col gap-3">
-                <Link href={`/checkout?pack=${DOWNSELL_PACK_SLUG}`} onClick={() => setShowExitModal(false)}>
-                  <button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-4 rounded-xl transition">
-                    Sí, quiero el Pack de Prueba por $99 MXN
-                  </button>
-                </Link>
-                <button
-                  onClick={() => setShowExitModal(false)}
-                  className="w-full py-2 text-zinc-400 hover:text-white text-sm"
-                >
+	              <p className="text-zinc-300 mb-6">Llévate el Pack de Prueba (50 Videos) por solo <strong className="text-amber-400">$99 MXN</strong>.</p>
+	              <div className="flex flex-col gap-3">
+	                <Link
+	                  href={`/checkout?pack=${DOWNSELL_PACK_SLUG}`}
+	                  onClick={() => setShowExitModal(false)}
+	                  className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-4 rounded-xl transition inline-flex items-center justify-center text-center"
+	                >
+	                  Sí, quiero el Pack de Prueba por $99 MXN
+	                </Link>
+	                <button
+	                  onClick={() => setShowExitModal(false)}
+	                  className="w-full py-2 text-zinc-400 hover:text-white text-sm"
+	                >
                   No, seguir con el pack completo
                 </button>
               </div>

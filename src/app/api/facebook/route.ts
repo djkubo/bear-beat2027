@@ -18,7 +18,19 @@ import {
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
+    let body: any = null
+    try {
+      body = await req.json()
+    } catch (e) {
+      // Tracking is non-critical: invalid/empty body should never spam logs or break UX.
+      if (process.env.NODE_ENV === 'development') {
+        const msg = e instanceof Error ? e.message : String(e)
+        if (!/Unexpected end of JSON input/i.test(msg) && !/aborted|ECONNRESET/i.test(msg)) {
+          console.warn('Facebook API route: invalid JSON body:', msg)
+        }
+      }
+      return NextResponse.json({ success: false }, { status: 200 })
+    }
     const headersList = await headers()
     
     const {
@@ -30,10 +42,8 @@ export async function POST(req: NextRequest) {
     } = body
     
     if (!eventName) {
-      return NextResponse.json(
-        { error: 'eventName is required' },
-        { status: 400 }
-      )
+      // Tracking is non-critical: return 200 to avoid noisy console errors.
+      return NextResponse.json({ success: false, error: 'eventName is required' }, { status: 200 })
     }
     
     // Generar event_id si no viene
@@ -79,11 +89,12 @@ export async function POST(req: NextRequest) {
     })
     
   } catch (error: any) {
-    console.error('Facebook API route error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    )
+    // Tracking is non-critical: avoid server errors and keep logs quiet.
+    const msg = error instanceof Error ? error.message : String(error)
+    if (process.env.NODE_ENV === 'development' && !/aborted|ECONNRESET/i.test(msg)) {
+      console.warn('Facebook API route error:', msg)
+    }
+    return NextResponse.json({ success: false, error: msg || 'Internal server error' }, { status: 200 })
   }
 }
 

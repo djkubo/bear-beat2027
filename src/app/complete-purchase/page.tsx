@@ -888,15 +888,16 @@ export default function CompletePurchasePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
                 className="mb-10"
-              >
-                <Link href="/contenido" className="block">
-                  <button className="w-full max-w-md mx-auto py-5 px-8 rounded-2xl bg-bear-blue text-bear-black font-black text-xl hover:brightness-110 transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(8,225,247,0.4)]">
-                    <Download className="w-6 h-6" />
-                    IR A DESCARGAR MI CONTENIDO
-                  </button>
-                </Link>
-                <p className="text-zinc-500 text-sm mt-2">Haz clic y empieza a descargar en 10 segundos.</p>
-              </motion.div>
+	              >
+	                <Link
+	                  href="/contenido"
+	                  className="w-full max-w-md mx-auto py-5 px-8 rounded-2xl bg-bear-blue text-bear-black font-black text-xl hover:brightness-110 transition-all inline-flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(8,225,247,0.4)]"
+	                >
+	                  <Download className="w-6 h-6" />
+	                  IR A DESCARGAR MI CONTENIDO
+	                </Link>
+	                <p className="text-zinc-500 text-sm mt-2">Haz clic y empieza a descargar en 10 segundos.</p>
+	              </motion.div>
 
               {/* User Badge: Avatar (iniciales) + Email + Miembro PRO */}
               <motion.div
@@ -931,12 +932,13 @@ export default function CompletePurchasePage() {
                   </div>
                   <h3 className="text-base font-bold text-white mb-1 text-center">Biblioteca Online</h3>
                   <p className="text-zinc-400 text-xs mb-4 text-center flex-1">Visualiza y descarga video por video.</p>
-                  <Link href="/contenido" className="block">
-                    <button className="w-full bg-bear-blue hover:brightness-110 text-bear-black font-black text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2">
-                      IR A LA BIBLIOTECA <ExternalLink className="w-4 h-4" />
-                    </button>
-                  </Link>
-                </div>
+	                  <Link
+	                    href="/contenido"
+	                    className="w-full bg-bear-blue hover:brightness-110 text-bear-black font-black text-sm py-3 rounded-xl transition-all inline-flex items-center justify-center gap-2"
+	                  >
+	                    IR A LA BIBLIOTECA <ExternalLink className="w-4 h-4" />
+	                  </Link>
+	                </div>
                 <div className="bg-zinc-900/80 border border-zinc-700/50 rounded-2xl p-5 flex flex-col">
                   <div className="flex justify-center mb-3">
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-500/10 border border-blue-500/30">
@@ -945,12 +947,15 @@ export default function CompletePurchasePage() {
                   </div>
                   <h3 className="text-base font-bold text-white mb-1 text-center">Google Drive</h3>
                   <p className="text-zinc-400 text-xs mb-4 text-center flex-1">Acceso rápido y compatible con todo.</p>
-                  <a href={GOOGLE_DRIVE_FOLDER_URL} target="_blank" rel="noopener noreferrer" className="block">
-                    <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-black text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2">
-                      ABRIR CARPETA DRIVE <ExternalLink className="w-4 h-4" />
-                    </button>
-                  </a>
-                </div>
+	                  <a
+	                    href={GOOGLE_DRIVE_FOLDER_URL}
+	                    target="_blank"
+	                    rel="noopener noreferrer"
+	                    className="w-full bg-blue-500 hover:bg-blue-600 text-white font-black text-sm py-3 rounded-xl transition-all inline-flex items-center justify-center gap-2"
+	                  >
+	                    ABRIR CARPETA DRIVE <ExternalLink className="w-4 h-4" />
+	                  </a>
+	                </div>
                 <div className="bg-zinc-900/80 border border-zinc-700/50 rounded-2xl p-5 flex flex-col">
                   <div className="flex justify-center mb-3">
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-amber-500/10 border border-amber-500/30">

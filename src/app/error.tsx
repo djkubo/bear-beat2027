@@ -52,10 +52,11 @@ export default function Error({
           >
             Intentar de nuevo
           </button>
-          <Link href="/">
-            <button className="bg-white/10 text-white font-bold px-8 py-4 rounded-xl hover:bg-white/20 w-full">
-              Ir al Inicio
-            </button>
+          <Link
+            href="/"
+            className="bg-white/10 text-white font-bold px-8 py-4 rounded-xl hover:bg-white/20 w-full inline-flex items-center justify-center"
+          >
+            Ir al Inicio
           </Link>
         </div>
 

@@ -116,10 +116,11 @@ function DashboardActive({
           </div>
           <h2 className="text-lg font-bold text-white mb-1 text-center">Biblioteca Online</h2>
           <p className="text-gray-400 text-sm mb-6 text-center flex-1">Visualiza y descarga video por video.</p>
-          <Link href="/contenido" className="block">
-            <button className="w-full inline-flex items-center justify-center gap-2 bg-[#08E1F7] text-black font-black text-sm py-3 rounded-xl hover:brightness-110 transition-all">
-              IR A LA BIBLIOTECA
-            </button>
+          <Link
+            href="/contenido"
+            className="w-full inline-flex items-center justify-center gap-2 bg-[#08E1F7] text-black font-black text-sm py-3 rounded-xl hover:brightness-110 transition-all"
+          >
+            IR A LA BIBLIOTECA
           </Link>
         </div>
 
@@ -139,11 +140,9 @@ function DashboardActive({
             href={GOOGLE_DRIVE_FOLDER_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="block"
+            className="w-full inline-flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-black text-sm py-3 rounded-xl transition-all"
           >
-            <button className="w-full inline-flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-black text-sm py-3 rounded-xl transition-all">
-              ABRIR CARPETA DRIVE <ExternalLink className="h-4 w-4" />
-            </button>
+            ABRIR CARPETA DRIVE <ExternalLink className="h-4 w-4" />
           </a>
         </div>
 
@@ -392,12 +391,11 @@ function DashboardEmpty({ user, videoCount }: { user: UserProfile; videoCount?: 
           <li>🚀 Servidores FTP Privados</li>
           <li>⚡ Descargas Ilimitadas</li>
         </ul>
-        <Link href="/checkout?pack=enero-2026" className="block">
-          <button
-            className="w-full py-4 rounded-xl font-black text-lg bg-[#08E1F7] text-black hover:brightness-110 transition-all"
-          >
-            ACTIVAR MI ACCESO POR $350 MXN →
-          </button>
+        <Link
+          href="/checkout?pack=enero-2026"
+          className="w-full py-4 rounded-xl font-black text-lg bg-[#08E1F7] text-black hover:brightness-110 transition-all inline-flex items-center justify-center"
+        >
+          ACTIVAR MI ACCESO POR $350 MXN →
         </Link>
       </motion.section>
 

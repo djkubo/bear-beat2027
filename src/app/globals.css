@@ -2,20 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Scroll vertical siempre permitido; sin altura fija en html para que body pueda crecer y hacer scroll */
+/* Guard rails: evita scroll horizontal y deja scroll vertical estable. */
 html {
   overflow-x: hidden !important;
   overflow-y: scroll !important;
   width: 100%;
-  max-width: 100vw;
+  max-width: 100vw !important;
   scroll-behavior: smooth;
 }
 body {
   overflow-x: hidden !important;
   overflow-y: auto !important;
   width: 100%;
-  max-width: 100vw;
+  max-width: 100vw !important;
   position: relative;
+}
+body,
+main {
+  max-width: 100vw;
 }
 
 @layer base {
@@ -74,16 +78,8 @@ body {
   * {
     @apply border-border;
   }
-  html {
-    width: 100%;
-    overflow-x: hidden;
-    overflow-y: scroll;
-  }
   body {
     @apply bg-background text-foreground;
-    width: 100%;
-    overflow-x: hidden;
-    overflow-y: auto;
   }
 }
 
@@ -151,23 +147,6 @@ body {
 
 .btn-pulse {
   animation: pulse-glow 2s infinite;
-}
-
-/* Candado: sin scroll horizontal; scroll vertical en body */
-html {
-  overflow-x: hidden !important;
-  overflow-y: scroll !important;
-  max-width: 100vw !important;
-}
-body {
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  max-width: 100vw !important;
-  position: relative;
-}
-body,
-main {
-  max-width: 100vw;
 }
 
 /* Safe area para barras fijas en móvil (notch, home indicator) */

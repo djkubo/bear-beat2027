@@ -224,13 +224,11 @@ export default function ForgotPasswordPage() {
               </div>
 
               {/* Botón secundario: Volver a Iniciar Sesión */}
-              <Link href="/login" className="block">
-                <button
-                  type="button"
-                  className="w-full rounded-xl border-2 border-cyan-500/50 bg-transparent py-3.5 text-sm font-bold text-cyan-400 hover:bg-cyan-500/10 transition-colors"
-                >
-                  ← Volver a Iniciar Sesión
-                </button>
+              <Link
+                href="/login"
+                className="w-full rounded-xl border-2 border-cyan-500/50 bg-transparent py-3.5 text-sm font-bold text-cyan-400 hover:bg-cyan-500/10 transition-colors inline-flex items-center justify-center"
+              >
+                ← Volver a Iniciar Sesión
               </Link>
 
               <div className="mt-4 text-center">

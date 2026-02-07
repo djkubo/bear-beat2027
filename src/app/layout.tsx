@@ -8,8 +8,8 @@ import { ClientErrorLogger } from '@/components/tracking/ClientErrorLogger'
 import { GlobalErrorBoundary } from '@/components/tracking/GlobalErrorBoundary'
 
 export const metadata: Metadata = {
-  title: 'Video Remixes para DJs 2026 | Bear Beat – +3,000 Videos por Género',
-  description: 'Video Remixes para DJs 2026: más de 3,000 videos organizados por género. Descarga masiva por carpetas o FTP (FileZilla, Air Explorer). Pago único. PayPal, tarjeta, OXXO, SPEI.',
+  title: 'Bear Beat | Video Remixes para DJs 2026 - Catalogo HD por Genero',
+  description: 'Video Remixes para DJs 2026: biblioteca HD organizada por genero. Demos, descargas por video, ZIP por carpeta o FTP (FileZilla, Air Explorer). Pago unico. PayPal, tarjeta, OXXO, SPEI.',
 }
 
 export const viewport = {

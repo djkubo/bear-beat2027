@@ -23,13 +23,26 @@ function extractMissingColumn(message: string): string | null {
 
 export async function POST(req: NextRequest) {
   try {
-    const { eventType, eventName, eventData = {}, userId } = await req.json()
+    let parsed: any = null
+    try {
+      parsed = await req.json()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      // Tracking is non-critical: aborted/empty bodies happen on fast navigations.
+      if (
+        process.env.NODE_ENV === 'development' &&
+        !/Unexpected end of JSON input/i.test(msg) &&
+        !/aborted|ECONNRESET/i.test(msg)
+      ) {
+        console.warn('track-event:', msg)
+      }
+      return NextResponse.json({ success: true }, { status: 200 })
+    }
+    const { eventType, eventName, eventData = {}, userId } = parsed || {}
     
     if (!eventType || !eventName) {
-      return NextResponse.json(
-        { error: 'Event type and name required' },
-        { status: 400 }
-      )
+      // Tracking is non-critical: avoid 400s (noisy in console/monitoring).
+      return NextResponse.json({ success: false, error: 'Event type and name required' }, { status: 200 })
     }
     
     const supabase = await createServerClient()

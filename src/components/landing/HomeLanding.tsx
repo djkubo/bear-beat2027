@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 import { StatsSection } from '@/components/landing/stats-section'
 import { Play, CheckCircle2, Check, Download, Wifi, Folder, Music2, Search, ChevronRight, Lock, X } from 'lucide-react'
+import { toast } from 'sonner'
 
 // ==========================================
 // TIPOS (alineados con /contenido)
@@ -57,18 +58,19 @@ interface UserState {
 // COMPONENTES AUXILIARES
 // ==========================================
 
-function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl, totalVideos = 0, packSlug = 'enero-2026' }: { video: Video; onClose: () => void; hasAccess?: boolean; cdnBaseUrl?: string | null; totalVideos?: number; packSlug?: string }) {
+function DemoPlayer({ video, onClose, hasAccess = false, packSlug = 'enero-2026' }: { video: Video; onClose: () => void; hasAccess?: boolean; packSlug?: string }) {
   const [downloading, setDownloading] = useState(false)
   const [demoError, setDemoError] = useState(false)
-  const demoSrc = hasAccess ? `/api/download?file=${encodeURIComponent(video.path)}&stream=true` : `/api/demo-url?path=${encodeURIComponent(video.path)}`
-  const moreLabel = totalVideos > 0 ? totalVideos.toLocaleString() : 'todos'
+  // Siempre usa /api/demo-url para playback (Bunny redirige y soporta Range).
+  // /api/download es para descargar, no para reproducir (proxy sin Range rompe algunos navegadores).
+  const demoSrc = `/api/demo-url?path=${encodeURIComponent(video.path)}`
 
   const handleDownload = async () => {
     setDownloading(true)
     try {
       await downloadFile(video.path)
     } catch (error) {
-      console.error('Error downloading:', error)
+      toast.error((error as Error)?.message || 'Error al descargar')
     }
     setDownloading(false)
   }
@@ -92,6 +94,14 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl, totalVideos
               <p className="text-white text-6xl font-black rotate-[-15deg]">BEAR BEAT</p>
             </div>
           )}
+          {demoError && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/80 p-6 text-center">
+              <p className="text-amber-400 font-black">Demo no disponible</p>
+              <p className="text-sm text-zinc-400">
+                Intenta más tarde. Si esto sigue pasando, revisa que Bunny CDN o FTP estén configurados.
+              </p>
+            </div>
+          )}
           <video
             src={demoSrc}
             className="w-full h-full"
@@ -100,7 +110,7 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl, totalVideos
             playsInline
             controlsList={hasAccess ? undefined : 'nodownload noremoteplayback'}
             disablePictureInPicture={!hasAccess}
-            onError={() => !hasAccess && setDemoError(true)}
+            onError={() => setDemoError(true)}
           />
         </div>
 
@@ -117,10 +127,12 @@ function DemoPlayer({ video, onClose, hasAccess = false, cdnBaseUrl, totalVideos
                 {downloading ? 'Descargando...' : '⬇️ Descargar Video'}
               </button>
             ) : (
-              <Link href={`/checkout?pack=${packSlug}`}>
-                <button className="bg-bear-blue hover:bg-cyan-400 text-black font-black py-3 px-8 rounded-full transition shadow-[0_0_20px_rgba(8,225,247,0.4)]">
-                  DESBLOQUEAR MI ARSENAL
-                </button>
+              <Link
+                href={`/checkout?pack=${packSlug}`}
+                className="bg-bear-blue hover:bg-cyan-400 text-black font-black py-3 px-8 rounded-full transition shadow-[0_0_20px_rgba(8,225,247,0.4)] inline-flex items-center justify-center"
+                onClick={() => trackCTAClick('paywall_cta', 'landing_demo_player', video.name)}
+              >
+                DESBLOQUEAR MI ARSENAL
               </Link>
             )}
           </div>
@@ -145,7 +157,6 @@ export default function HomeLanding() {
   const [showPushModal, setShowPushModal] = useState(false)
   const [pushSubscribing, setPushSubscribing] = useState(false)
   const [demoError, setDemoError] = useState(false)
-  const [cdnBaseUrl, setCdnBaseUrl] = useState<string | null>(null)
   const [thumbErrors, setThumbErrors] = useState<Set<string>>(new Set())
   const [downloadingVideoId, setDownloadingVideoId] = useState<string | null>(null)
   const expandedSectionRef = useRef<HTMLDivElement>(null)
@@ -159,22 +170,20 @@ export default function HomeLanding() {
     try {
       await downloadFile(video.path)
     } catch (e) {
-      console.error('Error downloading:', e)
+      toast.error((e as Error)?.message || 'Error al descargar')
     }
     setDownloadingVideoId(null)
   }
 
   const getThumbnailUrl = (video: Video): string => {
-    // Si tiene URL completa (ej. Bunny), úsala
-    if (video.thumbnailUrl && video.thumbnailUrl.startsWith('http')) {
-      return video.thumbnailUrl
+    // Mantener alineado con /contenido: usar thumbnailUrl si existe, aunque sea relativa.
+    if (video.thumbnailUrl) {
+      if (video.thumbnailUrl.startsWith('http://') || video.thumbnailUrl.startsWith('https://')) return video.thumbnailUrl
+      if (video.thumbnailUrl.startsWith('/')) return video.thumbnailUrl
+      return `/api/thumbnail-cdn?path=${encodeURIComponent(video.thumbnailUrl)}`
     }
-    // Si no, construye la ruta relativa (IMPORTANTE: empieza con /)
-    if (video.path) {
-      return `/api/thumbnail-cdn?path=${encodeURIComponent(video.path)}`
-    }
-    // Fallback solo si no hay path
-    return '/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png'
+    if (video.path) return `/api/thumbnail-cdn?path=${encodeURIComponent(video.path)}`
+    return '/api/placeholder/thumb?text=V'
   }
   const videoRef = useRef<HTMLVideoElement>(null)
   const inventory = useVideoInventory()
@@ -185,7 +194,6 @@ export default function HomeLanding() {
   const priceMXNFromPack = featuredPack?.price_mxn ?? 350
 
   useEffect(() => {
-    fetch('/api/cdn-base').then(r => r.json()).then(d => setCdnBaseUrl(d.baseUrl)).catch(() => {})
     fetch('/api/packs?featured=true').then(r => r.json()).then(d => {
       if (d.pack) setFeaturedPack({ slug: d.pack.slug, name: d.pack.name, price_mxn: Number(d.pack.price_mxn) || 350 })
     }).catch(() => {})
@@ -406,15 +414,17 @@ export default function HomeLanding() {
           <h1 className="text-4xl font-black mb-4">¡Bienvenido a la Élite, {userState.userName}! 💎</h1>
           <p className="text-zinc-400 mb-8">Tu arsenal está listo. ¿Cómo quieres descargar hoy?</p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link href="/contenido">
-              <button className="bg-bear-blue text-black font-bold py-4 px-8 rounded-xl text-lg hover:scale-105 transition w-full sm:w-auto">
-                🚀 Ir al Contenido Web
-              </button>
+            <Link
+              href="/contenido"
+              className="bg-bear-blue text-black font-bold py-4 px-8 rounded-xl text-lg hover:scale-105 transition w-full sm:w-auto inline-flex items-center justify-center"
+            >
+              🚀 Ir al Contenido Web
             </Link>
-            <Link href="/dashboard">
-              <button className="bg-zinc-800 border border-zinc-700 text-white font-bold py-4 px-8 rounded-xl text-lg hover:bg-zinc-700 transition w-full sm:w-auto">
-                📊 Ver mi Dashboard
-              </button>
+            <Link
+              href="/dashboard"
+              className="bg-zinc-800 border border-zinc-700 text-white font-bold py-4 px-8 rounded-xl text-lg hover:bg-zinc-700 transition w-full sm:w-auto inline-flex items-center justify-center"
+            >
+              📊 Ver mi Dashboard
             </Link>
           </div>
         </section>
@@ -460,7 +470,7 @@ export default function HomeLanding() {
                 </h1>
 
                 <p className="text-lg text-zinc-400 max-w-lg mx-auto lg:mx-0">
-                  Deja de ser un DJ del montón que pierde horas en YouTube. Obtén la <strong className="text-white">Ventaja Injusta</strong>: 1,268 Video Remixes de Élite. Arrastra, suelta y revienta la pista mientras ellos siguen buscando qué poner.
+                  Deja de ser un DJ del montón que pierde horas en YouTube. Obtén la <strong className="text-white">Ventaja Injusta</strong>: {totalVideos > 0 ? totalVideos.toLocaleString() : '1,000+'} Video Remixes de Élite. Arrastra, suelta y revienta la pista mientras ellos siguen buscando qué poner.
                 </p>
 
                 <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-4 py-2">
@@ -482,11 +492,13 @@ export default function HomeLanding() {
                   >
                     ⚡ OBTENER MI VENTAJA INJUSTA - ${priceMXN}
                   </Link>
-                  <Link href="#catalogo" onClick={() => trackCTAClick('HERO_direct', 'landing')} className="text-center lg:text-left">
-                    <button className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl border border-white/20 transition">
-                      Ver catálogo y escuchar demos
-                    </button>
-                  </Link>
+                  <a
+                    href="#catalogo"
+                    onClick={() => trackCTAClick('HERO_direct', 'landing')}
+                    className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl border border-white/20 transition inline-flex items-center justify-center text-center"
+                  >
+                    Ver catálogo y escuchar demos
+                  </a>
                   <p className="text-xs text-zinc-500 flex justify-center lg:justify-start gap-3 flex-wrap">
                     <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> 🔒 Si no te hace ganar más dinero, te devolvemos todo.</span>
                   </p>
@@ -786,11 +798,13 @@ export default function HomeLanding() {
                           {selectedVideo.key && <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-300">{selectedVideo.key}</span>}
                           {selectedVideo.bpm && <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-300">{selectedVideo.bpm} BPM</span>}
                         </div>
-                        <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('sidebar_preview', 'landing')}>
-                          <button className="w-full mt-3 h-11 rounded-xl bg-bear-blue text-bear-black font-black hover:brightness-110 transition flex items-center justify-center gap-2">
-                            <Lock className="h-4 w-4" />
-                            Desbloquear descarga
-                          </button>
+                        <Link
+                          href={`/checkout?pack=${packSlug}`}
+                          onClick={() => trackCTAClick('sidebar_preview', 'landing')}
+                          className="w-full mt-3 h-11 rounded-xl bg-bear-blue text-bear-black font-black hover:brightness-110 transition inline-flex items-center justify-center gap-2"
+                        >
+                          <Lock className="h-4 w-4" />
+                          Desbloquear descarga
                         </Link>
                       </div>
                     ) : (
@@ -815,10 +829,12 @@ export default function HomeLanding() {
                           </li>
                         ))}
                       </ul>
-                      <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('sidebar_cta', 'landing')}>
-                        <button className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition">
-                          💎 UNIRME A LA ÉLITE AHORA
-                        </button>
+                      <Link
+                        href={`/checkout?pack=${packSlug}`}
+                        onClick={() => trackCTAClick('sidebar_cta', 'landing')}
+                        className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition inline-flex items-center justify-center"
+                      >
+                        💎 UNIRME A LA ÉLITE AHORA
                       </Link>
                     </div>
 
@@ -837,10 +853,12 @@ export default function HomeLanding() {
           <section className="py-12 md:py-16 px-4 text-center bg-gradient-to-b from-transparent to-bear-blue/10">
             <h2 className="text-2xl md:text-4xl font-black text-white mb-4 tracking-tight">Todo el pack por ${priceMXN} MXN</h2>
             <p className="text-zinc-400 mb-6 max-w-md mx-auto">Pago único. Descarga por web o FTP cuando quieras.</p>
-            <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('final_cta', 'landing')}>
-              <button className="bg-bear-blue hover:brightness-110 text-bear-black text-lg font-black py-4 px-8 rounded-xl transition">
-                Ir a pagar
-              </button>
+            <Link
+              href={`/checkout?pack=${packSlug}`}
+              onClick={() => trackCTAClick('final_cta', 'landing')}
+              className="bg-bear-blue hover:brightness-110 text-bear-black text-lg font-black py-4 px-8 rounded-xl transition inline-flex items-center justify-center"
+            >
+              Ir a pagar
             </Link>
           </section>
 
@@ -851,10 +869,12 @@ export default function HomeLanding() {
                 <p className="text-sm text-gray-400">
                   <span className="text-white font-bold">{totalVideos > 0 ? totalVideos.toLocaleString() : '…'}</span> videos · ${priceMXN} MXN
                 </p>
-                <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('sticky_cta', 'landing')} className="shrink-0">
-                  <button className="h-11 px-5 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition">
-                    Comprar
-                  </button>
+                <Link
+                  href={`/checkout?pack=${packSlug}`}
+                  onClick={() => trackCTAClick('sticky_cta', 'landing')}
+                  className="shrink-0 h-11 px-5 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition inline-flex items-center justify-center"
+                >
+                  Comprar
                 </Link>
               </div>
             </div>
@@ -869,8 +889,6 @@ export default function HomeLanding() {
             video={selectedVideo}
             onClose={() => setSelectedVideo(null)}
             hasAccess={userState.hasAccess}
-            cdnBaseUrl={cdnBaseUrl}
-            totalVideos={totalVideos}
             packSlug={packSlug}
           />
         )}

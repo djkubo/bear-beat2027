@@ -234,10 +234,11 @@ export default function ContenidoPage() {
                 Mi Panel
               </Link>
             ) : (
-              <Link href="/checkout?pack=enero-2026" className="hidden md:inline">
-                <button type="button" className="bg-bear-blue text-bear-black font-black text-sm px-4 py-2 rounded-lg hover:brightness-110 transition">
-                  OBTENER ACCESO
-                </button>
+              <Link
+                href="/checkout?pack=enero-2026"
+                className="hidden md:inline-flex items-center justify-center bg-bear-blue text-bear-black font-black text-sm px-4 py-2 rounded-lg hover:brightness-110 transition"
+              >
+                OBTENER ACCESO
               </Link>
             )}
             <div className="md:hidden shrink-0">
@@ -707,10 +708,12 @@ export default function ContenidoPage() {
                         </li>
                       ))}
                     </ul>
-                    <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('sidebar_main_cta', 'contenido')}>
-                      <button className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition">
-                        DESBLOQUEAR TODO AHORA →
-                      </button>
+                    <Link
+                      href="/checkout?pack=enero-2026"
+                      onClick={() => trackCTAClick('sidebar_main_cta', 'contenido')}
+                      className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition inline-flex items-center justify-center"
+                    >
+                      DESBLOQUEAR TODO AHORA →
                     </Link>
                   </div>
 
@@ -766,10 +769,12 @@ export default function ContenidoPage() {
                 <p className="text-sm text-gray-400 mb-1">Pago único</p>
                 <p className="text-3xl font-black text-bear-blue">$350 MXN</p>
               </div>
-              <Link href="/checkout?pack=enero-2026" onClick={() => trackCTAClick('paywall_cta', 'contenido')}>
-                <button className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black hover:brightness-110 transition">
-                  DESBLOQUEAR MI ARSENAL
-                </button>
+              <Link
+                href="/checkout?pack=enero-2026"
+                onClick={() => trackCTAClick('paywall_cta', 'contenido')}
+                className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black hover:brightness-110 transition inline-flex items-center justify-center"
+              >
+                DESBLOQUEAR MI ARSENAL
               </Link>
               <button
                 onClick={() => setShowPaywall(false)}
@@ -789,10 +794,11 @@ export default function ContenidoPage() {
             <p className="text-sm font-medium text-gray-300">
               <span className="text-white font-bold">{totalVideos.toLocaleString()}</span> videos esperan
             </p>
-            <Link href="/checkout?pack=enero-2026" className="shrink-0">
-              <button className="h-11 px-5 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition">
-                DESBLOQUEAR ($350)
-              </button>
+            <Link
+              href="/checkout?pack=enero-2026"
+              className="shrink-0 h-11 px-5 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition inline-flex items-center justify-center"
+            >
+              DESBLOQUEAR ($350)
             </Link>
           </div>
         </div>
