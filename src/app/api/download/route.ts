@@ -10,11 +10,57 @@ export const dynamic = 'force-dynamic'
 const EXPIRY_VIDEO = 3600 // 1 h
 const EXPIRY_ZIP = 10800 // 3 h (los ZIP tardan más en bajar)
 const LEGACY_VIDEOS_FOLDER = 'Videos Enero 2026'
+const BUNNY_PROBE_TIMEOUT_MS = 7000
 
 /** Nombre de archivo seguro para Content-Disposition (evita caracteres problemáticos). */
 function safeDownloadFilename(name: string): string {
   const base = (name || 'download').replace(/[\x00-\x1f\x7f"\\<>|*?]/g, '').trim() || 'download'
   return base.length > 200 ? base.slice(0, 200) : base
+}
+
+function joinPaths(...parts: Array<string | null | undefined>): string {
+  return parts
+    .filter((p): p is string => !!p && typeof p === 'string')
+    .map((p) => p.replace(/^\/+/, '').replace(/\/+$/, ''))
+    .filter(Boolean)
+    .join('/')
+    .replace(/\/+/g, '/')
+}
+
+function removeDiacritics(input: string): string {
+  try {
+    return input.normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC')
+  } catch {
+    return input
+  }
+}
+
+function pathSearchVariants(input: string): string[] {
+  const base = unicodePathVariants(input, 'input')
+  const deaccented = removeDiacritics(input)
+  const extra = deaccented !== input ? unicodePathVariants(deaccented, 'input') : []
+  return Array.from(new Set([...base, ...extra].filter(Boolean)))
+}
+
+async function probeSignedUrl(url: string): Promise<{ ok: boolean; status: number }> {
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Range: 'bytes=0-0' },
+      cache: 'no-store',
+      // Some Bunny configs don't behave well with HEAD. GET+Range is cheap and tends to trigger Pull Zone origin fetch.
+      signal: AbortSignal.timeout(BUNNY_PROBE_TIMEOUT_MS),
+    })
+    const status = res.status
+    try {
+      await (res.body as any)?.cancel?.()
+    } catch {
+      // ignore
+    }
+    return { ok: res.ok, status }
+  } catch {
+    return { ok: false, status: 0 }
+  }
 }
 
 /**
@@ -77,22 +123,81 @@ export async function GET(req: NextRequest) {
       ? 'inline'
       : `attachment; filename="${filename.replace(/"/g, '\\"')}"`
 
-    // 1) Prioridad: Bunny CDN. Probar varias rutas típicas (con/sin prefijo y legacy "Videos Enero 2026/").
+    // Intentar inferir el pack del usuario para probar prefijos típicos (packs/<slug>/...).
+    let purchasedPackSlug: string | null = null
+    try {
+      const firstPackId = purchases?.[0]?.pack_id
+      if (firstPackId) {
+        const { data: packRow } = await supabase.from('packs').select('slug').eq('id', firstPackId).maybeSingle()
+        purchasedPackSlug = packRow?.slug ? String(packRow.slug) : null
+      }
+    } catch {
+      // ignore
+    }
+
+    // 1) Prioridad: Bunny CDN. Probar varias rutas típicas (con/sin prefijo, legacy y carpetas de zips).
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
-      const pathUnicodeVariants = unicodePathVariants(sanitizedPath, 'nfc')
+      const pathUnicodeVariants = pathSearchVariants(sanitizedPath)
+
+      const packPrefixCandidates = Array.from(
+        new Set(
+          [
+            null,
+            purchasedPackSlug ? `packs/${purchasedPackSlug}` : null,
+            purchasedPackSlug ? purchasedPackSlug : null,
+            purchasedPackSlug ? `packs/${purchasedPackSlug}/${LEGACY_VIDEOS_FOLDER}` : null,
+            purchasedPackSlug ? `${purchasedPackSlug}/${LEGACY_VIDEOS_FOLDER}` : null,
+          ].filter(Boolean)
+        )
+      )
+
+      const zipFolderCandidates = isZip ? ['', '_ZIPS', 'zips', 'ZIPS'] : ['']
 
       // Orden heurístico:
-      // - ZIP suele estar en raíz o bajo prefijo (packs o carpeta); video suele estar bajo prefijo.
+      // - Video: primero con prefijo env (buildBunnyPath(usePrefix=true)), luego sin prefijo, luego legacy.
+      // - ZIP: primero raíz y carpetas típicas (_ZIPS/), luego prefijos.
       const rawVariants = pathUnicodeVariants.flatMap((p) => {
+        const baseZip = isZip && !p.includes('/') ? p : null
+        const baseName = baseZip ? baseZip.replace(/\.zip$/i, '') : null
+
+        const core: string[] = []
+        if (isZip) {
+          // ZIP puede estar en raíz o dentro de una carpeta (ej. _ZIPS/ o Genre/Genre.zip)
+          core.push(buildBunnyPath(p, false), buildBunnyPath(p, true))
+          for (const zf of zipFolderCandidates) {
+            if (!zf) continue
+            core.push(buildBunnyPath(joinPaths(zf, p), false), buildBunnyPath(joinPaths(zf, p), true))
+          }
+          if (baseZip && baseName) {
+            core.push(buildBunnyPath(joinPaths(baseName, baseZip), false), buildBunnyPath(joinPaths(baseName, baseZip), true))
+            for (const zf of zipFolderCandidates) {
+              if (!zf) continue
+              core.push(buildBunnyPath(joinPaths(zf, baseName, baseZip), false), buildBunnyPath(joinPaths(zf, baseName, baseZip), true))
+            }
+          }
+        } else {
+          core.push(buildBunnyPath(p, true), buildBunnyPath(p, false))
+        }
+
         const legacyPath = `${LEGACY_VIDEOS_FOLDER}/${p}`.replace(/\/+/g, '/')
-        const withPrefix = buildBunnyPath(p, true)
-        const noPrefix = buildBunnyPath(p, false)
-        const legacyWithPrefix = buildBunnyPath(legacyPath, true)
-        const legacyNoPrefix = buildBunnyPath(legacyPath, false)
-        return isZip
-          ? [noPrefix, withPrefix, legacyNoPrefix, legacyWithPrefix]
-          : [withPrefix, noPrefix, legacyWithPrefix, legacyNoPrefix]
+        core.push(buildBunnyPath(legacyPath, true), buildBunnyPath(legacyPath, false))
+
+        // Prefijos alternativos típicos (packs/<slug>/...) por si el origin/CDN está organizado distinto.
+        for (const pref of packPrefixCandidates) {
+          core.push(buildBunnyPath(joinPaths(pref, p), false))
+          core.push(buildBunnyPath(joinPaths(pref, legacyPath), false))
+          if (isZip) {
+            for (const zf of zipFolderCandidates) {
+              if (!zf) continue
+              core.push(buildBunnyPath(joinPaths(pref, zf, p), false))
+              if (baseZip && baseName) core.push(buildBunnyPath(joinPaths(pref, zf, baseName, baseZip), false))
+            }
+          }
+        }
+
+        // Quitar vacíos y duplicados locales.
+        return core.filter(Boolean)
       })
       const pathVariants = Array.from(new Set(rawVariants.filter(Boolean)))
 
@@ -102,12 +207,12 @@ export async function GET(req: NextRequest) {
         if (!bunnyPath) continue
         try {
           const url = generateSignedUrl(bunnyPath, expiresIn)
-          const headRes = await fetch(url, { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(5000) })
-          if (headRes.ok) {
+          const probe = await probeSignedUrl(url)
+          if (probe.ok) {
             signedUrl = url
             break
           }
-          if (headRes.status !== 404 && !signedUrlMaybe) signedUrlMaybe = url
+          if (probe.status !== 404 && probe.status !== 0 && !signedUrlMaybe) signedUrlMaybe = url
         } catch {
           if (!signedUrlMaybe) {
             try {
@@ -160,56 +265,93 @@ export async function GET(req: NextRequest) {
           if (!isFtpConfigured()) return NextResponse.redirect(signedUrl, 302)
         }
       } else if (signedUrlMaybe && !isFtpConfigured()) {
-        // HEAD no confirmó pero tampoco fue 404; si no hay FTP, al menos intentar con Bunny.
+        // No se pudo confirmar, pero al menos intentar con Bunny si no hay FTP.
         return NextResponse.redirect(signedUrlMaybe, 302)
       }
     }
 
     // 2) Fallback: FTP (Hetzner)
     if (isFtpConfigured()) {
-      const typeVariants: Array<'video' | 'zip'> = isZip ? ['zip', 'video'] : ['video']
-      for (const type of typeVariants) {
-        const ftpVariants = unicodePathVariants(sanitizedPath, type === 'zip' ? 'nfc' : 'nfd')
-        let lastErr: unknown = null
-        for (const ftpPath of ftpVariants) {
-          try {
-            const stream = await streamFileFromFtpOnceReady(ftpPath, type)
-            const webStream = Readable.toWeb(stream) as ReadableStream
-            try {
-              await supabase.from('downloads').insert({
-                user_id: user.id,
-                pack_id: purchases[0].pack_id,
-                file_path: sanitizedPath,
-                download_method: 'web',
-              })
-            } catch {
-              // ignorar
+      const candidates: Array<{ path: string; type: 'video' | 'zip' | 'thumb' }> = []
+      const pathBaseVariants = pathSearchVariants(sanitizedPath)
+
+      if (isZip) {
+        const baseZip = sanitizedPath && !sanitizedPath.includes('/') ? sanitizedPath : null
+        const baseName = baseZip ? baseZip.replace(/\.zip$/i, '') : null
+        const zipFolders = ['_ZIPS', 'zips', 'ZIPS']
+
+        for (const p of pathBaseVariants) {
+          candidates.push({ path: p, type: 'zip' })
+          candidates.push({ path: p, type: 'video' }) // ZIPs a veces están dentro de FTP_BASE
+          for (const zf of zipFolders) {
+            candidates.push({ path: joinPaths(zf, p), type: 'zip' })
+            candidates.push({ path: joinPaths(zf, p), type: 'video' })
+          }
+          if (baseZip && baseName) {
+            candidates.push({ path: joinPaths(baseName, baseZip), type: 'zip' })
+            candidates.push({ path: joinPaths(baseName, baseZip), type: 'video' })
+            for (const zf of zipFolders) {
+              candidates.push({ path: joinPaths(zf, baseName, baseZip), type: 'zip' })
+              candidates.push({ path: joinPaths(zf, baseName, baseZip), type: 'video' })
             }
-            return new NextResponse(webStream, {
-              headers: {
-                'Content-Type': contentType,
-                'Cache-Control': 'private, max-age=3600',
-                'Content-Disposition': disposition,
-                'X-Content-Type-Options': 'nosniff',
-              },
-            })
-          } catch (ftpErr) {
-            lastErr = ftpErr
           }
         }
-        console.warn('[download] FTP no tuvo el archivo:', (lastErr as Error)?.message || lastErr)
-        // probar siguiente type (ej. ZIP en raíz vs dentro de FTP_BASE)
+      } else {
+        // Video normalmente vive dentro de FTP_BASE, pero intentamos también raíz (algunos setups).
+        for (const p of pathBaseVariants) {
+          candidates.push({ path: p, type: 'video' })
+          candidates.push({ path: p, type: 'thumb' })
+        }
       }
+
+      let lastErr: unknown = null
+      for (const c of candidates) {
+        if (!c.path) continue
+        try {
+          const stream = await streamFileFromFtpOnceReady(c.path, c.type === 'thumb' ? 'thumb' : c.type)
+          const webStream = Readable.toWeb(stream) as ReadableStream
+          try {
+            await supabase.from('downloads').insert({
+              user_id: user.id,
+              pack_id: purchases[0].pack_id,
+              file_path: sanitizedPath,
+              download_method: 'web',
+            })
+          } catch {
+            // ignorar
+          }
+          return new NextResponse(webStream, {
+            headers: {
+              'Content-Type': contentType,
+              'Cache-Control': 'private, max-age=3600',
+              'Content-Disposition': disposition,
+              'X-Content-Type-Options': 'nosniff',
+            },
+          })
+        } catch (ftpErr) {
+          lastErr = ftpErr
+        }
+      }
+      console.warn('[download] FTP no tuvo el archivo:', (lastErr as Error)?.message || lastErr, 'path:', sanitizedPath)
     }
 
     const supportUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/contenido` : '/contenido'
     if (isFtpConfigured() || isBunnyConfigured()) {
+      console.warn('[download] File not found in any source:', {
+        path: sanitizedPath,
+        isZip,
+        ftp: isFtpConfigured(),
+        bunny: isBunnyConfigured(),
+        purchasedPackSlug,
+      })
       return NextResponse.json(
         {
           error: 'La descarga no está disponible en este momento.',
           message: 'El archivo no se encontró en FTP (Hetzner) ni en Bunny. Intenta más tarde o descarga por FTP desde tu panel.',
           supportUrl,
           redirect: '/dashboard',
+          path: sanitizedPath,
+          pack: purchasedPackSlug,
         },
         { status: 503 }
       )
