@@ -21,7 +21,7 @@ test.describe('Chatbot: widget, mensaje, IA, historial', () => {
     await page.getByRole('button', { name: /Enviar/i }).click()
 
     await expect(page.locator('text=¿Cuánto cuesta el pack?').first()).toBeVisible({ timeout: 3_000 })
-    await expect(page.getByText(/350|MXN|precio|pack/i).first()).toBeVisible({ timeout: 25_000 })
+    await expect(page.getByText(/\\$|MXN|USD|precio|pack/i).first()).toBeVisible({ timeout: 25_000 })
   })
 
   test('POST /api/chat recibe mensaje y opcionalmente userId (historial Supabase)', async ({ page }) => {

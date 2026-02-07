@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     if (phone && phone.length >= 10) {
       try {
-        const smsBody = `BearBeat: 🛑 Tu banco rechazó la transacción. Tu cupo de $350 está reservado por 15 min más. Finaliza aquí: ${recoveryLink}`
+        const smsBody = `BearBeat: 🛑 Tu banco rechazó la transacción. Tu cupo está reservado por 15 min más. Finaliza aquí: ${recoveryLink}`
         await sendSms(phone, smsBody, undefined, { tag: 'payment_failed' })
         console.log('📱 SMS Recuperación enviado')
       } catch (e) {

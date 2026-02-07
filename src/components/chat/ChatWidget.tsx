@@ -39,10 +39,12 @@ function useVisualViewportHeight() {
 
 const CHECKOUT_CLOSER_MESSAGE = '¿Problemas con el pago? 💳 Escríbeme y te paso mi cuenta para Transferencia u OXXO.';
 
-export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoOpenOnCheckout?: boolean } = {}) {
+export default function ChatWidget(
+  { autoOpenOnCheckout: autoOpenProp, defaultOpen = false }: { autoOpenOnCheckout?: boolean; defaultOpen?: boolean } = {}
+) {
   const pathname = usePathname();
   const autoOpenOnCheckout = autoOpenProp ?? pathname?.startsWith('/checkout') ?? false;
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(!!defaultOpen);
   const [messages, setMessages] = useState<{role: string, content: string}[]>([
     { role: 'assistant', content: DEFAULT_GREETING }
   ]);
@@ -56,6 +58,11 @@ export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoO
   const chatSessionIdRef = useRef<string>('');
   const viewportHeight = useVisualViewportHeight();
   const checkoutAutoOpenDone = useRef(false);
+
+  // Permite que el contenedor (lazy loader) abra el chat al cargar el chunk.
+  useEffect(() => {
+    if (defaultOpen) setIsOpen(true);
+  }, [defaultOpen]);
 
   // ManyChat: saludo por nombre (vienen del chat) o venta agresiva
   useEffect(() => {
@@ -203,7 +210,7 @@ export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoO
 
   return (
     <div
-      className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-[45] flex flex-col items-end max-w-[min(350px,calc(100vw-2rem)] w-[calc(100vw-2rem)] md:w-auto md:max-w-[350px] pointer-events-none [&>*]:pointer-events-auto"
+      className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-[45] flex flex-col items-end max-w-[min(350px,calc(100vw-2rem))] w-[calc(100vw-2rem)] md:w-auto md:max-w-[350px] pointer-events-none [&>*]:pointer-events-auto"
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0)',
         paddingRight: 'env(safe-area-inset-right, 0)',
@@ -269,6 +276,7 @@ export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoO
               type="text"
               inputMode="text"
               autoComplete="off"
+              aria-label="Mensaje"
               className="flex-1 min-w-0 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-[16px] text-white focus:outline-none focus:border-bear-blue"
               placeholder="Escribe aquí..."
               value={input}

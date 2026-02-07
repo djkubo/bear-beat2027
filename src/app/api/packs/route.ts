@@ -12,7 +12,21 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createServerClient()
+    const slugParam = req.nextUrl.searchParams.get('slug')
     const featuredOnly = req.nextUrl.searchParams.get('featured') === 'true'
+
+    if (slugParam) {
+      const { data, error } = await (supabase.from('packs') as any)
+        .select('id, slug, name, description, price_mxn, price_usd, release_month, release_date, total_videos, total_size_gb, status, featured')
+        .eq('slug', slugParam)
+        .maybeSingle()
+      if (error) {
+        console.error('API packs (slug):', error)
+        // Endpoint público usado por UI: no queremos romper UX ni spamear consola con 500.
+        return NextResponse.json({ pack: null, error: 'Error al cargar pack' }, { status: 200 })
+      }
+      return NextResponse.json({ pack: data || null })
+    }
 
     let query = (supabase.from('packs') as any)
       .select('id, slug, name, description, price_mxn, price_usd, release_month, release_date, total_videos, total_size_gb, status, featured')
@@ -27,7 +41,8 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error('API packs:', error)
-      return NextResponse.json({ error: 'Error al cargar packs' }, { status: 500 })
+      // Endpoint público usado por UI: no queremos romper UX ni spamear consola con 500.
+      return NextResponse.json({ packs: [], error: 'Error al cargar packs' }, { status: 200 })
     }
 
     if (featuredOnly) {
@@ -47,6 +62,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ packs: data || [] })
   } catch (e) {
     console.error('API packs GET:', e)
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+    return NextResponse.json({ packs: [], pack: null, error: 'Error interno' }, { status: 200 })
   }
 }

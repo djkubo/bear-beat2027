@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { trackPageView } from '@/lib/tracking'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
+import { useFeaturedPack } from '@/lib/hooks/useFeaturedPack'
 import {
   Globe,
   FolderOpen,
@@ -339,7 +340,19 @@ function DashboardActive({
 }
 
 // ——— Vista para usuarios SIN compra (Upsell) ———
-function DashboardEmpty({ user, videoCount }: { user: UserProfile; videoCount?: number }) {
+function DashboardEmpty({
+  user,
+  videoCount,
+  packSlug,
+  packName,
+  priceMXN,
+}: {
+  user: UserProfile
+  videoCount?: number
+  packSlug: string
+  packName: string
+  priceMXN: number
+}) {
   const firstName = user?.name?.split(' ')[0] || 'Usuario'
   const videoLabel = videoCount != null && videoCount > 0 ? videoCount.toLocaleString() : 'miles de'
 
@@ -384,7 +397,7 @@ function DashboardEmpty({ user, videoCount }: { user: UserProfile; videoCount?: 
           </div>
         </div>
         <h2 className="text-xl md:text-2xl font-black text-white text-center mb-4">
-          Desbloquea el Pack Enero 2026
+          Desbloquea {packName}
         </h2>
         <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-300 mb-8">
           <li>🔓 Acceso a {videoLabel} videos HD</li>
@@ -392,10 +405,10 @@ function DashboardEmpty({ user, videoCount }: { user: UserProfile; videoCount?: 
           <li>⚡ Descargas Ilimitadas</li>
         </ul>
         <Link
-          href="/checkout?pack=enero-2026"
+          href={`/checkout?pack=${packSlug}`}
           className="w-full py-4 rounded-xl font-black text-lg bg-[#08E1F7] text-black hover:brightness-110 transition-all inline-flex items-center justify-center"
         >
-          ACTIVAR MI ACCESO POR $350 MXN →
+          ACTIVAR MI ACCESO POR ${priceMXN} MXN →
         </Link>
       </motion.section>
 
@@ -453,11 +466,16 @@ function DashboardEmpty({ user, videoCount }: { user: UserProfile; videoCount?: 
 }
 
 export default function DashboardPage() {
+  const { pack: featuredPack } = useFeaturedPack()
+  const packSlug = featuredPack?.slug || 'enero-2026'
+  const packName = featuredPack?.name || 'Pack Enero 2026'
+  const priceMXN = Number(featuredPack?.price_mxn) || 350
+
   const [user, setUser] = useState<UserProfile | null>(null)
   const [purchases, setPurchases] = useState<Purchase[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
-  const inventory = useVideoInventory()
+  const inventory = useVideoInventory(packSlug)
 
   useEffect(() => {
     trackPageView('dashboard')
@@ -509,6 +527,12 @@ export default function DashboardPage() {
   return hasPurchase ? (
     <DashboardActive user={user} purchases={purchases} />
   ) : (
-    <DashboardEmpty user={user} videoCount={inventory.count ?? undefined} />
+    <DashboardEmpty
+      user={user}
+      videoCount={inventory.count ?? undefined}
+      packSlug={packSlug}
+      packName={packName}
+      priceMXN={priceMXN}
+    />
   )
 }

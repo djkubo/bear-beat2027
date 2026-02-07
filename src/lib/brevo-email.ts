@@ -388,17 +388,22 @@ export async function sendAbandonedCartEmail(params: {
   to: string
   name?: string
   checkoutUrl: string
+  priceMXN?: number
 }): Promise<SendTransactionalEmailResult> {
   if (!isBrevoEmailConfigured()) {
     return { success: false, error: 'Brevo email not configured' }
   }
   const displayName = (params.name || params.to.split('@')[0] || 'DJ').trim()
   const subject = `👀 ¿Te dio miedo, ${escapeHtml(displayName)}?`
+  const priceLabel =
+    typeof params.priceMXN === 'number' && Number.isFinite(params.priceMXN) && params.priceMXN > 0
+      ? `$${params.priceMXN} MXN`
+      : 'el precio'
   const htmlContent = `
 <div style="font-family: sans-serif; background: #000; color: #fff; padding: 40px; border-radius: 10px; border: 1px solid #333;">
   <h2 style="color: #fff; margin-top: 0;">Tu competencia no duda.</h2>
   <p style="color: #ccc;">Vimos que te registraste pero no tomaste acción. Mientras lo piensas, otros ya están descargando los remixes exclusivos de este mes.</p>
-  <p style="color: #ccc;">No dejes que $350 MXN sean la excusa para no sonar profesional.</p>
+  <p style="color: #ccc;">No dejes que ${priceLabel} sea la excusa para no sonar profesional.</p>
   <div style="text-align: center; margin: 30px 0;">
     <a href="${escapeHtml(params.checkoutUrl)}" style="background: #00ff88; color: #000; padding: 15px 40px; text-decoration: none; font-weight: 900; border-radius: 50px; text-transform: uppercase; display: inline-block;">
       TERMINAR MI COMPRA AHORA ➔

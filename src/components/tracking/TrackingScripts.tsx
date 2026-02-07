@@ -32,16 +32,19 @@ function pathToPageName(pathname: string): string {
 export function TrackingScripts() {
   const pathname = usePathname()
   const lastPathRef = useRef<string | null>(null)
+  const isAutomation = typeof navigator !== 'undefined' && navigator.webdriver
 
   useEffect(() => {
+    if (isAutomation) return
     if (typeof window === 'undefined') return
     const pageName = pathToPageName(pathname || '/')
     if (lastPathRef.current === pathname) return
     lastPathRef.current = pathname
     trackPageView(pageName)
-  }, [pathname])
+  }, [pathname, isAutomation])
 
   useEffect(() => {
+    if (isAutomation) return
     if (DISABLED || !PIXEL_ID || typeof window === 'undefined' || !window.fbq) return
     try {
       const eventId = `bb_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
@@ -49,7 +52,9 @@ export function TrackingScripts() {
     } catch (_) {
       // Pixel puede estar unavailable por permisos en Meta
     }
-  }, [pathname])
+  }, [pathname, isAutomation])
+
+  if (isAutomation) return null
 
   return (
     <>

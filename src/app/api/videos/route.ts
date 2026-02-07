@@ -99,9 +99,9 @@ async function getStatsAndPreview(
   packId: string,
   hasAccess: boolean,
   baseUrl: string
-): Promise<{ totalVideos: number; totalSize: number; genreCount: number; totalPurchases: number; previewGenres: GenreFolder[] }> {
-  const { data: pack } = await supabase.from('packs').select('id').eq('slug', packId).single()
-  if (!pack) return { totalVideos: 0, totalSize: 0, genreCount: 0, totalPurchases: 0, previewGenres: [] }
+): Promise<{ packName: string; totalVideos: number; totalSize: number; genreCount: number; totalPurchases: number; previewGenres: GenreFolder[] }> {
+  const { data: pack } = await supabase.from('packs').select('id, name').eq('slug', packId).single()
+  if (!pack) return { packName: packId, totalVideos: 0, totalSize: 0, genreCount: 0, totalPurchases: 0, previewGenres: [] }
 
   const [videosRes, purchasesRes] = await Promise.all([
     supabase.from('videos').select('*', { count: 'exact', head: true }).eq('pack_id', pack.id),
@@ -111,7 +111,7 @@ async function getStatsAndPreview(
   const totalPurchasesCount = purchasesRes.count ?? 0
 
   let totalSize = 0
-  const genreIds = new Set<string>()
+  const byGenre: Record<string, { count: number; size: number }> = {}
   const PAGE_SIZE = 1000
   let offset = 0
   let hasMore = true
@@ -123,8 +123,14 @@ async function getStatsAndPreview(
       .range(offset, offset + PAGE_SIZE - 1)
     if (!page?.length) break
     for (const row of page) {
-      totalSize += Number(row.file_size) || 0
-      if (row.genre_id) genreIds.add(String(row.genre_id))
+      const size = Number(row.file_size) || 0
+      totalSize += size
+      if (row.genre_id) {
+        const id = String(row.genre_id)
+        if (!byGenre[id]) byGenre[id] = { count: 0, size: 0 }
+        byGenre[id].count += 1
+        byGenre[id].size += size
+      }
     }
     hasMore = page.length === PAGE_SIZE
     offset += PAGE_SIZE
@@ -169,19 +175,6 @@ async function getStatsAndPreview(
     }
   })
 
-  // Conteos reales por género (para home y marquee)
-  const { data: genreStatsRows } = await supabase
-    .from('videos')
-    .select('genre_id, file_size')
-    .eq('pack_id', pack.id)
-  const byGenre: Record<string, { count: number; size: number }> = {}
-  for (const row of genreStatsRows || []) {
-    const id = String(row.genre_id || '')
-    if (!id) continue
-    if (!byGenre[id]) byGenre[id] = { count: 0, size: 0 }
-    byGenre[id].count += 1
-    byGenre[id].size += Number(row.file_size) || 0
-  }
   // Mostrar TODOS los géneros de la DB (como en login: "Todos los géneros: Reggaeton, Cumbia...")
   const { data: genreRows } = await supabase.from('genres').select('id, name, slug').order('name')
   const marqueeGenres: GenreFolder[] = (genreRows || []).map((g: { id: string; name: string; slug: string }) => {
@@ -209,6 +202,7 @@ async function getStatsAndPreview(
     : []
 
   return {
+    packName: pack.name || packId,
     totalVideos,
     totalSize,
     genreCount: marqueeGenres.length,
@@ -274,7 +268,7 @@ export async function GET(req: NextRequest) {
         success: true,
         pack: {
           id: packId,
-          name: 'Pack Enero 2026',
+          name: stats.packName || packId,
           totalVideos: stats.totalVideos,
           totalSize: stats.totalSize,
           totalSizeFormatted: formatBytes(stats.totalSize),
@@ -316,9 +310,11 @@ export async function GET(req: NextRequest) {
     const totalSize = structure.reduce((sum, g) => sum + g.totalSize, 0)
 
     let totalPurchases = 0
+    let packName = packId
     try {
-      const { data: packRow } = await supabase.from('packs').select('id').eq('slug', packId).single()
+      const { data: packRow } = await supabase.from('packs').select('id, name').eq('slug', packId).single()
       if (packRow) {
+        packName = packRow.name || packName
         const { count } = await supabase.from('purchases').select('*', { count: 'exact', head: true }).eq('pack_id', packRow.id)
         totalPurchases = count ?? 0
       }
@@ -330,7 +326,7 @@ export async function GET(req: NextRequest) {
       success: true,
       pack: {
         id: packId,
-        name: 'Pack Enero 2026',
+        name: packName,
         totalVideos,
         totalSize,
         totalSizeFormatted: formatBytes(totalSize),

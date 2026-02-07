@@ -10,6 +10,83 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 
+type PricingContext = {
+  packName: string
+  packSlug: string
+  priceMXN: number
+  priceUSD: number
+}
+
+const FALLBACK_PRICING: PricingContext = {
+  packName: 'Pack Bear Beat',
+  packSlug: 'enero-2026',
+  priceMXN: 350,
+  priceUSD: 19,
+}
+
+function getCachedPricing(): PricingContext | null {
+  const g = globalThis as unknown as { __bb_pricing_cache?: { value: PricingContext; expiresAt: number } }
+  const cached = g.__bb_pricing_cache
+  if (!cached) return null
+  if (Date.now() > cached.expiresAt) return null
+  return cached.value
+}
+
+function setCachedPricing(value: PricingContext) {
+  const g = globalThis as unknown as { __bb_pricing_cache?: { value: PricingContext; expiresAt: number } }
+  g.__bb_pricing_cache = { value, expiresAt: Date.now() + 5 * 60 * 1000 } // 5 min
+}
+
+async function getPricingContext(
+  supabase: Awaited<ReturnType<typeof createServerClient>>
+): Promise<PricingContext> {
+  const cached = getCachedPricing()
+  if (cached) return cached
+  try {
+    const { data: featured } = await (supabase.from('packs') as any)
+      .select('slug, name, price_mxn, price_usd, release_date, status, featured')
+      .in('status', ['available', 'upcoming'])
+      .eq('featured', true)
+      .order('release_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const base = featured?.slug ? featured : null
+    if (base?.slug) {
+      const value: PricingContext = {
+        packName: String(base.name || FALLBACK_PRICING.packName),
+        packSlug: String(base.slug || FALLBACK_PRICING.packSlug),
+        priceMXN: Number(base.price_mxn) || FALLBACK_PRICING.priceMXN,
+        priceUSD: Number(base.price_usd) || FALLBACK_PRICING.priceUSD,
+      }
+      setCachedPricing(value)
+      return value
+    }
+
+    const { data: fallback } = await (supabase.from('packs') as any)
+      .select('slug, name, price_mxn, price_usd, release_date, status')
+      .eq('status', 'available')
+      .order('release_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (fallback?.slug) {
+      const value: PricingContext = {
+        packName: String(fallback.name || FALLBACK_PRICING.packName),
+        packSlug: String(fallback.slug || FALLBACK_PRICING.packSlug),
+        priceMXN: Number(fallback.price_mxn) || FALLBACK_PRICING.priceMXN,
+        priceUSD: Number(fallback.price_usd) || FALLBACK_PRICING.priceUSD,
+      }
+      setCachedPricing(value)
+      return value
+    }
+  } catch {
+    // ignore
+  }
+  setCachedPricing(FALLBACK_PRICING)
+  return FALLBACK_PRICING
+}
+
 // ==========================================
 // TIPOS
 // ==========================================
@@ -98,7 +175,7 @@ const INTENTS: Intent[] = [
     displayName: 'Pregunta de precio',
     category: 'sales',
     keywords: ['precio', 'costo', 'cuánto', 'cuanto', 'vale', 'cuesta', 'pagar', 'promoción', 'descuento', 'oferta', 'barato'],
-    autoResponse: '¡Hola! 🎉 El pack de Video Remixes 2026 tiene un precio de **$350 MXN** (pago único, acceso permanente).\n\nIncluye:\n✅ Videos HD/4K organizados por género\n✅ Descarga ilimitada\n✅ Soporte incluido\n\n¿Te gustaría comprarlo ahora? 💳',
+    autoResponse: '¡Hola! 🎉 El pack de Video Remixes 2026 tiene un precio de **{{PRICE_MXN}} MXN** (pago único, acceso permanente).\n\nIncluye:\n✅ Videos HD/4K organizados por género\n✅ Descarga ilimitada\n✅ Soporte incluido\n\n¿Te gustaría comprarlo ahora? 💳',
     requiresHuman: false,
     priority: 7,
   },
@@ -131,7 +208,7 @@ const INTENTS: Intent[] = [
     displayName: 'Cómo funciona',
     category: 'info',
     keywords: ['cómo funciona', 'como funciona', 'qué es', 'que es', 'explicar', 'entiendo', 'para qué sirve', 'cómo es', 'como es'],
-    autoResponse: '¡Hola! 👋 Bear Beat es super fácil:\n\n1️⃣ **Pagas** una sola vez ($350 MXN)\n2️⃣ **Recibes** acceso inmediato por email\n3️⃣ **Descargas** todos los videos que quieras\n4️⃣ **Usas** los videos en tus eventos de DJ\n\n¡Y listo! El acceso es permanente. ¿Alguna otra duda?',
+    autoResponse: '¡Hola! 👋 Bear Beat es super fácil:\n\n1️⃣ **Pagas** una sola vez ({{PRICE_MXN}} MXN)\n2️⃣ **Recibes** acceso inmediato por email\n3️⃣ **Descargas** todos los videos que quieras\n4️⃣ **Usas** los videos en tus eventos de DJ\n\n¡Y listo! El acceso es permanente. ¿Alguna otra duda?',
     requiresHuman: false,
     priority: 5,
   },
@@ -456,6 +533,14 @@ export async function processMessage(message: IncomingMessage): Promise<BotRespo
   const startTime = Date.now()
   
   try {
+    const pricing = await getPricingContext(supabase)
+    const applyPricing = (text: string) =>
+      (text || '')
+        .replaceAll('{{PRICE_MXN}}', `$${pricing.priceMXN}`)
+        .replaceAll('{{PRICE_USD}}', `$${pricing.priceUSD}`)
+        .replaceAll('{{PACK_NAME}}', pricing.packName)
+        .replaceAll('{{PACK_SLUG}}', pricing.packSlug)
+
     // 1. Obtener o crear conversación
     const { data: convData } = await supabase.rpc('get_or_create_conversation', {
       p_manychat_id: message.subscriberId,
@@ -489,7 +574,7 @@ export async function processMessage(message: IncomingMessage): Promise<BotRespo
     let shouldEscalate = false
     
     if (intent) {
-      responseText = intent.autoResponse
+      responseText = applyPricing(intent.autoResponse)
       shouldEscalate = intent.requiresHuman
       
       // Ejecutar acción si hay
@@ -509,7 +594,7 @@ export async function processMessage(message: IncomingMessage): Promise<BotRespo
         })
         
         if (actionResult.message) {
-          responseText = actionResult.message
+          responseText = applyPricing(actionResult.message)
         }
       }
     } else {
@@ -517,10 +602,10 @@ export async function processMessage(message: IncomingMessage): Promise<BotRespo
       const kbResponse = await searchKnowledgeBase(message.content)
       
       if (kbResponse) {
-        responseText = kbResponse
+        responseText = applyPricing(kbResponse)
       } else {
         // Respuesta por defecto
-        responseText = '🤔 No estoy seguro de entender tu pregunta.\n\n¿Podrías decirme más específicamente en qué puedo ayudarte?\n\n- Si es sobre tu compra, dime tu email\n- Si es sobre descargas, dime qué error ves\n- Si es otra cosa, cuéntame los detalles\n\nO si prefieres, escribe "agente" para hablar con una persona.'
+        responseText = applyPricing('🤔 No estoy seguro de entender tu pregunta.\n\n¿Podrías decirme más específicamente en qué puedo ayudarte?\n\n- Si es sobre tu compra, dime tu email\n- Si es sobre descargas, dime qué error ves\n- Si es otra cosa, cuéntame los detalles\n\nO si prefieres, escribe "agente" para hablar con una persona.')
       }
     }
     

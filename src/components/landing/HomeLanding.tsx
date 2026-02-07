@@ -9,10 +9,12 @@ import { downloadFile } from '@/lib/download'
 import { registerServiceWorker, requestNotificationPermission, subscribeToPush, isPushSupported } from '@/lib/push-notifications'
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
-import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
+import { useFeaturedPack } from '@/lib/hooks/useFeaturedPack'
 import { StatsSection } from '@/components/landing/stats-section'
 import { Play, CheckCircle2, Check, Download, Wifi, Folder, Music2, Search, ChevronRight, Lock, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 // ==========================================
 // TIPOS (alineados con /contenido)
@@ -58,11 +60,26 @@ interface UserState {
 // COMPONENTES AUXILIARES
 // ==========================================
 
-function DemoPlayer({ video, onClose, hasAccess = false, packSlug = 'enero-2026' }: { video: Video; onClose: () => void; hasAccess?: boolean; packSlug?: string }) {
+function VideoDemoDialog({
+  open,
+  onOpenChange,
+  video,
+  hasAccess = false,
+  packSlug = 'enero-2026',
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  video: Video | null
+  hasAccess?: boolean
+  packSlug?: string
+}) {
   const [downloading, setDownloading] = useState(false)
   const [demoError, setDemoError] = useState(false)
+  useEffect(() => setDemoError(false), [video?.id])
+
+  if (!video) return null
+
   // Siempre usa /api/demo-url para playback (Bunny redirige y soporta Range).
-  // /api/download es para descargar, no para reproducir (proxy sin Range rompe algunos navegadores).
   const demoSrc = `/api/demo-url?path=${encodeURIComponent(video.path)}`
 
   const handleDownload = async () => {
@@ -76,18 +93,8 @@ function DemoPlayer({ video, onClose, hasAccess = false, packSlug = 'enero-2026'
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 select-none"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.9 }} animate={{ scale: 1 }}
-        className="relative w-full max-w-4xl bg-zinc-900 rounded-2xl overflow-hidden border border-white/10"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button onClick={onClose} className="absolute top-4 right-4 z-20 bg-black/50 hover:bg-black/80 text-white rounded-full p-2 transition">✕</button>
-
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[min(94vw,1000px)] p-0 overflow-hidden">
         <div className="relative aspect-video bg-black flex items-center justify-center">
           {!hasAccess && (
             <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center opacity-30">
@@ -108,6 +115,7 @@ function DemoPlayer({ video, onClose, hasAccess = false, packSlug = 'enero-2026'
             controls
             autoPlay
             playsInline
+            preload="metadata"
             controlsList={hasAccess ? undefined : 'nodownload noremoteplayback'}
             disablePictureInPicture={!hasAccess}
             onError={() => setDemoError(true)}
@@ -115,7 +123,9 @@ function DemoPlayer({ video, onClose, hasAccess = false, packSlug = 'enero-2026'
         </div>
 
         <div className="p-6 text-center">
-          <h3 className="text-xl font-bold text-white">{video.artist} - {video.title}</h3>
+          <h3 className="text-xl font-bold text-white">
+            {video.artist} - {video.title}
+          </h3>
           <div className="flex justify-center gap-3 mt-2 text-sm text-zinc-400">
             {video.bpm && <span className="bg-zinc-800 px-2 py-1 rounded">{video.bpm} BPM</span>}
             {video.key && <span className="bg-zinc-800 px-2 py-1 rounded">{video.key}</span>}
@@ -123,8 +133,13 @@ function DemoPlayer({ video, onClose, hasAccess = false, packSlug = 'enero-2026'
 
           <div className="mt-6">
             {hasAccess ? (
-              <button onClick={handleDownload} disabled={downloading} className="bg-green-500 hover:bg-green-400 text-black font-bold py-3 px-8 rounded-full transition">
-                {downloading ? 'Descargando...' : '⬇️ Descargar Video'}
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={downloading}
+                className="bg-green-500 hover:bg-green-400 text-black font-bold py-3 px-8 rounded-full transition disabled:opacity-60"
+              >
+                {downloading ? 'Descargando...' : 'Descargar video'}
               </button>
             ) : (
               <Link
@@ -137,8 +152,8 @@ function DemoPlayer({ video, onClose, hasAccess = false, packSlug = 'enero-2026'
             )}
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -146,24 +161,27 @@ function DemoPlayer({ video, onClose, hasAccess = false, packSlug = 'enero-2026'
 // HOME LANDING PRINCIPAL
 // ==========================================
 export default function HomeLanding() {
+  const { pack: featuredPack } = useFeaturedPack()
+  const packSlug = featuredPack?.slug || 'enero-2026'
+  const packName = featuredPack?.name || 'Pack Enero 2026'
+  const priceMXNFromPack = Number(featuredPack?.price_mxn) || 350
+
   const [genres, setGenres] = useState<Genre[]>([])
   const [packInfo, setPackInfo] = useState<PackInfo | null>(null)
-  const [featuredPack, setFeaturedPack] = useState<{ slug: string; name: string; price_mxn: number } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingAll, setLoadingAll] = useState(false)
+  const [loadingGenreId, setLoadingGenreId] = useState<string | null>(null)
+  const [isFullCatalogLoaded, setIsFullCatalogLoaded] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
+  const [demoVideo, setDemoVideo] = useState<Video | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedGenre, setExpandedGenre] = useState<string | null>(null)
   const [userState, setUserState] = useState<UserState>({ isLoggedIn: false, hasAccess: false })
   const [showPushModal, setShowPushModal] = useState(false)
   const [pushSubscribing, setPushSubscribing] = useState(false)
-  const [demoError, setDemoError] = useState(false)
   const [thumbErrors, setThumbErrors] = useState<Set<string>>(new Set())
   const [downloadingVideoId, setDownloadingVideoId] = useState<string | null>(null)
   const expandedSectionRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setDemoError(false)
-  }, [selectedVideo?.id])
 
   const handleDownloadFromList = async (video: Video) => {
     setDownloadingVideoId(video.id)
@@ -185,22 +203,12 @@ export default function HomeLanding() {
     if (video.path) return `/api/thumbnail-cdn?path=${encodeURIComponent(video.path)}`
     return '/api/placeholder/thumb?text=V'
   }
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const inventory = useVideoInventory()
-  const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted ?? '0 B'
-  const genreCount = packInfo?.genreCount ?? inventory.genreCount ?? 0
-  const packSlug = featuredPack?.slug ?? 'enero-2026'
-  const packName = featuredPack?.name ?? 'Pack Enero 2026'
-  const priceMXNFromPack = featuredPack?.price_mxn ?? 350
+  const totalSizeFormatted = packInfo?.totalSizeFormatted ?? '0 B'
+  const genreCount = packInfo?.genreCount ?? 0
 
   useEffect(() => {
-    fetch('/api/packs?featured=true').then(r => r.json()).then(d => {
-      if (d.pack) setFeaturedPack({ slug: d.pack.slug, name: d.pack.name, price_mxn: Number(d.pack.price_mxn) || 350 })
-    }).catch(() => {})
     trackPageView('home')
     checkUser()
-    loadStats() // Totales al instante (statsOnly) para que se vea bien tras sync
-    loadData()
   }, [])
 
   const checkUser = async () => {
@@ -212,47 +220,94 @@ export default function HomeLanding() {
     }
   }
 
-  // Primero cargar solo totales (rápido) para que hero/stats muestren el número correcto tras el sync
+  // Cargar stats + lista de géneros (ligero) para no reventar el LCP.
   const loadStats = async () => {
-    const slug = featuredPack?.slug ?? 'enero-2026'
     try {
-      const res = await fetch(`/api/videos?pack=${encodeURIComponent(slug)}&statsOnly=1`, { cache: 'no-store' })
-      const data = await res.json()
-      if (data.success && data.pack) setPackInfo((prev) => ({ ...prev, ...data.pack }))
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  const loadData = async () => {
-    try {
-      const slug = featuredPack?.slug ?? 'enero-2026'
       setLoading(true)
-      const res = await fetch(`/api/videos?pack=${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      const res = await fetch(`/api/videos?pack=${encodeURIComponent(packSlug)}&statsOnly=1`, { cache: 'no-store' })
       const data = await res.json()
       if (data.success) {
-        setGenres(data.genres || [])
-        if (data.pack) setPackInfo(data.pack)
+        if (Array.isArray(data.genres)) setGenres(data.genres || [])
+        if (data.pack) setPackInfo((prev) => ({ ...prev, ...data.pack }))
       }
     } catch (e) {
-      console.error(e)
+      console.warn('[home] loadStats failed:', (e as Error)?.message || e)
     } finally {
       setLoading(false)
     }
   }
 
+  const loadAllVideos = async () => {
+    if (loadingAll) return
+    try {
+      setLoadingAll(true)
+      const res = await fetch(`/api/videos?pack=${encodeURIComponent(packSlug)}`, { cache: 'no-store' })
+      const data = await res.json()
+      if (data.success) {
+        setGenres(data.genres || [])
+        if (data.pack) setPackInfo(data.pack)
+        setIsFullCatalogLoaded(true)
+      }
+    } catch (e) {
+      console.warn('[home] loadAllVideos failed:', (e as Error)?.message || e)
+    } finally {
+      setLoadingAll(false)
+    }
+  }
+
+  const loadGenreVideos = async (genreId: string) => {
+    if (!genreId || isFullCatalogLoaded) return
+    const current = genres.find((g) => g.id === genreId)
+    if (current && current.videoCount > 0 && (current.videos || []).length > 0) return
+    if (loadingGenreId) return
+    try {
+      setLoadingGenreId(genreId)
+      const res = await fetch(
+        `/api/videos?pack=${encodeURIComponent(packSlug)}&genre=${encodeURIComponent(genreId)}`,
+        { cache: 'no-store' }
+      )
+      const data = await res.json()
+      if (data.success && Array.isArray(data.genres) && data.genres.length > 0) {
+        const loadedGenre: Genre = data.genres[0]
+        setGenres((prev) => prev.map((g) => (g.id === genreId ? loadedGenre : g)))
+        if (data.pack) setPackInfo((prev) => ({ ...prev, ...data.pack }))
+      }
+    } catch (e) {
+      console.warn('[home] loadGenreVideos failed:', (e as Error)?.message || e)
+    } finally {
+      setLoadingGenreId(null)
+    }
+  }
+
+  // Al cambiar pack: reset y carga ligera.
   useEffect(() => {
+    setExpandedGenre(null)
+    setSelectedVideo(null)
+    setDemoVideo(null)
+    setIsFullCatalogLoaded(false)
+    setLoadingAll(false)
+    setLoadingGenreId(null)
     loadStats()
-  }, [featuredPack?.slug])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packSlug])
 
+  // Si el usuario usa búsqueda, cargar catálogo completo una sola vez (para filtrar del lado del cliente).
   useEffect(() => {
-    if (!featuredPack) return
-    loadData()
-  }, [featuredPack?.slug])
+    const q = searchQuery.trim()
+    if (q.length < 2) return
+    if (isFullCatalogLoaded || loadingAll) return
+    const t = setTimeout(() => {
+      loadAllVideos()
+    }, 450)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, isFullCatalogLoaded, loadingAll, packSlug])
 
-  const totalVideos = packInfo?.totalVideos ?? inventory.count ?? 0
-  const totalPurchases = packInfo?.totalPurchases ?? inventory.totalPurchases ?? 0
+  const totalVideos = packInfo?.totalVideos ?? 0
+  const totalPurchases = packInfo?.totalPurchases ?? 0
   const priceMXN = priceMXNFromPack
+  const heroThumbVideo = genres.find((g) => (g.videos || []).length > 0)?.videos?.[0]
+  const totalSizeCopy = totalSizeFormatted && totalSizeFormatted !== '0 B' ? totalSizeFormatted : 'todo el pack'
 
   // Mismo filtro que /contenido: artista, título, displayName, género, key, BPM
   const query = searchQuery.toLowerCase().trim()
@@ -441,11 +496,15 @@ export default function HomeLanding() {
 
               {/* VIDEO (IZQUIERDA EN DESKTOP) - Portada dinámica del primer video disponible */}
               <div className="order-last lg:order-first relative">
-                <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black aspect-video group cursor-pointer" onClick={() => document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' })}>
+                <a
+                  href="#catalogo"
+                  aria-label="Ver catálogo"
+                  className="relative block rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black aspect-video group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40"
+                >
                   <div
                     className="absolute inset-0 bg-cover bg-center opacity-60 group-hover:scale-105 transition duration-700"
                     style={{
-                      backgroundImage: `url(${genres[0]?.videos?.[0] ? getThumbnailUrl(genres[0].videos[0]) : '/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png'})`,
+                      backgroundImage: `url(${heroThumbVideo ? getThumbnailUrl(heroThumbVideo) : '/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png'})`,
                     }}
                   />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -456,7 +515,7 @@ export default function HomeLanding() {
                   <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur px-3 py-1 rounded-full text-xs font-mono text-bear-blue border border-bear-blue/30">
                     PREVIEW 2026 • HD 1080P
                   </div>
-                </div>
+                </a>
               </div>
 
               {/* TEXTO DE VENTA (DERECHA EN DESKTOP) – Sin redundancia con catálogo */}
@@ -541,7 +600,7 @@ export default function HomeLanding() {
                 <div className="w-10 h-10 rounded-lg bg-bear-blue/20 flex items-center justify-center shrink-0 text-bear-blue"><Download className="h-5 w-5" /></div>
                 <div>
                   <h3 className="font-bold text-white">Tu Tiempo Vale Oro</h3>
-                  <p className="text-zinc-500 text-sm">Descarga 170 GB mientras duermes. Levántate con el trabajo sucio ya hecho.</p>
+                  <p className="text-zinc-500 text-sm">Descarga {totalSizeCopy} mientras duermes. Levántate con el trabajo sucio ya hecho.</p>
                 </div>
               </div>
             </div>
@@ -558,7 +617,7 @@ export default function HomeLanding() {
                 </div>
                 <div className="rounded-xl border-2 border-red-500/30 bg-red-500/5 p-6">
                   <h3 className="font-bold text-red-400 mb-2">Prefieres lo Barato a lo Bueno:</h3>
-                  <p className="text-zinc-400 text-sm">Si $350 se te hace caro para tu carrera, este club no es para ti.</p>
+                  <p className="text-zinc-400 text-sm">Si ${priceMXN} se te hace caro para tu carrera, este club no es para ti.</p>
                 </div>
               </div>
             </div>
@@ -589,20 +648,32 @@ export default function HomeLanding() {
                   </span>
                 </div>
                 <div className="relative max-w-xl">
+                  <label htmlFor="landing-catalog-search" className="sr-only">
+                    Buscar en el catálogo
+                  </label>
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 pointer-events-none" />
-                  <input
+                  <Input
+                    id="landing-catalog-search"
                     type="text"
                     placeholder="Busca por artista, canción, BPM o Key..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-12 pl-12 pr-4 rounded-xl border border-zinc-800 bg-black text-white placeholder-gray-500 outline-none transition-colors focus:border-bear-blue focus:ring-2 focus:ring-bear-blue/20"
+                    className="pl-12 pr-10"
                   />
                   {searchQuery && (
-                    <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                      aria-label="Borrar búsqueda"
+                    >
                       ✕
                     </button>
                   )}
                 </div>
+                {loadingAll && (
+                  <p className="mt-2 text-xs text-zinc-500">Cargando catálogo completo para búsqueda…</p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -621,19 +692,26 @@ export default function HomeLanding() {
                           const firstVideo = genre.videos?.[0]
                           const isExpanded = expandedGenre === genre.id
                           return (
-                            <motion.div
+                            <motion.button
                               key={genre.id}
                               initial={{ opacity: 0, y: 12 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className={`rounded-xl border bg-zinc-900/80 overflow-hidden transition-all hover:border-bear-blue hover:shadow-[0_0_24px_rgba(8,225,247,0.12)] cursor-pointer min-w-0 ${isExpanded ? 'border-bear-blue/60 ring-2 ring-bear-blue/20' : 'border-zinc-800'}`}
-                              onClick={() => setExpandedGenre(isExpanded ? null : genre.id)}
+                              type="button"
+                              aria-expanded={isExpanded}
+                              aria-controls={`landing-genre-panel-${genre.id}`}
+                              className={`rounded-xl border bg-zinc-900/80 overflow-hidden transition-all hover:border-bear-blue hover:shadow-[0_0_24px_rgba(8,225,247,0.12)] min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40 ${isExpanded ? 'border-bear-blue/60 ring-2 ring-bear-blue/20' : 'border-zinc-800'}`}
+                              onClick={() => {
+                                if (isExpanded) return setExpandedGenre(null)
+                                setExpandedGenre(genre.id)
+                                void loadGenreVideos(genre.id)
+                              }}
                             >
                               <div className="flex gap-4 p-4">
                                 <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
                                   {firstVideo && !thumbErrors.has(firstVideo.id) ? (
                                     <img
                                       src={getThumbnailUrl(firstVideo)}
-                                      alt=""
+                                      alt={`Portada ${genre.name}`}
                                       className="w-full h-full object-cover"
                                       loading="lazy"
                                       decoding="async"
@@ -654,10 +732,17 @@ export default function HomeLanding() {
                                   </p>
                                 </div>
                                 <span className="shrink-0 self-center text-bear-blue">
-                                  <ChevronRight className={`h-5 w-5 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                                  {loadingGenreId === genre.id ? (
+                                    <span
+                                      className="h-5 w-5 inline-block rounded-full border-2 border-bear-blue/30 border-t-bear-blue animate-spin"
+                                      aria-hidden="true"
+                                    />
+                                  ) : (
+                                    <ChevronRight className={`h-5 w-5 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                                  )}
                                 </span>
                               </div>
-                            </motion.div>
+                            </motion.button>
                           )
                         })}
                       </div>
@@ -666,6 +751,9 @@ export default function HomeLanding() {
                         {expandedGenre && (
                           <motion.div
                             ref={expandedSectionRef}
+                            id={`landing-genre-panel-${expandedGenre}`}
+                            role="region"
+                            aria-label="Lista de videos"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -681,59 +769,109 @@ export default function HomeLanding() {
                                     <button type="button" onClick={() => setExpandedGenre(null)} className="text-sm text-zinc-400 hover:text-white transition">Cerrar</button>
                                   </div>
                                   <div className="max-h-[50vh] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0 overscroll-contain">
-                                    {genre.videos.map((video) => (
-                                      <div
-                                        key={video.id}
-                                        className={`flex items-center gap-3 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer transition-colors ${selectedVideo?.id === video.id ? 'bg-bear-blue/10' : ''}`}
-                                        onClick={() => { setSelectedVideo(video); setDemoError(false); }}
-                                      >
-                                        <button
-                                          type="button"
-                                          className="p-2 rounded-lg bg-bear-blue/20 text-bear-blue hover:bg-bear-blue/30 transition shrink-0"
-                                          onClick={(e) => { e.stopPropagation(); setSelectedVideo(video); setDemoError(false); }}
-                                          aria-label="Reproducir demo"
-                                        >
-                                          <Play className="h-4 w-4" />
-                                        </button>
-                                        <div className="w-14 h-10 sm:w-16 sm:h-10 shrink-0 rounded overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
-                                          {!thumbErrors.has(video.id) ? (
-                                            <img
-                                              src={getThumbnailUrl(video)}
-                                              alt=""
-                                              className="w-full h-full object-cover"
-                                              loading="lazy"
-                                              decoding="async"
-                                              onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
-                                            />
-                                          ) : (
-                                            <Play className="h-5 w-5 text-bear-blue/60" />
-                                          )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <p className="font-medium text-white truncate">{video.artist}</p>
-                                          <p className="text-sm text-gray-500 truncate">{video.title}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                          {video.key && <span className="px-2 py-0.5 rounded text-xs font-mono bg-purple-500/20 text-purple-300">{video.key}</span>}
-                                          {video.bpm && <span className="px-2 py-0.5 rounded text-xs font-mono bg-green-500/20 text-green-300">{video.bpm}</span>}
-                                          {userState.hasAccess && (
-                                            <button
-                                              type="button"
-                                              onClick={(e) => {
-                                                e.stopPropagation()
-                                                handleDownloadFromList(video)
-                                                trackCTAClick('download_from_list', 'landing', video.name)
-                                              }}
-                                              disabled={downloadingVideoId === video.id}
-                                              className="p-2 rounded-lg text-bear-blue hover:bg-bear-blue/20 transition shrink-0 disabled:opacity-60"
-                                              aria-label="Descargar video"
-                                            >
-                                              <Download className="h-4 w-4" />
-                                            </button>
-                                          )}
-                                        </div>
+                                    {(genre.videos || []).length === 0 ? (
+                                      <div className="p-4">
+                                        {loadingGenreId === genre.id ? (
+                                          <div className="space-y-2">
+                                            {Array.from({ length: 8 }).map((_, i) => (
+                                              <div key={i} className="h-12 rounded-lg bg-white/5 animate-pulse" />
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center justify-between gap-3">
+                                            <p className="text-sm text-zinc-400">
+                                              {genre.videoCount > 0
+                                                ? 'Cargando videos…'
+                                                : 'Este género no tiene videos disponibles.'}
+                                            </p>
+                                            {genre.videoCount > 0 && (
+                                              <button
+                                                type="button"
+                                                onClick={() => void loadGenreVideos(genre.id)}
+                                                className="text-sm font-bold text-bear-blue hover:underline"
+                                              >
+                                                Reintentar
+                                              </button>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
-                                    ))}
+                                    ) : (
+                                      genre.videos.map((video) => (
+                                        <div
+                                          key={video.id}
+                                          role="button"
+                                          tabIndex={0}
+                                          className={`flex items-center gap-3 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40 ${selectedVideo?.id === video.id ? 'bg-bear-blue/10' : ''}`}
+                                          onClick={() => setSelectedVideo(video)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                              e.preventDefault()
+                                              setSelectedVideo(video)
+                                            }
+                                          }}
+                                          aria-label={`Seleccionar ${video.artist} - ${video.title}`}
+                                        >
+                                          <button
+                                            type="button"
+                                            className="p-2 rounded-lg bg-bear-blue/20 text-bear-blue hover:bg-bear-blue/30 transition shrink-0"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setSelectedVideo(video)
+                                              setDemoVideo(video)
+                                            }}
+                                            aria-label="Reproducir demo"
+                                          >
+                                            <Play className="h-4 w-4" />
+                                          </button>
+                                          <div className="w-14 h-10 sm:w-16 sm:h-10 shrink-0 rounded overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
+                                            {!thumbErrors.has(video.id) ? (
+                                              <img
+                                                src={getThumbnailUrl(video)}
+                                                alt={`Portada ${video.artist} - ${video.title}`}
+                                                className="w-full h-full object-cover"
+                                                loading="lazy"
+                                                decoding="async"
+                                                onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
+                                              />
+                                            ) : (
+                                              <Play className="h-5 w-5 text-bear-blue/60" />
+                                            )}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-white truncate">{video.artist}</p>
+                                            <p className="text-sm text-gray-500 truncate">{video.title}</p>
+                                          </div>
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            {video.key && (
+                                              <span className="px-2 py-0.5 rounded text-xs font-mono bg-purple-500/20 text-purple-300">
+                                                {video.key}
+                                              </span>
+                                            )}
+                                            {video.bpm && (
+                                              <span className="px-2 py-0.5 rounded text-xs font-mono bg-green-500/20 text-green-300">
+                                                {video.bpm}
+                                              </span>
+                                            )}
+                                            {userState.hasAccess && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation()
+                                                  handleDownloadFromList(video)
+                                                  trackCTAClick('download_from_list', 'landing', video.name)
+                                                }}
+                                                disabled={downloadingVideoId === video.id}
+                                                className="p-2 rounded-lg text-bear-blue hover:bg-bear-blue/20 transition shrink-0 disabled:opacity-60"
+                                                aria-label="Descargar video"
+                                              >
+                                                <Download className="h-4 w-4" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -759,7 +897,7 @@ export default function HomeLanding() {
                         >
                           <img
                             src={getThumbnailUrl(selectedVideo)}
-                            alt=""
+                            alt={`Portada ${selectedVideo.artist} - ${selectedVideo.title}`}
                             className="absolute inset-0 w-full h-full object-cover"
                             loading="lazy"
                             decoding="async"
@@ -767,27 +905,16 @@ export default function HomeLanding() {
                           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                             <span className="text-white/20 text-xl font-black rotate-[-25deg]">BEAR BEAT</span>
                           </div>
-                          {demoError ? (
-                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/80 p-4 text-center">
-                              <p className="text-amber-400 font-bold">Demo no disponible</p>
-                              <p className="text-sm text-zinc-400">Los demos requieren Bunny CDN o FTP configurado en el servidor.</p>
-                              <p className="text-xs text-zinc-500">Desbloquea el pack para descargar y ver todos los videos.</p>
-                            </div>
-                          ) : (
-                            <video
-                              ref={videoRef}
-                              key={selectedVideo.path}
-                              src={`/api/demo-url?path=${encodeURIComponent(selectedVideo.path)}`}
-                              className="relative z-10 w-full h-full object-contain"
-                              controls
-                              controlsList="nodownload nofullscreen noremoteplayback"
-                              disablePictureInPicture
-                              playsInline
-                              autoPlay
-                              preload="auto"
-                              onError={() => setDemoError(true)}
-                            />
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setDemoVideo(selectedVideo)}
+                            className="absolute inset-0 z-10 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40"
+                            aria-label="Reproducir demo"
+                          >
+                            <span className="w-16 h-16 rounded-full bg-bear-blue/90 hover:bg-bear-blue text-bear-black flex items-center justify-center shadow-[0_0_30px_rgba(8,225,247,0.45)] transition">
+                              <Play className="h-7 w-7 fill-black ml-0.5" />
+                            </span>
+                          </button>
                           <div className="absolute top-2 right-2 z-10">
                             <span className="bg-red-500/90 px-2 py-0.5 rounded text-xs font-bold">DEMO</span>
                           </div>
@@ -883,16 +1010,15 @@ export default function HomeLanding() {
       )}
 
       {/* VIDEO MODAL */}
-      <AnimatePresence>
-        {selectedVideo && (
-          <DemoPlayer
-            video={selectedVideo}
-            onClose={() => setSelectedVideo(null)}
-            hasAccess={userState.hasAccess}
-            packSlug={packSlug}
-          />
-        )}
-      </AnimatePresence>
+      <VideoDemoDialog
+        open={!!demoVideo}
+        onOpenChange={(open) => {
+          if (!open) setDemoVideo(null)
+        }}
+        video={demoVideo}
+        hasAccess={userState.hasAccess}
+        packSlug={packSlug}
+      />
     </div>
   )
 }

@@ -10,9 +10,11 @@ import { fbTrackViewContent, fbTrackSearch } from '@/components/analytics/MetaPi
 // Demo: /api/demo-url redirige a CDN firmado (rápido) o a proxy
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
-import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
+import { useFeaturedPack } from '@/lib/hooks/useFeaturedPack'
 import { Folder, Music2, Search, Lock, ChevronRight, Check, Play, Download, Archive, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 // ==========================================
 // CONTENIDO – Vitrina High-End (Dark Mode, estilo Finder/Rekordbox)
@@ -52,9 +54,17 @@ interface PackInfo {
 }
 
 export default function ContenidoPage() {
+  const { pack: featuredPack } = useFeaturedPack()
+  const packSlug = featuredPack?.slug || 'enero-2026'
+  const packName = featuredPack?.name || 'Pack Enero 2026'
+  const priceMXNFromPack = Number(featuredPack?.price_mxn) || 350
+
   const [genres, setGenres] = useState<Genre[]>([])
   const [packInfo, setPackInfo] = useState<PackInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingAll, setLoadingAll] = useState(false)
+  const [loadingGenreId, setLoadingGenreId] = useState<string | null>(null)
+  const [isFullCatalogLoaded, setIsFullCatalogLoaded] = useState(false)
   const [expandedGenre, setExpandedGenre] = useState<string | null>(null)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -67,7 +77,6 @@ export default function ContenidoPage() {
   const [thumbErrors, setThumbErrors] = useState<Set<string>>(new Set())
   const videoRef = useRef<HTMLVideoElement>(null)
   const expandedSectionRef = useRef<HTMLDivElement>(null)
-  const inventory = useVideoInventory()
 
   /** URL de portada: siempre relativa (empieza con /). La API devuelve /api/thumbnail-cdn?path=...; si no, construimos por convención. Sin prefijo de dominio. */
   const getThumbnailUrl = (video: Video): string => {
@@ -98,9 +107,8 @@ export default function ContenidoPage() {
   useEffect(() => {
     trackPageView('contenido')
     verificarAcceso()
-    loadVideos()
     fbTrackViewContent(
-      { content_name: 'Biblioteca Bear Beat', content_type: 'product', content_ids: ['contenido'] },
+      { content_name: `Biblioteca Bear Beat — ${packName}`, content_type: 'product', content_ids: [packSlug] },
       undefined
     )
   }, [])
@@ -129,13 +137,14 @@ export default function ContenidoPage() {
     }
   }
 
-  const loadVideos = async () => {
+  const loadStats = async () => {
     try {
-      const res = await fetch('/api/videos')
+      setLoading(true)
+      const res = await fetch(`/api/videos?pack=${encodeURIComponent(packSlug)}&statsOnly=1`, { cache: 'no-store' })
       const data = await res.json()
       if (data.success) {
-        setGenres(data.genres)
-        setPackInfo(data.pack)
+        setGenres(data.genres || [])
+        if (data.pack) setPackInfo(data.pack)
       }
     } catch {
       // ignore
@@ -144,12 +153,77 @@ export default function ContenidoPage() {
     }
   }
 
+  const loadAllVideos = async () => {
+    if (loadingAll) return
+    try {
+      setLoadingAll(true)
+      const res = await fetch(`/api/videos?pack=${encodeURIComponent(packSlug)}`, { cache: 'no-store' })
+      const data = await res.json()
+      if (data.success) {
+        setGenres(data.genres || [])
+        if (data.pack) setPackInfo(data.pack)
+        setIsFullCatalogLoaded(true)
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingAll(false)
+    }
+  }
+
+  const loadGenreVideos = async (genreId: string) => {
+    if (!genreId || isFullCatalogLoaded) return
+    const current = genres.find((g) => g.id === genreId)
+    if (current && current.videoCount > 0 && (current.videos || []).length > 0) return
+    if (loadingGenreId) return
+    try {
+      setLoadingGenreId(genreId)
+      const res = await fetch(
+        `/api/videos?pack=${encodeURIComponent(packSlug)}&genre=${encodeURIComponent(genreId)}`,
+        { cache: 'no-store' }
+      )
+      const data = await res.json()
+      if (data.success && Array.isArray(data.genres) && data.genres.length > 0) {
+        const loadedGenre: Genre = data.genres[0]
+        setGenres((prev) => prev.map((g) => (g.id === genreId ? loadedGenre : g)))
+        if (data.pack) setPackInfo((prev) => ({ ...prev, ...data.pack }))
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingGenreId(null)
+    }
+  }
+
+  // Al cambiar pack: reset y carga ligera.
+  useEffect(() => {
+    setExpandedGenre(null)
+    setSelectedVideo(null)
+    setIsFullCatalogLoaded(false)
+    setLoadingAll(false)
+    setLoadingGenreId(null)
+    loadStats()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packSlug])
+
+  // Si el usuario usa búsqueda, cargar catálogo completo una sola vez (para filtrar del lado del cliente).
+  useEffect(() => {
+    const q = searchQuery.trim()
+    if (q.length < 2) return
+    if (isFullCatalogLoaded || loadingAll) return
+    const t = setTimeout(() => {
+      loadAllVideos()
+    }, 450)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, isFullCatalogLoaded, loadingAll, packSlug])
+
   const query = searchQuery.toLowerCase().trim()
   const filteredGenres = genres
     .filter((g) => g.id !== 'preview')
     .map((g) => ({
       ...g,
-      videos: g.videos.filter(
+      videos: (g.videos || []).filter(
         (v) =>
           !query ||
           v.artist.toLowerCase().includes(query) ||
@@ -162,10 +236,10 @@ export default function ContenidoPage() {
     }))
     .filter((g) => g.videos.length > 0 || !query)
 
-  const totalVideos = packInfo?.totalVideos ?? inventory.count ?? 0
-  const totalSizeFormatted = packInfo?.totalSizeFormatted ?? inventory.totalSizeFormatted ?? '0 B'
-  const genreCount = packInfo?.genreCount ?? inventory.genreCount ?? 0
-  const statsLoading = inventory.loading && !packInfo
+  const totalVideos = packInfo?.totalVideos ?? 0
+  const totalSizeFormatted = packInfo?.totalSizeFormatted ?? '0 B'
+  const genreCount = packInfo?.genreCount ?? 0
+  const statsLoading = loading && !packInfo
 
   const handleDownloadAttempt = async (video: Video) => {
     if (hasAccess) {
@@ -235,7 +309,7 @@ export default function ContenidoPage() {
               </Link>
             ) : (
               <Link
-                href="/checkout?pack=enero-2026"
+                href={`/checkout?pack=${packSlug}`}
                 className="hidden md:inline-flex items-center justify-center bg-bear-blue text-bear-black font-black text-sm px-4 py-2 rounded-lg hover:brightness-110 transition"
               >
                 OBTENER ACCESO
@@ -270,7 +344,7 @@ export default function ContenidoPage() {
       <section className="px-4 py-8 border-b border-white/5">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-2xl md:text-4xl font-black text-white mb-2">
-            Pack Enero 2026
+            {packName}
           </h1>
           <div className="flex flex-wrap items-center gap-3 mb-6 text-sm text-gray-400">
             <span className="inline-flex items-center gap-1.5">
@@ -290,24 +364,32 @@ export default function ContenidoPage() {
           </div>
 
           <div className="relative max-w-xl">
+            <label htmlFor="contenido-catalog-search" className="sr-only">
+              Buscar en el catálogo
+            </label>
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 pointer-events-none" />
-            <input
+            <Input
+              id="contenido-catalog-search"
               type="text"
               placeholder="Busca por artista, canción, BPM o Key..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-12 pl-12 pr-4 rounded-xl border border-zinc-800 bg-black text-white placeholder-gray-500 outline-none transition-colors focus:border-bear-blue focus:ring-2 focus:ring-bear-blue/20"
+              className="pl-12 pr-10"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                aria-label="Borrar búsqueda"
               >
                 ✕
               </button>
             )}
           </div>
+          {loadingAll && (
+            <p className="mt-2 text-xs text-zinc-500">Cargando catálogo completo para búsqueda…</p>
+          )}
           {hasAccess && (
             <p className="mt-3 text-xs text-gray-500">
               ¿No te descarga?{' '}
@@ -331,12 +413,19 @@ export default function ContenidoPage() {
           <div className="lg:col-span-2 space-y-6 min-w-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredGenres.map((genre) => (
-                <motion.div
+                <motion.button
                   key={genre.id}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl border border-white/5 bg-zinc-900/80 p-5 transition-all hover:border-bear-blue hover:shadow-[0_0_24px_rgba(8,225,247,0.12)] hover:-translate-y-0.5 cursor-pointer min-w-0"
-                  onClick={() => setExpandedGenre(expandedGenre === genre.id ? null : genre.id)}
+                  type="button"
+                  aria-expanded={expandedGenre === genre.id}
+                  aria-controls={`contenido-genre-panel-${genre.id}`}
+                  className="rounded-xl border border-white/5 bg-zinc-900/80 p-5 transition-all hover:border-bear-blue hover:shadow-[0_0_24px_rgba(8,225,247,0.12)] hover:-translate-y-0.5 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40"
+                  onClick={() => {
+                    const next = expandedGenre === genre.id ? null : genre.id
+                    setExpandedGenre(next)
+                    if (next) void loadGenreVideos(next)
+                  }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -351,15 +440,22 @@ export default function ContenidoPage() {
                       </div>
                     </div>
                     <span className="shrink-0 text-bear-blue">
-                      <ChevronRight
-                        className={`h-5 w-5 transition-transform ${expandedGenre === genre.id ? 'rotate-90' : ''}`}
-                      />
+                      {loadingGenreId === genre.id ? (
+                        <span
+                          className="h-5 w-5 inline-block rounded-full border-2 border-bear-blue/30 border-t-bear-blue animate-spin"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <ChevronRight
+                          className={`h-5 w-5 transition-transform ${expandedGenre === genre.id ? 'rotate-90' : ''}`}
+                        />
+                      )}
                     </span>
                   </div>
                   <p className="mt-3 text-xs text-bear-blue font-medium flex items-center gap-1">
                     Explorar
                   </p>
-                </motion.div>
+                </motion.button>
               ))}
             </div>
 
@@ -368,6 +464,9 @@ export default function ContenidoPage() {
               {expandedGenre && (
                 <motion.div
                   ref={expandedSectionRef}
+                  id={`contenido-genre-panel-${expandedGenre}`}
+                  role="region"
+                  aria-label="Lista de videos"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -408,70 +507,108 @@ export default function ContenidoPage() {
                           )}
                         </div>
                         <div className="max-h-[50vh] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0 overscroll-contain">
-                        {genre.videos.map((video) => (
-                          <div
-                            key={video.id}
-                            className={`flex items-center gap-3 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer transition-colors ${
-                              selectedVideo?.id === video.id ? 'bg-bear-blue/10' : ''
-                            }`}
-                            onClick={() => handlePreview(video)}
-                          >
-                            <button
-                              type="button"
-                              className="p-2 rounded-lg bg-bear-blue/20 text-bear-blue hover:bg-bear-blue/30 transition shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handlePreview(video)
-                              }}
-                              aria-label="Reproducir demo"
-                            >
-                              <Play className="h-4 w-4" />
-                            </button>
-                            {/* Portada real (thumbnail) por video – estilo Rekordbox */}
-                            <div className="w-14 h-10 sm:w-16 sm:h-10 shrink-0 rounded overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
-                              {!thumbErrors.has(video.id) ? (
-                                <img
-                                  src={getThumbnailUrl(video)}
-                                  alt=""
-                                  className="w-full h-full object-cover"
-                                  onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
-                                />
-                              ) : (
-                                <Play className="h-5 w-5 text-bear-blue/60" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-white truncate">{video.artist}</p>
-                              <p className="text-sm text-gray-500 truncate">{video.title}</p>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {video.key && (
-                                <span className="px-2 py-0.5 rounded text-xs font-mono bg-purple-500/20 text-purple-300">
-                                  {video.key}
-                                </span>
-                              )}
-                              {video.bpm && (
-                                <span className="px-2 py-0.5 rounded text-xs font-mono bg-green-500/20 text-green-300">
-                                  {video.bpm}
-                                </span>
-                              )}
-                              {hasAccess && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDownloadAttempt(video)
-                                  }}
-                                  disabled={downloadingVideoId === video.id}
-                                  className="p-2 rounded-lg text-bear-blue hover:bg-bear-blue/20 transition shrink-0 disabled:opacity-60"
-                                  aria-label="Descargar video"
-                                >
-                                  <Download className="h-4 w-4" />
-                                </button>
-                              )}
-                            </div>
+                        {(genre.videos || []).length === 0 ? (
+                          <div className="p-4">
+                            {loadingGenreId === genre.id ? (
+                              <div className="space-y-2">
+                                {Array.from({ length: 8 }).map((_, i) => (
+                                  <div key={i} className="h-12 rounded-lg bg-white/5 animate-pulse" />
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm text-zinc-400">
+                                  {genre.videoCount > 0
+                                    ? 'No se pudieron cargar los videos de esta carpeta.'
+                                    : 'Este género no tiene videos disponibles.'}
+                                </p>
+                                {genre.videoCount > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void loadGenreVideos(genre.id)}
+                                    className="text-sm font-bold text-bear-blue hover:underline"
+                                  >
+                                    Reintentar
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        ))}
+                        ) : (
+                          genre.videos.map((video) => (
+                            <div
+                              key={video.id}
+                              role="button"
+                              tabIndex={0}
+                              className={`flex items-center gap-3 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40 ${
+                                selectedVideo?.id === video.id ? 'bg-bear-blue/10' : ''
+                              }`}
+                              onClick={() => handlePreview(video)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  handlePreview(video)
+                                }
+                              }}
+                              aria-label={`Seleccionar ${video.artist} - ${video.title}`}
+                            >
+                              <button
+                                type="button"
+                                className="p-2 rounded-lg bg-bear-blue/20 text-bear-blue hover:bg-bear-blue/30 transition shrink-0"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handlePreview(video)
+                                }}
+                                aria-label="Reproducir demo"
+                              >
+                                <Play className="h-4 w-4" />
+                              </button>
+                              {/* Portada real (thumbnail) por video – estilo Rekordbox */}
+                              <div className="w-14 h-10 sm:w-16 sm:h-10 shrink-0 rounded overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
+                                {!thumbErrors.has(video.id) ? (
+                                  <img
+                                    src={getThumbnailUrl(video)}
+                                    alt={`Portada ${video.artist} - ${video.title}`}
+                                    className="w-full h-full object-cover"
+                                    onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
+                                  />
+                                ) : (
+                                  <Play className="h-5 w-5 text-bear-blue/60" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-white truncate">{video.artist}</p>
+                                <p className="text-sm text-gray-500 truncate">{video.title}</p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {video.key && (
+                                  <span className="px-2 py-0.5 rounded text-xs font-mono bg-purple-500/20 text-purple-300">
+                                    {video.key}
+                                  </span>
+                                )}
+                                {video.bpm && (
+                                  <span className="px-2 py-0.5 rounded text-xs font-mono bg-green-500/20 text-green-300">
+                                    {video.bpm}
+                                  </span>
+                                )}
+                                {hasAccess && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleDownloadAttempt(video)
+                                    }}
+                                    disabled={downloadingVideoId === video.id}
+                                    className="p-2 rounded-lg text-bear-blue hover:bg-bear-blue/20 transition shrink-0 disabled:opacity-60"
+                                    aria-label="Descargar video"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
                         </div>
                       </div>
                     ))}
@@ -693,7 +830,7 @@ export default function ContenidoPage() {
                   {/* Caja oferta – solo Free */}
                   <div className="rounded-2xl border-2 border-bear-blue/60 bg-bear-blue/5 p-6 shadow-[0_0_30px_rgba(8,225,247,0.08)]">
                     <h3 className="font-black text-white text-lg mb-1">Acceso Completo</h3>
-                    <p className="text-3xl md:text-4xl font-black text-bear-blue mb-4">$350 MXN</p>
+                    <p className="text-3xl md:text-4xl font-black text-bear-blue mb-4">${priceMXNFromPack} MXN</p>
                     <ul className="space-y-2 mb-5 text-sm text-gray-300">
                       {[
                         `${totalVideos.toLocaleString()} videos HD`,
@@ -709,7 +846,7 @@ export default function ContenidoPage() {
                       ))}
                     </ul>
                     <Link
-                      href="/checkout?pack=enero-2026"
+                      href={`/checkout?pack=${packSlug}`}
                       onClick={() => trackCTAClick('sidebar_main_cta', 'contenido')}
                       className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition inline-flex items-center justify-center"
                     >
@@ -740,52 +877,39 @@ export default function ContenidoPage() {
       </main>
 
       {/* MODAL PAYWALL – "Este contenido es exclusivo" */}
-      <AnimatePresence>
-        {showPaywall && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 backdrop-blur z-50 flex items-center justify-center p-4"
-            onClick={() => setShowPaywall(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="rounded-2xl border-2 border-bear-blue/60 bg-[#0a0a0a] p-8 max-w-md w-full text-center shadow-xl"
-              onClick={(e) => e.stopPropagation()}
+      <Dialog open={showPaywall} onOpenChange={setShowPaywall}>
+        <DialogContent className="max-w-md p-0 overflow-hidden">
+          <div className="rounded-2xl border-2 border-bear-blue/60 bg-[#0a0a0a] p-8 text-center shadow-xl">
+            <div className="flex justify-center mb-4">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue">
+                <Lock className="h-7 w-7" />
+              </span>
+            </div>
+            <h3 className="text-xl font-black text-white mb-2">🔒 MATERIAL CLASIFICADO</h3>
+            <p className="text-gray-400 text-sm mb-6">
+              Solo los miembros VIP pueden descargar esta joya. ¿Vas a dejar que otro la toque antes que tú?
+            </p>
+            <div className="rounded-xl bg-bear-blue/10 border border-bear-blue/30 p-4 mb-6">
+              <p className="text-sm text-gray-400 mb-1">Pago único</p>
+              <p className="text-3xl font-black text-bear-blue">${priceMXNFromPack} MXN</p>
+            </div>
+            <Link
+              href={`/checkout?pack=${packSlug}`}
+              onClick={() => trackCTAClick('paywall_cta', 'contenido')}
+              className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black hover:brightness-110 transition inline-flex items-center justify-center"
             >
-              <div className="flex justify-center mb-4">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-bear-blue/20 text-bear-blue">
-                  <Lock className="h-7 w-7" />
-                </span>
-              </div>
-              <h3 className="text-xl font-black text-white mb-2">🔒 MATERIAL CLASIFICADO</h3>
-              <p className="text-gray-400 text-sm mb-6">
-                Solo los miembros VIP pueden descargar esta joya. ¿Vas a dejar que otro la toque antes que tú?
-              </p>
-              <div className="rounded-xl bg-bear-blue/10 border border-bear-blue/30 p-4 mb-6">
-                <p className="text-sm text-gray-400 mb-1">Pago único</p>
-                <p className="text-3xl font-black text-bear-blue">$350 MXN</p>
-              </div>
-              <Link
-                href="/checkout?pack=enero-2026"
-                onClick={() => trackCTAClick('paywall_cta', 'contenido')}
-                className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black hover:brightness-110 transition inline-flex items-center justify-center"
-              >
-                DESBLOQUEAR MI ARSENAL
-              </Link>
-              <button
-                onClick={() => setShowPaywall(false)}
-                className="mt-4 text-sm text-gray-500 hover:text-gray-400"
-              >
-                Cerrar
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              DESBLOQUEAR MI ARSENAL
+            </Link>
+            <button
+              type="button"
+              onClick={() => setShowPaywall(false)}
+              className="mt-4 text-sm text-gray-500 hover:text-gray-400"
+            >
+              Cerrar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* FOOTER FLOTANTE – Solo móvil, sin acceso */}
       {!hasAccess && (
@@ -795,10 +919,10 @@ export default function ContenidoPage() {
               <span className="text-white font-bold">{totalVideos.toLocaleString()}</span> videos esperan
             </p>
             <Link
-              href="/checkout?pack=enero-2026"
+              href={`/checkout?pack=${packSlug}`}
               className="shrink-0 h-11 px-5 rounded-xl bg-bear-blue text-bear-black font-black text-sm hover:brightness-110 transition inline-flex items-center justify-center"
             >
-              DESBLOQUEAR ($350)
+              DESBLOQUEAR (${priceMXNFromPack})
             </Link>
           </div>
         </div>

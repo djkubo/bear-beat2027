@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import './globals.css'
-import ChatWidget from '@/components/chat/ChatWidget'
+import ChatWidgetLazy from '@/components/chat/ChatWidgetLazy'
 import { Toaster } from 'sonner'
 import { TrackingScripts } from '@/components/tracking/TrackingScripts'
 import { ClientErrorLogger } from '@/components/tracking/ClientErrorLogger'
@@ -32,13 +32,19 @@ export default function RootLayout({
         </Suspense>
       </head>
       <body className="font-sans relative min-w-0 overflow-x-hidden overflow-y-auto bg-black text-white antialiased">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only fixed top-4 left-4 z-[1000] rounded-xl border border-bear-blue/40 bg-zinc-950/95 px-4 py-2 text-sm font-bold text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40"
+        >
+          Saltar al contenido
+        </a>
         <GlobalErrorBoundary>
-          <main className="relative min-w-0">
+          <main id="main-content" tabIndex={-1} className="relative min-w-0">
             {children}
           </main>
         </GlobalErrorBoundary>
         <ClientErrorLogger />
-        <ChatWidget />
+        <ChatWidgetLazy />
         <Toaster position="top-center" theme="dark" />
       </body>
     </html>

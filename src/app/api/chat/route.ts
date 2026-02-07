@@ -18,10 +18,67 @@ type RateBucket = { resetAt: number; count: number }
 const RATE_WINDOW_MS = 60_000
 const RATE_MAX = 25
 
+type PricingContext = {
+  packName: string
+  packSlug: string
+  priceMXN: number
+  priceUSD: number
+}
+
+const FALLBACK_PRICING: PricingContext = {
+  packName: 'Pack Bear Beat',
+  packSlug: 'enero-2026',
+  priceMXN: 350,
+  priceUSD: 19,
+}
+
 function getRateMap(): Map<string, RateBucket> {
   const g = globalThis as unknown as { __bb_chat_rate?: Map<string, RateBucket> }
   if (!g.__bb_chat_rate) g.__bb_chat_rate = new Map<string, RateBucket>()
   return g.__bb_chat_rate
+}
+
+async function getPricingContext(
+  supabase: Awaited<ReturnType<typeof createServerClient>>
+): Promise<PricingContext> {
+  try {
+    const { data: featured } = await (supabase.from('packs') as any)
+      .select('slug, name, price_mxn, price_usd, release_date, status, featured')
+      .in('status', ['available', 'upcoming'])
+      .eq('featured', true)
+      .order('release_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const base = featured?.slug ? featured : null
+    if (base?.slug) {
+      return {
+        packName: String(base.name || FALLBACK_PRICING.packName),
+        packSlug: String(base.slug || FALLBACK_PRICING.packSlug),
+        priceMXN: Number(base.price_mxn) || FALLBACK_PRICING.priceMXN,
+        priceUSD: Number(base.price_usd) || FALLBACK_PRICING.priceUSD,
+      }
+    }
+
+    const { data: fallback } = await (supabase.from('packs') as any)
+      .select('slug, name, price_mxn, price_usd, release_date, status')
+      .eq('status', 'available')
+      .order('release_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (fallback?.slug) {
+      return {
+        packName: String(fallback.name || FALLBACK_PRICING.packName),
+        packSlug: String(fallback.slug || FALLBACK_PRICING.packSlug),
+        priceMXN: Number(fallback.price_mxn) || FALLBACK_PRICING.priceMXN,
+        priceUSD: Number(fallback.price_usd) || FALLBACK_PRICING.priceUSD,
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return FALLBACK_PRICING
 }
 
 function getClientIp(req: NextRequest): string {
@@ -42,7 +99,7 @@ function isRateLimited(key: string): boolean {
   return bucket.count > RATE_MAX
 }
 
-function buildLocalFallbackReply(message: string): string {
+function buildLocalFallbackReply(message: string, pricing: PricingContext): string {
   const m = message.toLowerCase()
   const wantsPrice =
     m.includes('precio') ||
@@ -64,7 +121,7 @@ function buildLocalFallbackReply(message: string): string {
 
   if (wantsPrice) {
     return [
-      'Precio: $350 MXN (o $19 USD). Pago unico. Acceso de por vida.',
+      `Precio: $${pricing.priceMXN} MXN (o $${pricing.priceUSD} USD). Pago unico. Acceso de por vida.`,
       'Incluye: videos MP4 HD (1080p), organizados por genero.',
       'Si quieres, dime tu pais y te digo la mejor forma de pago (Tarjeta, OXXO, SPEI).',
     ].join('\n')
@@ -101,7 +158,7 @@ function buildLocalFallbackReply(message: string): string {
 }
 
 /** Construye el system prompt con conciencia de usuario (perfil inyectado). Cerebro bipolar: Ventas + Soporte. */
-function buildSystemPrompt(userContext: string): string {
+function buildSystemPrompt(userContext: string, pricing: PricingContext): string {
   return `
 ERES: BearBot, el Asistente de Élite de Bear Beat.
 FECHA ACTUAL: ${new Date().toLocaleDateString('es-MX', { dateStyle: 'long' })}
@@ -120,7 +177,8 @@ PERSONALIDAD DJ:
 - Si es Visitante: Sedúcelo. "Imagínate tu set con esto".
 
 REGLAS DE ORO (INFORMACIÓN REAL):
-- PRECIO: $350 MXN (o $19 USD). Único pago. Acceso Vitalicio.
+- PACK: ${pricing.packName} (${pricing.packSlug})
+- PRECIO: $${pricing.priceMXN} MXN (o $${pricing.priceUSD} USD). Único pago. Acceso Vitalicio.
 - FORMATO: Video MP4 HD (1080p).
 - ORGANIZACIÓN: Carpetas por Género > Artista - Título (Key - BPM).
 - DESCARGA: Web (uno por uno) o FTP (Masivo/Veloz).
@@ -155,9 +213,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const supabase = await createServerClient()
+    const pricing = await getPricingContext(supabase)
+
     // Si falta OPENAI_API_KEY, responder igual con fallback 200 (dev, staging, o tests E2E).
     if (!apiKey || apiKey === DUMMY_KEY) {
-      return NextResponse.json({ role: 'assistant', content: buildLocalFallbackReply(message) }, { status: 200 })
+      return NextResponse.json({ role: 'assistant', content: buildLocalFallbackReply(message, pricing) }, { status: 200 })
     }
 
     // Rate limit simple (anti-abuso/costos). No es perfecto en serverless, pero reduce spam.
@@ -171,7 +232,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     const userId = user?.id || null
 
@@ -205,7 +265,7 @@ export async function POST(req: NextRequest) {
 - Tono a usar: ${purchaseCount ? 'Familiar, de respeto, agradecido.' : 'Persuasivo, energético, enfocado en cierre.'}`
     }
 
-    const SYSTEM_PROMPT = buildSystemPrompt(userContext)
+    const SYSTEM_PROMPT = buildSystemPrompt(userContext, pricing)
 
     // Persistencia ligera (no crítica). chat_messages tiene policy de INSERT abierta.
     try {
@@ -302,7 +362,7 @@ export async function POST(req: NextRequest) {
     }
 
     // If OpenAI fails or returns empty, provide deterministic support so UX/tests don't break.
-    if (!reply) reply = buildLocalFallbackReply(message)
+    if (!reply) reply = buildLocalFallbackReply(message, pricing)
     return NextResponse.json({ role: 'assistant', content: reply })
   } catch (error) {
     console.error('Chat Error:', error)

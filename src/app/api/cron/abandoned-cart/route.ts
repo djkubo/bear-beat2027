@@ -21,7 +21,7 @@ import type { Database } from '@/types/database'
 
 const CRON_SECRET = (process.env.CRON_SECRET || '').trim()
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')
-const CHECKOUT_LINK = APP_URL ? `${APP_URL}/checkout?pack=enero-2026` : ''
+const CHECKOUT_LINK = APP_URL ? `${APP_URL}/checkout` : ''
 
 export async function GET(req: NextRequest) {
   return runAbandonedCart(req)
@@ -81,6 +81,22 @@ async function runAbandonedCart(req: NextRequest) {
     return NextResponse.json({ ok: true, processed: 0, message: 'No users to remind' })
   }
 
+  // Precio dinámico (pack destacado) para copy consistente.
+  let featuredPriceMXN: number | undefined = undefined
+  try {
+    const { data: featuredPack } = await (admin as any)
+      .from('packs')
+      .select('price_mxn, release_date')
+      .eq('featured', true)
+      .order('release_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const mxn = Number(featuredPack?.price_mxn)
+    if (Number.isFinite(mxn) && mxn > 0) featuredPriceMXN = mxn
+  } catch {
+    // ignore
+  }
+
   const results: { userId: string; email: boolean; sms: boolean; error?: string }[] = []
 
   for (const user of toProcess) {
@@ -95,6 +111,7 @@ async function runAbandonedCart(req: NextRequest) {
         to: email,
         name,
         checkoutUrl: CHECKOUT_LINK,
+        priceMXN: featuredPriceMXN,
       })
       emailOk = emailRes.success
       if (!emailRes.success) {

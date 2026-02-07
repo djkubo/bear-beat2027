@@ -14,7 +14,7 @@ test.describe('Checkout: modal de pago y flujo', () => {
     await expect(page).toHaveURL(/\/checkout/)
 
     await expect(page.getByText(/Tarjeta|Crédito|Débito/i).first()).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText(/OXXO|SPEI|Pagar|350|MXN/i).first()).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText(/OXXO|SPEI|Pagar|MXN|USD/i).first()).toBeVisible({ timeout: 5_000 })
   })
 
   test('Al elegir Tarjeta y clic "Ir a pagar" se llama a /api/create-checkout', async ({ page }) => {

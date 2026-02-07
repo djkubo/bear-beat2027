@@ -15,7 +15,7 @@ export interface VideoInventory {
  * Inventario en tiempo real desde /api/videos (misma fuente que el listado).
  * Así totalVideos y genreCount coinciden con lo que se muestra (géneros por carpeta/file_path).
  */
-export function useVideoInventory(): VideoInventory {
+export function useVideoInventory(packSlug: string = 'enero-2026'): VideoInventory {
   const [count, setCount] = useState(0)
   const [totalSizeFormatted, setTotalSizeFormatted] = useState('0 B')
   const [genreCount, setGenreCount] = useState(0)
@@ -29,7 +29,10 @@ export function useVideoInventory(): VideoInventory {
         setLoading(true)
         setError(null)
 
-        const res = await fetch(`/api/videos?pack=enero-2026&statsOnly=1&_=${Date.now()}`, { cache: 'no-store', headers: { Pragma: 'no-cache' } })
+        const res = await fetch(
+          `/api/videos?pack=${encodeURIComponent(packSlug)}&statsOnly=1&_=${Date.now()}`,
+          { cache: 'no-store', headers: { Pragma: 'no-cache' } }
+        )
         const data = await res.json()
 
         if (!data.success || !data.pack) {
@@ -57,7 +60,7 @@ export function useVideoInventory(): VideoInventory {
     }
 
     load()
-  }, [])
+  }, [packSlug])
 
   return {
     count,

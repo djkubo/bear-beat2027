@@ -1146,7 +1146,7 @@ export default function CompletePurchasePage() {
                   Reintentar verificación
                 </button>
                 <Link 
-                  href="/checkout?pack=enero-2026"
+                  href="/checkout"
                   className="block w-full bg-bear-blue text-bear-black font-bold py-3 rounded-xl"
                 >
                   Volver a pagar (OXXO / SPEI / Tarjeta)

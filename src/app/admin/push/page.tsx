@@ -37,7 +37,7 @@ export default function AdminPushPage() {
       name: '🔥 Oferta Flash',
       title: '⚡ Oferta Flash - Solo 24h',
       body: 'Acceso completo con 50% de descuento. ¡No te lo pierdas!',
-      url: '/checkout?pack=enero-2026&discount=FLASH50'
+      url: '/checkout?discount=FLASH50'
     },
     {
       name: '💳 Recordatorio Pago',

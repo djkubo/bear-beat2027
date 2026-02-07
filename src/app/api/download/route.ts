@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     if (error || !purchases || purchases.length === 0) {
       return NextResponse.json({
         error: 'No tienes acceso a las descargas. Compra el pack para descargar.',
-        redirect: '/checkout?pack=enero-2026'
+        redirect: '/checkout'
       }, { status: 403 })
     }
 

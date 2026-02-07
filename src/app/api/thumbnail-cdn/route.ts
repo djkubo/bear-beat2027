@@ -9,6 +9,13 @@ export const dynamic = 'force-dynamic'
 
 const PLACEHOLDER_URL = '/api/placeholder/thumb?text=V'
 const LEGACY_VIDEOS_FOLDER = 'Videos Enero 2026'
+const BUNNY_SIGNED_TTL_SECONDS = 3600
+const MODE_CACHE_TTL_MS = 6 * 60 * 60 * 1000 // 6h: reduce HEAD masivo en listados
+
+type BunnyThumbMode = 'withPrefix' | 'noPrefix' | 'legacyNoPrefix'
+
+let cachedThumbMode: BunnyThumbMode | null = null
+let cachedThumbModeAt = 0
 
 function redirectToPlaceholder(req: NextRequest) {
   const base = getPublicAppOrigin(req)
@@ -22,6 +29,34 @@ const VIDEO_EXT = /\.(mp4|mov|avi|mkv|webm)$/i
 function toThumbPath(path: string): string {
   if (VIDEO_EXT.test(path)) return path.replace(VIDEO_EXT, '.jpg')
   return path
+}
+
+function isThumbModeFresh(): boolean {
+  return !!cachedThumbMode && Date.now() - cachedThumbModeAt < MODE_CACHE_TTL_MS
+}
+
+function setThumbMode(mode: BunnyThumbMode) {
+  cachedThumbMode = mode
+  cachedThumbModeAt = Date.now()
+}
+
+function buildBunnyThumbPath(pathThumb: string, mode: BunnyThumbMode): string {
+  switch (mode) {
+    case 'noPrefix':
+      return buildBunnyPath(pathThumb, false)
+    case 'legacyNoPrefix':
+      return buildBunnyPath(`${LEGACY_VIDEOS_FOLDER}/${pathThumb}`.replace(/\/+/g, '/'), false)
+    case 'withPrefix':
+    default:
+      return buildBunnyPath(pathThumb, true)
+  }
+}
+
+function withThumbCacheHeaders(res: NextResponse) {
+  // Cachear el redirect un poco: evita que 1000 thumbnails golpeen el server en scroll rápido.
+  // Es seguro porque el signed URL dura 1h y este cache es corto.
+  res.headers.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600')
+  return res
 }
 
 /**
@@ -44,26 +79,27 @@ export async function GET(req: NextRequest) {
     const pathThumb = toThumbPath(pathNorm)
 
     if (isBunnyConfigured()) {
-      try {
-        // Probar con y sin prefijo, una variante legacy fija, y variantes Unicode (NFC/NFD) para evitar mismatches de "ñ".
-        const thumbVariants = unicodePathVariants(pathThumb, 'nfc')
-        const variants = Array.from(
-          new Set(
-            thumbVariants
-              .flatMap((p) => [
-                buildBunnyPath(p, false),
-                buildBunnyPath(p, true),
-                buildBunnyPath(`${LEGACY_VIDEOS_FOLDER}/${p}`, false),
-              ])
-              .filter(Boolean)
-          )
-        )
-        if (variants.length === 0) variants.push(pathThumb)
+      // Evitar hacer HEAD por cada thumbnail (mata performance). Resolvemos el "modo" (con prefijo / sin prefijo / legacy)
+      // una vez por proceso y luego solo firmamos y redirigimos.
+      const hasNonAscii = /[^\x00-\x7F]/.test(pathThumb)
+      const variants = hasNonAscii ? unicodePathVariants(pathThumb, 'nfc') : [pathThumb.normalize('NFC')]
 
-        let firstNon404: string | null = null
-        for (const bunnyPath of variants) {
+      // Si ya tenemos modo cacheado y el path es ASCII, no hacemos HEAD: solo firmar + redirect.
+      if (isThumbModeFresh() && cachedThumbMode && !hasNonAscii) {
+        const bunnyPath = buildBunnyThumbPath(variants[0], cachedThumbMode)
+        const signedUrl = bunnyPath ? generateSignedUrl(bunnyPath, BUNNY_SIGNED_TTL_SECONDS) : ''
+        if (signedUrl) return withThumbCacheHeaders(NextResponse.redirect(signedUrl))
+      }
+
+      // Para paths con unicode (ñ/acentos) o sin modo resuelto: hacer pocas HEADs para elegir variante correcta.
+      const modeOrder: BunnyThumbMode[] = cachedThumbMode ? [cachedThumbMode] : ['withPrefix', 'noPrefix', 'legacyNoPrefix']
+      let firstNon404: { url: string; mode: BunnyThumbMode } | null = null
+
+      for (const mode of modeOrder) {
+        for (const p of variants) {
+          const bunnyPath = buildBunnyThumbPath(p, mode)
           if (!bunnyPath) continue
-          const signedUrl = generateSignedUrl(bunnyPath, 3600)
+          const signedUrl = generateSignedUrl(bunnyPath, BUNNY_SIGNED_TTL_SECONDS)
           if (!signedUrl?.startsWith('http') || signedUrl.length < 20) continue
           try {
             const head = await fetch(signedUrl, {
@@ -71,17 +107,24 @@ export async function GET(req: NextRequest) {
               cache: 'no-store',
               signal: AbortSignal.timeout(4000),
             })
-            if (head.ok) return NextResponse.redirect(signedUrl)
+            if (head.ok) {
+              // Solo cachear el modo si confirmamos existencia (no por 403).
+              if (!cachedThumbMode || !isThumbModeFresh()) setThumbMode(mode)
+              return withThumbCacheHeaders(NextResponse.redirect(signedUrl))
+            }
             if (head.status === 404) continue
             // 403 u otro: puede ser que Bunny no permita HEAD; guardar como fallback.
-            if (!firstNon404) firstNon404 = signedUrl
+            if (!firstNon404) firstNon404 = { url: signedUrl, mode }
           } catch {
-            if (!firstNon404) firstNon404 = signedUrl
+            if (!firstNon404) firstNon404 = { url: signedUrl, mode }
           }
         }
-        if (firstNon404) return NextResponse.redirect(firstNon404)
-      } catch {
-        // timeout, red o Bunny no disponible → fallback a FTP o placeholder
+      }
+
+      if (firstNon404) {
+        // Si nunca pudimos confirmar con HEAD, cachear el mejor intento para reducir futuros HEADs.
+        if (!cachedThumbMode || !isThumbModeFresh()) setThumbMode(firstNon404.mode)
+        return withThumbCacheHeaders(NextResponse.redirect(firstNon404.url))
       }
     }
 

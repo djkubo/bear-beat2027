@@ -6,12 +6,16 @@ import { Button } from '@/components/ui/button'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MobileMenu } from '@/components/ui/MobileMenu'
+import { useFeaturedPack } from '@/lib/hooks/useFeaturedPack'
 
 export function NavBar() {
   const pathname = usePathname()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userHasAccess, setUserHasAccess] = useState(false)
   const supabase = createClient()
+  const { pack: featuredPack } = useFeaturedPack()
+  const packSlug = featuredPack?.slug || 'enero-2026'
+  const priceMXN = Number(featuredPack?.price_mxn) || 350
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -76,12 +80,12 @@ export function NavBar() {
                 <Button variant="ghost" size="sm" className="text-zinc-300 hover:text-bear-blue">Iniciar Sesión</Button>
               </Link>
             )}
-            <Link href="/checkout?pack=enero-2026">
+            <Link href={`/checkout?pack=${packSlug}`}>
               <Button
                 size="sm"
                 className={`bg-bear-blue text-zinc-950 hover:brightness-110 font-bold shadow-[0_0_16px_rgba(8,225,247,0.3)] ${!userHasAccess ? 'animate-pulse' : ''}`}
               >
-                Acceso Total $350
+                Acceso Total ${priceMXN}
               </Button>
             </Link>
           </div>
