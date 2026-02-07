@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 
+type DisabledCols = Set<string>
+
+function getDisabledUserEventsCols(): DisabledCols {
+  const g = globalThis as unknown as { __bb_user_events_disabled_cols?: DisabledCols }
+  if (!g.__bb_user_events_disabled_cols) g.__bb_user_events_disabled_cols = new Set<string>()
+  return g.__bb_user_events_disabled_cols
+}
+
+function extractMissingColumn(message: string): string | null {
+  // Supabase/PostgREST variants:
+  // - Could not find the 'device_type' column of 'user_events' in the schema cache
+  // - column "device_type" of relation "user_events" does not exist
+  const m1 = message.match(/Could not find the '([^']+)' column/i)
+  if (m1?.[1]) return m1[1]
+  const m2 = message.match(/column \"([^\"]+)\" of relation/i)
+  if (m2?.[1]) return m2[1]
+  return null
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { eventType, eventName, eventData = {}, userId } = await req.json()
@@ -54,7 +73,20 @@ export async function POST(req: NextRequest) {
       device_type: (eventData?.device_type ?? eventData?.deviceType ?? '').toString().slice(0, 20) || null,
       os: (eventData?.os ?? '').toString().slice(0, 50) || null,
     }
-    const { error } = await supabase.from('user_events').insert(payload)
+    const disabledCols = getDisabledUserEventsCols()
+    for (const col of disabledCols) delete payload[col]
+
+    let { error } = await supabase.from('user_events').insert(payload)
+    let attempts = 0
+    while (error && attempts < 8) {
+      const missingCol = extractMissingColumn(error.message || '')
+      if (!missingCol || payload[missingCol] === undefined) break
+      // Memoize missing col to prevent repeated noise; retry without it.
+      disabledCols.add(missingCol)
+      delete payload[missingCol]
+      attempts += 1
+      ;({ error } = await supabase.from('user_events').insert(payload))
+    }
 
     if (error) {
       if (error.code === '23505') return NextResponse.json({ success: true }) // duplicate ok

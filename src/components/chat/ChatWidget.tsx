@@ -48,6 +48,7 @@ export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoO
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const sendingRef = useRef(false);
   const [fromManyChat, setFromManyChat] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -159,9 +160,13 @@ export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoO
   }, [isOpen]);
 
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    const trimmed = input.trim()
+    if (!trimmed) return
+    // Synchronous guard: prevents spam clicks before React state updates.
+    if (sendingRef.current || loading) return
+    sendingRef.current = true
     
-    const userMsg = input.trim();
+    const userMsg = trimmed;
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setLoading(true);
@@ -186,6 +191,7 @@ export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoO
       setMessages(prev => [...prev, { role: 'assistant', content: 'Error de red. Intenta de nuevo. 🔴' }]);
     } finally {
       setLoading(false);
+      sendingRef.current = false
     }
   };
 
@@ -275,6 +281,7 @@ export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoO
               type="button"
               className="h-11 w-11 shrink-0 bg-bear-blue hover:brightness-110 text-bear-black touch-manipulation"
               onClick={sendMessage}
+              disabled={loading || !input.trim()}
               aria-label="Enviar"
             >
               <Send size={18} />

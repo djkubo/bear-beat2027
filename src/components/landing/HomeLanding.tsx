@@ -11,7 +11,7 @@ import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
 import { useVideoInventory } from '@/lib/hooks/useVideoInventory'
 import { StatsSection } from '@/components/landing/stats-section'
-import { Play, CheckCircle2, Check, Download, Wifi, Folder, Music2, Search, ChevronRight, Lock } from 'lucide-react'
+import { Play, CheckCircle2, Check, Download, Wifi, Folder, Music2, Search, ChevronRight, Lock, X } from 'lucide-react'
 
 // ==========================================
 // TIPOS (alineados con /contenido)
@@ -272,7 +272,7 @@ export default function HomeLanding() {
     }
   }, [expandedGenre])
 
-  // Modo Bestia: pedir notificaciones push a usuarios sin acceso (una vez por sesión)
+  // Push: prompt no intrusivo (una vez por sesión). Evitar modal bloqueante.
   useEffect(() => {
     if (loading || userState.hasAccess || !isPushSupported()) return
     const key = 'bb_push_prompt_shown'
@@ -302,42 +302,64 @@ export default function HomeLanding() {
   return (
     <div className={`min-h-screen bg-[#050505] text-white overflow-x-hidden ${!userState.hasAccess ? 'pb-24 md:pb-0' : ''}`}>
 
-      {/* Modal push: Activa alertas para Packs Gratis y Descuentos Flash (solo si !hasAccess) */}
+      {/* Push prompt: banner (no modal) para no bloquear la UX ni interceptar clicks */}
       <AnimatePresence>
         {showPushModal && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-            onClick={() => setShowPushModal(false)}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 18 }}
+            className="fixed bottom-4 left-4 z-[44] w-[min(420px,calc(100vw-2rem))] pointer-events-none"
+            style={{
+              paddingBottom: 'env(safe-area-inset-bottom, 0)',
+              paddingLeft: 'env(safe-area-inset-left, 0)',
+            }}
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-zinc-900 border-2 border-bear-blue/50 rounded-2xl p-6 max-w-md w-full shadow-[0_0_40px_rgba(8,225,247,0.2)]"
-            >
-              <p className="text-2xl mb-2">📣</p>
-              <h3 className="text-xl font-black text-white mb-2">Activa alertas para recibir Packs Gratis y Descuentos Flash</h3>
-              <p className="text-zinc-400 text-sm mb-6">Te avisamos cuando haya ofertas exclusivas y contenido nuevo. Sin spam.</p>
-              <div className="flex gap-3">
+            <div className="pointer-events-auto rounded-2xl border border-bear-blue/30 bg-zinc-950/95 backdrop-blur shadow-[0_0_40px_rgba(8,225,247,0.12)] p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 h-10 w-10 rounded-xl bg-bear-blue/15 text-bear-blue flex items-center justify-center shrink-0">
+                  <span className="text-lg">📣</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-black text-white">Packs gratis y descuentos flash</p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Activa alertas y te avisamos cuando haya ofertas y drops nuevos. Sin spam.
+                  </p>
+                </div>
                 <button
+                  type="button"
+                  onClick={() => {
+                    setShowPushModal(false)
+                    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('bb_push_prompt_shown', '1')
+                  }}
+                  className="text-zinc-500 hover:text-white p-1 -m-1"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
                   onClick={handleAcceptPush}
                   disabled={pushSubscribing}
-                  className="flex-1 bg-bear-blue text-bear-black font-black py-3 rounded-xl hover:brightness-110 transition disabled:opacity-60"
+                  className="flex-1 bg-bear-blue text-bear-black font-black py-2.5 rounded-xl hover:brightness-110 transition disabled:opacity-60"
                 >
                   {pushSubscribing ? 'Activando…' : 'Activar alertas'}
                 </button>
                 <button
-                  onClick={() => { setShowPushModal(false); if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('bb_push_prompt_shown', '1') }}
-                  className="px-4 py-3 text-zinc-400 hover:text-white text-sm font-medium"
+                  type="button"
+                  onClick={() => {
+                    setShowPushModal(false)
+                    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('bb_push_prompt_shown', '1')
+                  }}
+                  className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-sm font-bold border border-white/10 transition"
                 >
                   Ahora no
                 </button>
               </div>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -362,10 +384,11 @@ export default function HomeLanding() {
               <Link href="/login" className="text-sm font-bold text-white hover:text-bear-blue transition">Login</Link>
             )}
             {!userState.hasAccess && (
-              <Link href={`/checkout?pack=${packSlug}`}>
-                <button className="bg-bear-blue hover:bg-cyan-400 text-black px-5 py-2 rounded-full text-sm font-black transition shadow-[0_0_15px_rgba(8,225,247,0.3)]">
-                  ACCESO TOTAL ${priceMXN}
-                </button>
+              <Link
+                href={`/checkout?pack=${packSlug}`}
+                className="bg-bear-blue hover:bg-cyan-400 text-black px-5 py-2 rounded-full text-sm font-black transition shadow-[0_0_15px_rgba(8,225,247,0.3)] inline-flex items-center justify-center"
+              >
+                ACCESO TOTAL ${priceMXN}
               </Link>
             )}
           </nav>
@@ -452,10 +475,12 @@ export default function HomeLanding() {
                 </div>
 
                 <div className="flex flex-col gap-3 max-w-md mx-auto lg:mx-0">
-                  <Link href={`/checkout?pack=${packSlug}`} onClick={() => trackCTAClick('HERO', 'landing')}>
-                    <button className="w-full bg-bear-blue hover:brightness-110 text-bear-black text-lg font-black py-4 rounded-xl shadow-[0_0_20px_rgba(8,225,247,0.3)] transition">
-                      ⚡ OBTENER MI VENTAJA INJUSTA - ${priceMXN}
-                    </button>
+                  <Link
+                    href={`/checkout?pack=${packSlug}`}
+                    onClick={() => trackCTAClick('HERO', 'landing')}
+                    className="w-full bg-bear-blue hover:brightness-110 text-bear-black text-lg font-black py-4 rounded-xl shadow-[0_0_20px_rgba(8,225,247,0.3)] transition inline-flex items-center justify-center"
+                  >
+                    ⚡ OBTENER MI VENTAJA INJUSTA - ${priceMXN}
                   </Link>
                   <Link href="#catalogo" onClick={() => trackCTAClick('HERO_direct', 'landing')} className="text-center lg:text-left">
                     <button className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl border border-white/20 transition">
@@ -594,7 +619,14 @@ export default function HomeLanding() {
                               <div className="flex gap-4 p-4">
                                 <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
                                   {firstVideo && !thumbErrors.has(firstVideo.id) ? (
-                                    <img src={getThumbnailUrl(firstVideo)} alt="" className="w-full h-full object-cover" onError={() => setThumbErrors((s) => new Set(s).add(firstVideo.id))} />
+                                    <img
+                                      src={getThumbnailUrl(firstVideo)}
+                                      alt=""
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                      decoding="async"
+                                      onError={() => setThumbErrors((s) => new Set(s).add(firstVideo.id))}
+                                    />
                                   ) : (
                                     <Folder className="h-8 w-8 text-bear-blue" />
                                   )}
@@ -657,6 +689,8 @@ export default function HomeLanding() {
                                               src={getThumbnailUrl(video)}
                                               alt=""
                                               className="w-full h-full object-cover"
+                                              loading="lazy"
+                                              decoding="async"
                                               onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
                                             />
                                           ) : (
@@ -711,7 +745,13 @@ export default function HomeLanding() {
                           className="relative aspect-video bg-black rounded-xl overflow-hidden mb-4 select-none"
                           onContextMenu={(e) => e.preventDefault()}
                         >
-                          <img src={getThumbnailUrl(selectedVideo)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                          <img
+                            src={getThumbnailUrl(selectedVideo)}
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
                           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                             <span className="text-white/20 text-xl font-black rotate-[-25deg]">BEAR BEAT</span>
                           </div>

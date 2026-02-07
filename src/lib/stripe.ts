@@ -1,9 +1,16 @@
 import Stripe from 'stripe'
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || ''
+
+// Never throw at import-time: routes should handle "not configured" gracefully (dev/tests/staging).
+export const stripe = new Stripe(STRIPE_SECRET_KEY || 'sk_test_dummy', {
   apiVersion: '2023-10-16' as any,
   typescript: true,
 })
+
+export function isStripeConfigured(): boolean {
+  return Boolean(STRIPE_SECRET_KEY)
+}
 
 export async function createCheckoutSession({
   packId,

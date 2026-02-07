@@ -70,6 +70,12 @@ export async function streamFileFromFtp(
 
   const client = new Client(120_000) // 2 min timeout para archivos grandes
   const pass = new PassThrough()
+  // Avoid unhandled 'error' events crashing the Next.js dev server.
+  pass.on('error', (err) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[ftp-stream] streamFileFromFtp error:', (err as Error)?.message || err)
+    }
+  })
 
   const cleanup = () => {
     try {
@@ -126,6 +132,9 @@ export function streamFileFromFtpOnceReady(
   const client = new Client(120_000)
   const pass = new PassThrough()
   const resultStream = new PassThrough()
+  // Ensure resultStream never throws an unhandled 'error' (it can be destroyed before consumer attaches a listener).
+  resultStream.on('error', () => {})
+  let resolved = false
 
   const cleanup = () => {
     try {
@@ -144,6 +153,7 @@ export function streamFileFromFtpOnceReady(
 
     const onFirstData = (chunk: Buffer | string) => {
       clearTimeout(timeout)
+      resolved = true
       resultStream.write(chunk)
       pass.pipe(resultStream, { end: true })
       resolve(resultStream)
@@ -152,7 +162,9 @@ export function streamFileFromFtpOnceReady(
     pass.once('data', onFirstData)
     pass.once('error', (err) => {
       clearTimeout(timeout)
-      resultStream.destroy(err)
+      // If we haven't returned the stream yet, avoid emitting 'error' on resultStream (would be unhandled).
+      if (resolved) resultStream.destroy(err)
+      else resultStream.destroy()
       reject(err)
     })
 

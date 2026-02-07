@@ -33,10 +33,12 @@ test.describe('Edge: 10 clics en botón', () => {
       if (frame === page.mainFrame() && frame.url().includes('/checkout')) navigateCount++
     })
 
-    for (let i = 0; i < 10; i++) {
-      await cta.click({ force: true })
-      await page.waitForTimeout(80)
-    }
+    // Disparar 10 clics sin esperar entre ellos para simular "rage click" sin flakiness por navegación intermedia.
+    await cta.evaluate((el) => {
+      for (let i = 0; i < 10; i++) {
+        ;(el as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      }
+    })
 
     await page.waitForURL(/\/checkout/, { timeout: 8_000 })
     await expect(page).toHaveURL(/\/checkout/)

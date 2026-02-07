@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe'
+import { stripe, isStripeConfigured } from '@/lib/stripe'
 import { createServerClient } from '@/lib/supabase/server'
 import { parseAttributionCookie } from '@/lib/attribution'
 import { upsertSubscriber, addTagByName } from '@/lib/manychat'
@@ -26,6 +26,13 @@ async function getPackWithVideoCount(supabase: Awaited<ReturnType<typeof createS
 export async function POST(req: NextRequest) {
   let paymentMethod: string | undefined
   try {
+    if (!isStripeConfigured()) {
+      return NextResponse.json(
+        { error: 'Stripe no está configurado. Agrega STRIPE_SECRET_KEY en el entorno.' },
+        { status: 400 }
+      )
+    }
+
     const body = await req.json()
     const cookieHeader = req.headers.get('cookie')
     const attribution = parseAttributionCookie(cookieHeader)
@@ -131,9 +138,19 @@ export async function POST(req: NextRequest) {
       stripeCustomerId = await getOrCreateStripeCustomer(emailForCustomer)
     }
 
-    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || (process.env.NODE_ENV === 'production' ? 'https://bear-beat2027.onrender.com' : '')
+    const requestOrigin = (() => {
+      try {
+        return new URL(req.url).origin
+      } catch {
+        return ''
+      }
+    })()
+    const baseUrl =
+      (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') ||
+      requestOrigin ||
+      (process.env.NODE_ENV === 'production' ? 'https://bear-beat2027.onrender.com' : 'http://127.0.0.1:3000')
     if (!baseUrl) {
-      return NextResponse.json({ error: 'NEXT_PUBLIC_APP_URL no configurada' }, { status: 500 })
+      return NextResponse.json({ error: 'No se pudo inferir la URL base (NEXT_PUBLIC_APP_URL).' }, { status: 400 })
     }
 
     // ManyChat: etiquetar "inició_checkout_web" para flujo de recuperación de carrito (30 min)
