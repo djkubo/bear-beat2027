@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
+import { getAdminStatus } from '@/lib/admin-check'
 
 const TWILIO_WHATSAPP_ENV_KEYS = [
   'TWILIO_WHATSAPP_NUMBER',
@@ -19,6 +20,13 @@ function getTwilioWhatsAppFromNumber(): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // En producción, este endpoint NO puede ser público (costos/spam).
+    if (process.env.NODE_ENV === 'production') {
+      const { user, isAdmin } = await getAdminStatus()
+      if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+      if (!isAdmin) return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
     const { to, message } = await req.json()
     
     if (!to || !message) {

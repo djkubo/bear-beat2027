@@ -319,7 +319,7 @@ npm run dev
 ### 2️⃣ Configurar base de datos (2 min):
 
 1. Ir a: https://supabase.com/dashboard/project/mthumshmwzmkwjulpbql/sql/new
-2. Copiar TODO el contenido de `supabase/schema.sql`
+2. Copiar TODO el contenido de `supabase/SETUP_COMPLETO.sql`
 3. Pegar y ejecutar (Run)
 
 ### 3️⃣ Crear admin (1 min):

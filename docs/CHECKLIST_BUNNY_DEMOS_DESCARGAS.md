@@ -52,7 +52,7 @@ Si la ruta no existe en Storage → **404 Not Found** al abrir la URL firmada.
    Debe devolver `ok: true` y sin `missing` ni `invalid`.
 
 2. **Diagnóstico de Bunny y una ruta de prueba:**  
-   `https://tu-sitio.onrender.com/api/debug-bunny?path=Bachata/cualquier-video.mp4`  
+   `https://tu-sitio.onrender.com/api/debug-bunny?path=Bachata/cualquier-video.mp4&token=TU_DEBUG_BUNNY_SECRET`  
    Ahí ves:
    - Si la config está bien
    - Qué path se está construyendo (`bunnyPathBuilt`)

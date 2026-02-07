@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 const DEMOS_ENABLED = true
+const VIDEO_EXT = /\.(mp4|mov|avi|mkv|webm)$/i
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -26,11 +27,8 @@ function buildThumbnailUrl(thumbnailUrlFromDb: string | null, relativePath: stri
     return `/api/thumbnail-cdn?path=${encodeURIComponent(thumbnailUrlFromDb)}`
   }
   if (process.env.NODE_ENV === 'production') {
-    const q = new URLSearchParams()
-    q.set('path', relativePath)
-    if (artist) q.set('artist', artist)
-    if (title) q.set('title', title)
-    return `/api/thumbnail-from-video?${q.toString()}`
+    const jpgPath = (relativePath || '').replace(VIDEO_EXT, '.jpg')
+    return `/api/thumbnail-cdn?path=${encodeURIComponent(jpgPath)}`
   }
   return `/api/thumbnail/${encodeURIComponent(relativePath)}`
 }

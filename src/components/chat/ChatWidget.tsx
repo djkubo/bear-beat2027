@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Send, MessageSquare, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
 
 const STORAGE_DISMISSED_PREFIX = 'bb_announcement_dismissed_';
 const BB_USER_NAME_COOKIE = 'bb_user_name';
@@ -53,6 +52,7 @@ export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoO
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const announcementIdRef = useRef<number | null>(null);
+  const chatSessionIdRef = useRef<string>('');
   const viewportHeight = useVisualViewportHeight();
   const checkoutAutoOpenDone = useRef(false);
 
@@ -73,6 +73,23 @@ export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoO
         setFromManyChat(false);
       }, 4000);
       return () => clearTimeout(t);
+    }
+  }, []);
+
+  // Sesión estable para agrupar mensajes en la DB (no depende de userId ni expone datos).
+  useEffect(() => {
+    try {
+      const key = 'bb_chat_session_id';
+      const existing = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+      if (existing && existing.trim()) {
+        chatSessionIdRef.current = existing.trim();
+        return;
+      }
+      const fresh = `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      chatSessionIdRef.current = fresh;
+      localStorage.setItem(key, fresh);
+    } catch {
+      chatSessionIdRef.current = `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     }
   }, []);
 
@@ -150,15 +167,13 @@ export default function ChatWidget({ autoOpenOnCheckout: autoOpenProp }: { autoO
     setLoading(true);
 
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: userMsg, 
           history: messages.slice(-4),
-          userId: user?.id ?? undefined,
+          sessionId: chatSessionIdRef.current || undefined,
         })
       });
 

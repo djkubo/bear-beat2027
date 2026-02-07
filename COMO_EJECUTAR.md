@@ -47,7 +47,7 @@ Abre: **http://localhost:3001**
 
 1. Ve a: https://supabase.com/dashboard/project/mthumshmwzmkwjulpbql/sql/new
 
-2. Copia TODO el contenido de `supabase/schema.sql`
+2. Copia TODO el contenido de `supabase/SETUP_COMPLETO.sql`
 
 3. Pégalo en el SQL Editor
 
@@ -59,9 +59,10 @@ Abre: **http://localhost:3001**
    - `users`
    - `packs`
    - `purchases`
+   - `pending_purchases`
    - `genres` ← Debería tener 12 géneros
    - `videos`
-   - `bundles`
+   - `downloads`
 
 ---
 

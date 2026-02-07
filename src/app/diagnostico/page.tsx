@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 export default function DiagnosticoPage() {
@@ -93,12 +94,12 @@ export default function DiagnosticoPage() {
         <button onClick={verificar} style={{ padding: '10px 20px', background: '#08E1F7', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
           🔄 Verificar Otra Vez
         </button>
-        <a href="/" style={{ padding: '10px 20px', background: '#333', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
+        <Link href="/" style={{ padding: '10px 20px', background: '#333', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
           ← Home
-        </a>
-        <a href="/admin" style={{ padding: '10px 20px', background: '#0a0', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
+        </Link>
+        <Link href="/admin" style={{ padding: '10px 20px', background: '#0a0', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
           🎛️ Admin
-        </a>
+        </Link>
       </div>
     </div>
   )

@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   // 1) Intentar primero con filtro de tags (solo eventos de nuestras plantillas)
   const tagsToRequest = [...PROJECT_EMAIL_TAGS]
-  let result = await getBrevoEmailEvents({
+  const result = await getBrevoEmailEvents({
     days: startDate && endDate ? undefined : (Number.isFinite(days) ? days : 90),
     startDate,
     endDate,

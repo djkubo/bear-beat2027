@@ -15,6 +15,16 @@ import {
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
+  // En producción este endpoint puede generar URLs firmadas: protégelo con un secreto.
+  if (process.env.NODE_ENV === 'production') {
+    const secret = (process.env.DEBUG_BUNNY_SECRET || '').trim()
+    const token =
+      (req.headers.get('x-debug-secret') || req.nextUrl.searchParams.get('token') || '').trim()
+    if (!secret || token !== secret) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+  }
+
   const pathParam = req.nextUrl.searchParams.get('path') || 'Bachata/Test.mp4'
   const pathNorm = pathParam.replace(/^\/+/, '').replace(/^Videos Enero 2026\/?/i, '').trim() || pathParam
 

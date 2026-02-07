@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
-import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { headers } from 'next/headers'
 import { upsertSubscriber, addMultipleTags, BEAR_BEAT_TAGS } from '@/lib/manychat'
@@ -49,7 +48,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  const supabase = await createServerClient()
+  // Webhooks no tienen sesión de usuario: usar service role para evitar depender de RLS pública.
+  const supabase = createAdminClient()
 
   // CAPI Purchase: mismo event_id que el Pixel para deduplicación
   const sendCapiPurchase = async (eventId: string, email: string | undefined, amount: number, currency: string) => {
@@ -338,7 +338,7 @@ export async function POST(req: NextRequest) {
 
       // 1. Crear registro de COMPRA PENDIENTE solo si no existe (para que Stripe pueda reintentar si falla la activación)
       if (!existingPending) {
-        const { error: pendingError } = await supabase
+        const { error: pendingError } = await (supabase as any)
           .from('pending_purchases')
           .insert({
             stripe_session_id: session.id,
@@ -371,7 +371,7 @@ export async function POST(req: NextRequest) {
         const utm_medium = (session.metadata?.utm_medium as string) || null
         const utm_campaign = (session.metadata?.utm_campaign as string) || null
         try {
-          await supabase.from('user_events').insert({
+          await (supabase as any).from('user_events').insert({
             session_id: session.id,
             event_type: 'payment_success',
             event_name: 'Pago completado',

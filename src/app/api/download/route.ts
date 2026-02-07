@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { generateSignedUrl, isBunnyConfigured, buildBunnyPath } from '@/lib/bunny'
-import { isFtpConfigured, streamFileFromFtp, getContentType } from '@/lib/ftp-stream'
+import { isFtpConfigured, streamFileFromFtpOnceReady, getContentType } from '@/lib/ftp-stream'
+import { unicodePathVariants } from '@/lib/unicode-path'
 import { Readable } from 'stream'
 
 export const dynamic = 'force-dynamic'
 
 const EXPIRY_VIDEO = 3600 // 1 h
 const EXPIRY_ZIP = 10800 // 3 h (los ZIP tardan más en bajar)
+const LEGACY_VIDEOS_FOLDER = 'Videos Enero 2026'
 
 /** Nombre de archivo seguro para Content-Disposition (evita caracteres problemáticos). */
 function safeDownloadFilename(name: string): string {
@@ -75,27 +77,45 @@ export async function GET(req: NextRequest) {
       ? 'inline'
       : `attachment; filename="${filename.replace(/"/g, '\\"')}"`
 
-    // 1) Prioridad: Bunny CDN. Probar con y sin prefijo (ZIPs en raíz FTP; videos bajo "Videos Enero 2026")
+    // 1) Prioridad: Bunny CDN. Probar varias rutas típicas (con/sin prefijo y legacy "Videos Enero 2026/").
     if (isBunnyConfigured()) {
       const expiresIn = isZip ? EXPIRY_ZIP : EXPIRY_VIDEO
-      const withPrefix = buildBunnyPath(sanitizedPath, true)
-      const noPrefix = buildBunnyPath(sanitizedPath, false)
-      const pathVariants = isZip
-        ? [noPrefix, withPrefix].filter(Boolean)
-        : [withPrefix, noPrefix].filter(Boolean)
-      if (pathVariants.length === 0 && sanitizedPath) pathVariants.push(sanitizedPath)
+      const pathUnicodeVariants = unicodePathVariants(sanitizedPath, 'nfc')
+
+      // Orden heurístico:
+      // - ZIP suele estar en raíz o bajo prefijo (packs o carpeta); video suele estar bajo prefijo.
+      const rawVariants = pathUnicodeVariants.flatMap((p) => {
+        const legacyPath = `${LEGACY_VIDEOS_FOLDER}/${p}`.replace(/\/+/g, '/')
+        const withPrefix = buildBunnyPath(p, true)
+        const noPrefix = buildBunnyPath(p, false)
+        const legacyWithPrefix = buildBunnyPath(legacyPath, true)
+        const legacyNoPrefix = buildBunnyPath(legacyPath, false)
+        return isZip
+          ? [noPrefix, withPrefix, legacyNoPrefix, legacyWithPrefix]
+          : [withPrefix, noPrefix, legacyWithPrefix, legacyNoPrefix]
+      })
+      const pathVariants = Array.from(new Set(rawVariants.filter(Boolean)))
 
       let signedUrl = ''
+      let signedUrlMaybe = ''
       for (const bunnyPath of pathVariants) {
         if (!bunnyPath) continue
         try {
           const url = generateSignedUrl(bunnyPath, expiresIn)
-          const headRes = await fetch(url, { method: 'HEAD', cache: 'no-store' })
+          const headRes = await fetch(url, { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(5000) })
           if (headRes.ok) {
             signedUrl = url
             break
           }
+          if (headRes.status !== 404 && !signedUrlMaybe) signedUrlMaybe = url
         } catch {
+          if (!signedUrlMaybe) {
+            try {
+              signedUrlMaybe = generateSignedUrl(bunnyPath, expiresIn)
+            } catch {
+              // ignore
+            }
+          }
           continue
         }
       }
@@ -113,12 +133,11 @@ export async function GET(req: NextRequest) {
         }
 
         // ZIP: redirigir a Bunny (evita 502 por timeout/memoria al hacer proxy de archivos grandes)
-        if (isZip) {
-          return NextResponse.redirect(signedUrl, 302)
-        }
+        if (isZip) return NextResponse.redirect(signedUrl, 302)
 
         // Video: proxy con Content-Disposition: attachment para forzar descarga (no abrir en pestaña)
         try {
+          // No usamos timeout aquí: es un stream grande y el cliente puede tardar minutos descargando.
           const bunnyRes = await fetch(signedUrl, { cache: 'no-store' })
           if (bunnyRes.ok && bunnyRes.body) {
             return new NextResponse(bunnyRes.body, {
@@ -133,43 +152,53 @@ export async function GET(req: NextRequest) {
               },
             })
           }
-          if (bunnyRes.status === 404) {
-            console.warn('[download] Bunny GET 404 (HEAD había ok), path:', sanitizedPath)
-          }
+          // Si falló el proxy, intentar FTP más abajo; si no hay, redirigir a Bunny.
+          console.warn('[download] Bunny proxy failed:', bunnyRes.status, 'path:', sanitizedPath)
+          if (!isFtpConfigured()) return NextResponse.redirect(signedUrl, 302)
         } catch (proxyErr) {
-          console.warn('[download] Proxy Bunny falló, redirigiendo:', (proxyErr as Error)?.message || proxyErr)
+          console.warn('[download] Proxy Bunny falló:', (proxyErr as Error)?.message || proxyErr, 'path:', sanitizedPath)
+          if (!isFtpConfigured()) return NextResponse.redirect(signedUrl, 302)
         }
-        // Fallback: redirigir para que el navegador descargue desde Bunny
-        return NextResponse.redirect(signedUrl, 302)
+      } else if (signedUrlMaybe && !isFtpConfigured()) {
+        // HEAD no confirmó pero tampoco fue 404; si no hay FTP, al menos intentar con Bunny.
+        return NextResponse.redirect(signedUrlMaybe, 302)
       }
     }
 
     // 2) Fallback: FTP (Hetzner)
     if (isFtpConfigured()) {
-      try {
-        const type = isZip ? 'zip' : 'video'
-        const stream = await streamFileFromFtp(sanitizedPath, type)
-        const webStream = Readable.toWeb(stream) as ReadableStream
-        try {
-          await supabase.from('downloads').insert({
-            user_id: user.id,
-            pack_id: purchases[0].pack_id,
-            file_path: sanitizedPath,
-            download_method: 'web',
-          })
-        } catch {
-          // ignorar
+      const typeVariants: Array<'video' | 'zip'> = isZip ? ['zip', 'video'] : ['video']
+      for (const type of typeVariants) {
+        const ftpVariants = unicodePathVariants(sanitizedPath, type === 'zip' ? 'nfc' : 'nfd')
+        let lastErr: unknown = null
+        for (const ftpPath of ftpVariants) {
+          try {
+            const stream = await streamFileFromFtpOnceReady(ftpPath, type)
+            const webStream = Readable.toWeb(stream) as ReadableStream
+            try {
+              await supabase.from('downloads').insert({
+                user_id: user.id,
+                pack_id: purchases[0].pack_id,
+                file_path: sanitizedPath,
+                download_method: 'web',
+              })
+            } catch {
+              // ignorar
+            }
+            return new NextResponse(webStream, {
+              headers: {
+                'Content-Type': contentType,
+                'Cache-Control': 'private, max-age=3600',
+                'Content-Disposition': disposition,
+                'X-Content-Type-Options': 'nosniff',
+              },
+            })
+          } catch (ftpErr) {
+            lastErr = ftpErr
+          }
         }
-        return new NextResponse(webStream, {
-          headers: {
-            'Content-Type': contentType,
-            'Cache-Control': 'private, max-age=3600',
-            'Content-Disposition': disposition,
-            'X-Content-Type-Options': 'nosniff',
-          },
-        })
-      } catch (ftpErr) {
-        console.warn('[download] FTP no tuvo el archivo:', (ftpErr as Error)?.message || ftpErr)
+        console.warn('[download] FTP no tuvo el archivo:', (lastErr as Error)?.message || lastErr)
+        // probar siguiente type (ej. ZIP en raíz vs dentro de FTP_BASE)
       }
     }
 

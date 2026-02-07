@@ -345,7 +345,7 @@ Links: text-bear-blue con hover:underline
 ### 1. Ejecutar Schema SQL actualizado
 
 ```sql
--- En Supabase SQL Editor, ejecutar todo supabase/schema.sql
+-- En Supabase SQL Editor, ejecutar todo supabase/SETUP_COMPLETO.sql
 -- Esto creará:
 -- ✅ Tabla users con campo 'role'
 -- ✅ Función get_admin_stats()
@@ -522,7 +522,7 @@ Verifica en cada request:
 
 **1. Ejecutar el SQL actualizado:**
 ```bash
-# Copiar todo el contenido de supabase/schema.sql
+# Copiar todo el contenido de supabase/SETUP_COMPLETO.sql
 # Ejecutar en Supabase SQL Editor
 ```
 

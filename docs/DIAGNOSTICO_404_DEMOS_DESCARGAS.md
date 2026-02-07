@@ -10,10 +10,13 @@ Cuando **demos no reproducen**, **portadas no cargan** o **descargas dan 404**, 
 
 ## 1. Prueba rápida en producción
 
-Abre en el navegador (con la app ya desplegada):
+Abre en el navegador (con la app ya desplegada).
+
+> Nota: en **producción** este endpoint está protegido para que no genere URLs firmadas públicamente.
+> Configura `DEBUG_BUNNY_SECRET` en Render → Environment y pasa `token=...` (o header `x-debug-secret`).
 
 ```
-https://bear-beat2027.onrender.com/api/debug-bunny?path=Bachata/Akai Rojas - Es Akai Baby (3A – 130 BPM).mp4
+https://bear-beat2027.onrender.com/api/debug-bunny?path=Bachata/Akai Rojas - Es Akai Baby (3A – 130 BPM).mp4&token=TU_DEBUG_BUNNY_SECRET
 ```
 
 (O el path de cualquier video que falle.)
@@ -79,4 +82,4 @@ La URL que ves (ej. `https://bearbeat.b-cdn.net/Videos%20Enero%202026/...`) es c
 | 403 al abrir URL firmada | Token/key distinta a la de la Pull Zone | Bunny → Pull Zone → Security → Token Authentication; copiar la clave a BUNNY_TOKEN_KEY en Render |
 | Demo URL correcta pero no reproduce | CORS, tipo MIME o reproductor | Revisar cabeceras de la Pull Zone y que el archivo sea .mp4 servido como video |
 
-Usa siempre **/api/debug-bunny?path=...** con un path real que falle para ver en vivo `bunnyResponseStatus` y `bunnyPathBuilt`.
+Usa siempre **/api/debug-bunny?path=...&token=...** con un path real que falle para ver en vivo `bunnyResponseStatus` y `bunnyPathBuilt`.

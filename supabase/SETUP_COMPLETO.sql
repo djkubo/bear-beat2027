@@ -16,6 +16,10 @@
 
 -- Habilitar UUID
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- gen_random_uuid() (usado en varias tablas)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- pgvector para RAG (documents.embedding)
+CREATE EXTENSION IF NOT EXISTS vector;
 
 -- =====================================================
 -- 1. TABLA DE USUARIOS
@@ -192,6 +196,23 @@ CREATE INDEX IF NOT EXISTS idx_events_user ON public.user_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_events_type ON public.user_events(event_type);
 
 -- =====================================================
+-- 6b. HISTORIAL DE DESCARGAS (tracking)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.downloads (
+  id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  pack_id INT REFERENCES public.packs(id) ON DELETE CASCADE,
+  file_path TEXT,
+  download_method VARCHAR(20), -- web, ftp
+  ip_address VARCHAR(45),
+  downloaded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_downloads_user ON public.downloads(user_id);
+CREATE INDEX IF NOT EXISTS idx_downloads_pack ON public.downloads(pack_id);
+CREATE INDEX IF NOT EXISTS idx_downloads_date ON public.downloads(downloaded_at DESC);
+
+-- =====================================================
 -- 7. TABLA DE PUSH NOTIFICATIONS
 -- =====================================================
 CREATE TABLE IF NOT EXISTS public.push_subscriptions (
@@ -286,6 +307,83 @@ CREATE INDEX IF NOT EXISTS idx_conversations_user ON public.conversations(user_i
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON public.messages(conversation_id);
 
 -- =====================================================
+-- 7d. RAG (Vector Knowledge Base)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  content TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  embedding vector(3072),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.documents IS 'Fragmentos de conocimiento para RAG del chatbot Bear Beat (text-embedding-3-large)';
+
+CREATE OR REPLACE FUNCTION public.match_documents(
+  query_embedding vector(3072),
+  match_threshold float DEFAULT 0.5,
+  match_count int DEFAULT 5
+)
+RETURNS TABLE (
+  id UUID,
+  content TEXT,
+  metadata JSONB,
+  similarity float
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    d.id,
+    d.content,
+    d.metadata,
+    1 - (d.embedding <=> query_embedding) AS similarity
+  FROM public.documents d
+  WHERE d.embedding IS NOT NULL
+    AND 1 - (d.embedding <=> query_embedding) > match_threshold
+  ORDER BY d.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
+
+-- =====================================================
+-- 7e. Chat Web (Widget BearBot)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id TEXT NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+  content TEXT NOT NULL,
+  is_bot BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON public.chat_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON public.chat_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON public.chat_messages(user_id);
+
+COMMENT ON TABLE public.chat_messages IS 'Mensajes del chat web (BearBot) para historial y panel admin';
+
+-- =====================================================
+-- 7f. Cron / Marketing Automation
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.drop_alerts_sent (
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  drop_key TEXT NOT NULL,
+  sent_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (user_id, drop_key)
+);
+
+CREATE TABLE IF NOT EXISTS public.abandoned_cart_reminders (
+  user_id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
+  sent_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
 -- 8. FUNCIONES ÚTILES
 -- =====================================================
 
@@ -328,6 +426,45 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Crear/actualizar perfil en public.users cuando se crea un usuario Auth (evita inserts inseguros desde el cliente)
+CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  display_name TEXT;
+  phone_text TEXT;
+  country_code_text TEXT;
+BEGIN
+  display_name := NULLIF(BTRIM(COALESCE(NEW.raw_user_meta_data->>'name', '')), '');
+  phone_text := NULLIF(BTRIM(COALESCE(NEW.raw_user_meta_data->>'phone', '')), '');
+  country_code_text := NULLIF(UPPER(BTRIM(COALESCE(NEW.raw_user_meta_data->>'country_code', ''))), '');
+  IF country_code_text IS NOT NULL AND LENGTH(country_code_text) <> 2 THEN
+    country_code_text := NULL;
+  END IF;
+
+  INSERT INTO public.users (id, email, name, phone, country_code, created_at, updated_at)
+  VALUES (NEW.id, NEW.email, display_name, phone_text, country_code_text, NOW(), NOW())
+  ON CONFLICT (id) DO UPDATE
+  SET email = EXCLUDED.email,
+      name = COALESCE(EXCLUDED.name, public.users.name),
+      phone = COALESCE(EXCLUDED.phone, public.users.phone),
+      country_code = COALESCE(EXCLUDED.country_code, public.users.country_code),
+      updated_at = NOW();
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.handle_new_auth_user() FROM PUBLIC;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
+
 -- Triggers para updated_at
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
@@ -354,70 +491,126 @@ ALTER TABLE push_notifications_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ftp_pool ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE downloads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE drop_alerts_sent ENABLE ROW LEVEL SECURITY;
+ALTER TABLE abandoned_cart_reminders ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para users (usuario ve su perfil; admin ve todos)
 DROP POLICY IF EXISTS "Users can view own profile" ON users;
-CREATE POLICY "Users can view own profile" ON users FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can view own profile"
+  ON users FOR SELECT TO authenticated
+  USING (auth.uid() = id);
 DROP POLICY IF EXISTS "Admins can view all users" ON users;
-CREATE POLICY "Admins can view all users" ON users FOR SELECT USING (public.is_admin());
+CREATE POLICY "Admins can view all users"
+  ON users FOR SELECT TO authenticated
+  USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Users can insert own profile" ON users;
+CREATE POLICY "Users can insert own profile"
+  ON users FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Users can update own profile" ON users;
-CREATE POLICY "Users can update own profile" ON users FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile"
+  ON users FOR UPDATE TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Service role can do everything on users" ON users;
-CREATE POLICY "Service role can do everything on users" ON users FOR ALL USING (true);
+CREATE POLICY "Service role can do everything on users"
+  ON users FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- Políticas para purchases (usuario ve sus compras; admin ve todas)
 DROP POLICY IF EXISTS "Users can view own purchases" ON purchases;
-CREATE POLICY "Users can view own purchases" ON purchases FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own purchases"
+  ON purchases FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Admins can view all purchases" ON purchases;
-CREATE POLICY "Admins can view all purchases" ON purchases FOR SELECT USING (public.is_admin());
+CREATE POLICY "Admins can view all purchases"
+  ON purchases FOR SELECT TO authenticated
+  USING (public.is_admin());
 
 DROP POLICY IF EXISTS "Service role can do everything on purchases" ON purchases;
-CREATE POLICY "Service role can do everything on purchases" ON purchases FOR ALL USING (true);
+CREATE POLICY "Service role can do everything on purchases"
+  ON purchases FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- pending_purchases (checkout inserta/actualiza; admin lee; service role todo)
 DROP POLICY IF EXISTS "Allow insert pending_purchases" ON pending_purchases;
-CREATE POLICY "Allow insert pending_purchases" ON pending_purchases FOR INSERT WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow update pending_purchases" ON pending_purchases;
-CREATE POLICY "Allow update pending_purchases" ON pending_purchases FOR UPDATE USING (true);
+
 DROP POLICY IF EXISTS "Admins can view pending purchases" ON pending_purchases;
-CREATE POLICY "Admins can view pending purchases" ON pending_purchases FOR SELECT USING (public.is_admin());
+CREATE POLICY "Admins can view pending purchases"
+  ON pending_purchases FOR SELECT TO authenticated
+  USING (public.is_admin());
 DROP POLICY IF EXISTS "Service role can do everything on pending_purchases" ON pending_purchases;
-CREATE POLICY "Service role can do everything on pending_purchases" ON pending_purchases FOR ALL USING (true);
+CREATE POLICY "Service role can do everything on pending_purchases"
+  ON pending_purchases FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- user_events (cualquiera puede insertar para tracking; admin puede leer)
 DROP POLICY IF EXISTS "Allow insert user_events" ON user_events;
-CREATE POLICY "Allow insert user_events" ON user_events FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow insert user_events"
+  ON user_events FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
 DROP POLICY IF EXISTS "Admins can view user_events" ON user_events;
-CREATE POLICY "Admins can view user_events" ON user_events FOR SELECT USING (public.is_admin());
+CREATE POLICY "Admins can view user_events"
+  ON user_events FOR SELECT TO authenticated
+  USING (public.is_admin());
 DROP POLICY IF EXISTS "Service role can do everything on user_events" ON user_events;
-CREATE POLICY "Service role can do everything on user_events" ON user_events FOR ALL USING (true);
+CREATE POLICY "Service role can do everything on user_events"
+  ON user_events FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- push_notifications_history (admin puede leer; service role todo)
 DROP POLICY IF EXISTS "Admins can view push history" ON push_notifications_history;
-CREATE POLICY "Admins can view push history" ON push_notifications_history FOR SELECT USING (public.is_admin());
+CREATE POLICY "Admins can view push history"
+  ON push_notifications_history FOR SELECT TO authenticated
+  USING (public.is_admin());
 DROP POLICY IF EXISTS "Service role can do everything on push_notifications_history" ON push_notifications_history;
-CREATE POLICY "Service role can do everything on push_notifications_history" ON push_notifications_history FOR ALL USING (true);
+CREATE POLICY "Service role can do everything on push_notifications_history"
+  ON push_notifications_history FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- ftp_pool: sin política para anon (solo el backend con service role puede acceder; service role bypasses RLS)
 
 -- conversations y messages (admin puede leer para /admin/chatbot)
 DROP POLICY IF EXISTS "Admins can view conversations" ON conversations;
-CREATE POLICY "Admins can view conversations" ON conversations FOR SELECT USING (public.is_admin());
+CREATE POLICY "Admins can view conversations"
+  ON conversations FOR SELECT TO authenticated
+  USING (public.is_admin());
 DROP POLICY IF EXISTS "Admins can view messages" ON messages;
-CREATE POLICY "Admins can view messages" ON messages FOR SELECT USING (public.is_admin());
+CREATE POLICY "Admins can view messages"
+  ON messages FOR SELECT TO authenticated
+  USING (public.is_admin());
 DROP POLICY IF EXISTS "Service role can do everything on conversations" ON conversations;
-CREATE POLICY "Service role can do everything on conversations" ON conversations FOR ALL USING (true);
+CREATE POLICY "Service role can do everything on conversations"
+  ON conversations FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
 DROP POLICY IF EXISTS "Service role can do everything on messages" ON messages;
-CREATE POLICY "Service role can do everything on messages" ON messages FOR ALL USING (true);
+CREATE POLICY "Service role can do everything on messages"
+  ON messages FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- Políticas para packs (público)
 DROP POLICY IF EXISTS "Public can view available packs" ON packs;
 CREATE POLICY "Public can view available packs" ON packs FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Service role can do everything on packs" ON packs;
-CREATE POLICY "Service role can do everything on packs" ON packs FOR ALL USING (true);
+CREATE POLICY "Service role can do everything on packs"
+  ON packs FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- Políticas para genres y videos (lectura pública para listado en web)
 DROP POLICY IF EXISTS "Public can view genres" ON genres;
@@ -427,10 +620,82 @@ CREATE POLICY "Public can view videos" ON videos FOR SELECT USING (true);
 
 -- Políticas para push
 DROP POLICY IF EXISTS "Anyone can subscribe to push" ON push_subscriptions;
-CREATE POLICY "Anyone can subscribe to push" ON push_subscriptions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can subscribe to push"
+  ON push_subscriptions FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Service role can do everything on push" ON push_subscriptions;
-CREATE POLICY "Service role can do everything on push" ON push_subscriptions FOR ALL USING (true);
+CREATE POLICY "Service role can do everything on push"
+  ON push_subscriptions FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+-- downloads (usuarios ven/insertan solo sus descargas; admin ve todo)
+DROP POLICY IF EXISTS "Users can view own downloads" ON downloads;
+CREATE POLICY "Users can view own downloads"
+  ON downloads FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert own downloads" ON downloads;
+CREATE POLICY "Users can insert own downloads"
+  ON downloads FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Admins can view downloads" ON downloads;
+CREATE POLICY "Admins can view downloads"
+  ON downloads FOR SELECT TO authenticated
+  USING (public.is_admin());
+DROP POLICY IF EXISTS "Service role can do everything on downloads" ON downloads;
+CREATE POLICY "Service role can do everything on downloads"
+  ON downloads FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+-- documents (solo admin/service_role; match_documents expone fragments vía SECURITY DEFINER)
+DROP POLICY IF EXISTS "Admins can manage documents" ON documents;
+CREATE POLICY "Admins can manage documents"
+  ON documents FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Service role can do everything on documents" ON documents;
+CREATE POLICY "Service role can do everything on documents"
+  ON documents FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+-- chat_messages (insert público; solo admin lee)
+DROP POLICY IF EXISTS "Allow insert chat_messages" ON chat_messages;
+CREATE POLICY "Allow insert chat_messages"
+  ON chat_messages FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
+DROP POLICY IF EXISTS "Admin can read chat_messages" ON chat_messages;
+CREATE POLICY "Admin can read chat_messages"
+  ON chat_messages FOR SELECT TO authenticated
+  USING (public.is_admin());
+DROP POLICY IF EXISTS "Service role can do everything on chat_messages" ON chat_messages;
+CREATE POLICY "Service role can do everything on chat_messages"
+  ON chat_messages FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+-- Cron tables (solo backend; admin lectura opcional)
+DROP POLICY IF EXISTS "Admins can view drop_alerts_sent" ON drop_alerts_sent;
+CREATE POLICY "Admins can view drop_alerts_sent"
+  ON drop_alerts_sent FOR SELECT TO authenticated
+  USING (public.is_admin());
+DROP POLICY IF EXISTS "Service role can do everything on drop_alerts_sent" ON drop_alerts_sent;
+CREATE POLICY "Service role can do everything on drop_alerts_sent"
+  ON drop_alerts_sent FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Admins can view abandoned_cart_reminders" ON abandoned_cart_reminders;
+CREATE POLICY "Admins can view abandoned_cart_reminders"
+  ON abandoned_cart_reminders FOR SELECT TO authenticated
+  USING (public.is_admin());
+DROP POLICY IF EXISTS "Service role can do everything on abandoned_cart_reminders" ON abandoned_cart_reminders;
+CREATE POLICY "Service role can do everything on abandoned_cart_reminders"
+  ON abandoned_cart_reminders FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- =====================================================
 -- 10. DATOS INICIALES

@@ -1,14 +1,11 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import ChatWidget from '@/components/chat/ChatWidget'
 import { Toaster } from 'sonner'
 import { TrackingScripts } from '@/components/tracking/TrackingScripts'
 import { ClientErrorLogger } from '@/components/tracking/ClientErrorLogger'
 import { GlobalErrorBoundary } from '@/components/tracking/GlobalErrorBoundary'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Video Remixes para DJs 2026 | Bear Beat – +3,000 Videos por Género',
@@ -34,7 +31,7 @@ export default function RootLayout({
           <TrackingScripts />
         </Suspense>
       </head>
-      <body className={`${inter.className} relative min-w-0 overflow-x-hidden overflow-y-auto bg-black text-white antialiased`}>
+      <body className="font-sans relative min-w-0 overflow-x-hidden overflow-y-auto bg-black text-white antialiased">
         <GlobalErrorBoundary>
           <main className="relative min-w-0">
             {children}

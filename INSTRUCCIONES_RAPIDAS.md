@@ -28,7 +28,7 @@ https://supabase.com/dashboard/project/mthumshmwzmkwjulpbql/sql/new
 ### 2️⃣ Abrir archivo en tu proyecto:
 
 ```
-supabase/schema.sql
+supabase/SETUP_COMPLETO.sql
 ```
 
 ### 3️⃣ Copiar TODO el contenido (Cmd+A, Cmd+C)

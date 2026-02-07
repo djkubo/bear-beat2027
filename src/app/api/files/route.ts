@@ -9,6 +9,17 @@ function getPackFolderPath(packId: string | null): string {
   return `packs/${packId}`
 }
 
+async function resolvePackId(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  packRef: string
+): Promise<string | null> {
+  const ref = (packRef || '').trim()
+  if (!ref) return null
+  if (/^\d+$/.test(ref)) return String(parseInt(ref, 10))
+  const { data: pack } = await supabase.from('packs').select('id').eq('slug', ref).maybeSingle()
+  return pack?.id != null ? String(pack.id) : null
+}
+
 // ==========================================
 // API DE ARCHIVOS - URLs firmadas y listado
 // ==========================================
@@ -20,7 +31,7 @@ function getPackFolderPath(packId: string | null): string {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const packId = searchParams.get('pack')
+    const packRef = searchParams.get('pack')
     const demoOnly = searchParams.get('demo') === 'true'
 
     // Si es solo demo, devolver estructura sin verificación
@@ -51,21 +62,24 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Verificar que compró el pack
-    if (packId) {
-      const { data: purchase } = await supabase
-        .from('purchases')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('pack_id', packId)
-        .single()
+    const packId = await resolvePackId(supabase, packRef || '1')
+    if (!packId) {
+      return NextResponse.json({ success: false, error: 'Pack inválido' }, { status: 400 })
+    }
 
-      if (!purchase) {
-        return NextResponse.json(
-          { success: false, error: 'No tienes acceso a este pack' },
-          { status: 403 }
-        )
-      }
+    // Verificar que compró el pack (purchases.pack_id es INT → comparamos con id numérico)
+    const { data: purchase } = await supabase
+      .from('purchases')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('pack_id', parseInt(packId, 10))
+      .maybeSingle()
+
+    if (!purchase) {
+      return NextResponse.json(
+        { success: false, error: 'No tienes acceso a este pack' },
+        { status: 403 }
+      )
     }
 
     // Listar archivos del pack de forma recursiva (misma carpeta que usa /api/download)
@@ -123,25 +137,38 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Verificar compra del pack
-    if (packId) {
-      const { data: purchase } = await supabase
-        .from('purchases')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('pack_id', packId)
-        .single()
+    const resolvedPackId = await resolvePackId(supabase, String(packId || ''))
+    if (!resolvedPackId) {
+      return NextResponse.json(
+        { success: false, error: 'Pack requerido o inválido' },
+        { status: 400 }
+      )
+    }
 
-      if (!purchase) {
-        return NextResponse.json(
-          { success: false, error: 'No tienes acceso a este contenido' },
-          { status: 403 }
-        )
-      }
+    // Verificar compra del pack (purchases.pack_id es INT)
+    const { data: purchase } = await supabase
+      .from('purchases')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('pack_id', parseInt(resolvedPackId, 10))
+      .maybeSingle()
+
+    if (!purchase) {
+      return NextResponse.json(
+        { success: false, error: 'No tienes acceso a este contenido' },
+        { status: 403 }
+      )
     }
 
     // Todo bajo el mismo prefijo en Bunny (BUNNY_PACK_PATH_PREFIX)
-    const pathNorm = filePath.replace(/^\//, '').trim()
+    let pathNorm = String(filePath || '').trim()
+    try {
+      pathNorm = decodeURIComponent(pathNorm)
+    } catch {
+      // ignore
+    }
+    pathNorm = pathNorm.replace(/\.\./g, '').replace(/^\/+/, '').trim()
+    pathNorm = pathNorm.replace(/^Videos Enero 2026\/?/i, '').trim() || pathNorm
     const fullPath = buildBunnyPath(pathNorm, true)
     if (!fullPath) {
       return NextResponse.json({ success: false, error: 'Invalid file path' }, { status: 400 })
@@ -155,8 +182,8 @@ export async function POST(req: NextRequest) {
     // Registrar descarga
     await supabase.from('downloads').insert({
       user_id: user.id,
-      file_path: filePath,
-      pack_id: packId,
+      file_path: pathNorm,
+      pack_id: parseInt(resolvedPackId, 10),
       ip_address: req.headers.get('x-forwarded-for') || 'unknown'
     })
 

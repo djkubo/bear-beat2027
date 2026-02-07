@@ -15,6 +15,33 @@ function generatePassword(): string {
   return s
 }
 
+function getPayPalBaseUrl(): string {
+  const useSandbox =
+    process.env.PAYPAL_USE_SANDBOX === 'true' ||
+    process.env.PAYPAL_USE_SANDBOX === '1' ||
+    process.env.NEXT_PUBLIC_PAYPAL_USE_SANDBOX === 'true' ||
+    process.env.NEXT_PUBLIC_PAYPAL_USE_SANDBOX === '1'
+  const isProd = process.env.NODE_ENV === 'production'
+  if (useSandbox || !isProd) return 'https://api-m.sandbox.paypal.com'
+  return 'https://api-m.paypal.com'
+}
+
+async function getPayPalAccessToken(): Promise<string> {
+  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || process.env.PAYPAL_CLIENT_ID
+  const secret = process.env.PAYPAL_CLIENT_SECRET
+  if (!clientId || !secret) throw new Error('PayPal credentials not configured')
+  const auth = Buffer.from(`${clientId}:${secret}`).toString('base64')
+  const baseUrl = getPayPalBaseUrl()
+  const res = await fetch(`${baseUrl}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Authorization: `Basic ${auth}` },
+    body: 'grant_type=client_credentials',
+  })
+  if (!res.ok) throw new Error('PayPal auth failed')
+  const data = await res.json()
+  return data.access_token
+}
+
 /**
  * POST: Activar compra (Stripe o PayPal: crear FTP si aplica, insertar purchase).
  * Body: { sessionId, userId, email?, name?, phone?, packId?, amountPaid?, currency?, paymentProvider? }
@@ -64,17 +91,57 @@ export async function POST(req: NextRequest) {
     let utm_campaign: string | null = null
 
     if (isPayPal) {
-      if (bodyPackId == null || bodyAmountPaid == null) {
-        return NextResponse.json(
-          { error: 'Para PayPal se requieren packId y amountPaid en el body' },
-          { status: 400 }
-        )
+      // Verificar orden PayPal (NO confiar en valores del body; evita activar sin pago)
+      const orderID = sessionId.replace(/^PAYPAL_/, '')
+      if (!orderID) {
+        return NextResponse.json({ error: 'PayPal orderID inválido' }, { status: 400 })
       }
-      packId = Number(bodyPackId)
-      amountPaid = Number(bodyAmountPaid)
-      currency = (bodyCurrency || 'MXN').toUpperCase()
+      const token = await getPayPalAccessToken()
+      const baseUrl = getPayPalBaseUrl()
+      const getRes = await fetch(`${baseUrl}/v2/checkout/orders/${orderID}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!getRes.ok) {
+        return NextResponse.json({ error: 'PayPal order not found' }, { status: 404 })
+      }
+      const order = await getRes.json()
+
+      let finalOrder = order
+      if (order.status === 'CREATED' || order.status === 'APPROVED') {
+        const captureRes = await fetch(`${baseUrl}/v2/checkout/orders/${orderID}/capture`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: '{}',
+        })
+        if (!captureRes.ok) {
+          const errData = await captureRes.json().catch(() => ({}))
+          if (errData.name === 'ORDER_ALREADY_CAPTURED' || errData.message?.includes('already been captured')) {
+            finalOrder = await (await fetch(`${baseUrl}/v2/checkout/orders/${orderID}`, { headers: { Authorization: `Bearer ${token}` } })).json()
+          } else {
+            return NextResponse.json({ error: 'PayPal capture failed' }, { status: 400 })
+          }
+        } else {
+          const captureData = await captureRes.json()
+          finalOrder = captureData
+        }
+      } else if (order.status !== 'COMPLETED') {
+        finalOrder = await (await fetch(`${baseUrl}/v2/checkout/orders/${orderID}`, { headers: { Authorization: `Bearer ${token}` } })).json()
+      }
+
+      if (finalOrder?.status !== 'COMPLETED') {
+        return NextResponse.json({ error: 'Pago de PayPal no completado' }, { status: 400 })
+      }
+
+      const pu = finalOrder.purchase_units?.[0]
+      const amountStr = pu?.amount?.value ? String(pu.amount.value) : '0'
+      const currencyCode = (pu?.amount?.currency_code || bodyCurrency || 'MXN').toUpperCase()
+      const customId = pu?.custom_id || ''
+      const packIdFromCustom = customId.startsWith('pack_id:') ? parseInt(customId.replace('pack_id:', ''), 10) : 1
+      packId = Number.isNaN(packIdFromCustom) ? 1 : packIdFromCustom
+      amountPaid = parseFloat(amountStr) || 0
+      currency = currencyCode
       paymentIntent = sessionId
-      customerEmail = email || ''
+      customerEmail = (finalOrder.payer?.email_address as string) || email || ''
     } else if (isStripePaymentIntent) {
       const pi = await stripe.paymentIntents.retrieve(sessionId)
       if (pi.status !== 'succeeded') {
@@ -116,6 +183,22 @@ export async function POST(req: NextRequest) {
     }
 
     const admin = createAdminClient()
+
+    // Evita activar compras para un userId que no corresponde al email del pago.
+    // (Protege contra abuso con userId arbitrario desde el cliente.)
+    try {
+      const { data: userRow } = await (admin as any).from('users').select('email').eq('id', userId).maybeSingle()
+      const storedEmail = String((userRow as { email?: string } | null)?.email || '').trim().toLowerCase()
+      const paidEmail = String(customerEmail || '').trim().toLowerCase()
+      if (storedEmail && paidEmail && storedEmail !== paidEmail) {
+        return NextResponse.json(
+          { error: 'El usuario no coincide con el email del pago' },
+          { status: 403 }
+        )
+      }
+    } catch {
+      // ignore
+    }
 
     // Idempotencia: si ya existe purchase para este user+pack, devolver éxito sin duplicar
     const { data: existingPurchase } = await (admin as any)

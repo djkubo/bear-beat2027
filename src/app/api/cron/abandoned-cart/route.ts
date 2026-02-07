@@ -32,12 +32,17 @@ export async function POST(req: NextRequest) {
 }
 
 async function runAbandonedCart(req: NextRequest) {
+  // En producción, SIEMPRE requerir secret para evitar abuso/costos (SMS/email masivo).
+  if (process.env.NODE_ENV === 'production' && !CRON_SECRET) {
+    return NextResponse.json(
+      { error: 'CRON_SECRET no configurado en el servidor' },
+      { status: 503 }
+    )
+  }
   if (CRON_SECRET) {
     const authHeader = req.headers.get('authorization')
     const secret = authHeader?.replace(/^Bearer\s+/i, '') || req.nextUrl.searchParams.get('secret')
-    if (secret !== CRON_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    if (secret !== CRON_SECRET) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const admin = createAdminClient()

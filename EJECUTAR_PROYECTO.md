@@ -63,13 +63,13 @@ npm run dev
 
 **Sin esto, no verás los géneros ni datos:**
 
-#### **SQL 1: Schema Principal**
+#### **SQL: Setup Completo**
 
 1. Ve a: https://supabase.com/dashboard/project/mthumshmwzmkwjulpbql/sql/new
 
 2. Abre el archivo en tu proyecto:
    ```
-   supabase/schema.sql
+   supabase/SETUP_COMPLETO.sql
    ```
 
 3. Selecciona TODO el contenido (Cmd+A)
@@ -82,22 +82,7 @@ npm run dev
 
 7. Espera a que diga: ✅ "Success"
 
-#### **SQL 2: Schema de Tracking**
-
-1. En el mismo SQL Editor
-
-2. Abre el archivo:
-   ```
-   supabase/schema_tracking.sql
-   ```
-
-3. Copia TODO
-
-4. Pega en SQL Editor
-
-5. Click **"Run"**
-
-6. Espera a que diga: ✅ "Success"
+> Nota: El tracking/RLS/tabla de eventos ya viene incluido en `supabase/SETUP_COMPLETO.sql`.
 
 ---
 

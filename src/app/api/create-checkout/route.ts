@@ -155,9 +155,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Configuración base de la sesión
-    const sessionConfig: any = {
-      mode: 'payment',
-      payment_method_types: paymentMethodTypes,
+	    const sessionConfig: any = {
+	      mode: 'payment',
+	      payment_method_types: paymentMethodTypes,
       line_items: [
         {
           price_data: {
@@ -169,14 +169,18 @@ export async function POST(req: NextRequest) {
             },
             unit_amount: Math.round(price * 100), // En centavos
           },
-          quantity: 1,
-        },
-      ],
-      success_url: `${baseUrl}/complete-purchase?session_id={CHECKOUT_SESSION_ID}${emailForCustomer ? `&email=${encodeURIComponent(emailForCustomer)}` : ''}`,
-      cancel_url: `${baseUrl}/checkout?canceled=true&pack=${pack.slug}`,
-      metadata: {
-        pack_id: pack.id.toString(),
-        pack_slug: pack.slug,
+	          quantity: 1,
+	        },
+	      ],
+	      // OXXO/SPEI no quedan "paid" al instante; mandar a la pantalla de "pago pendiente" para no spamear verify cada 2s.
+	      success_url:
+	        paymentMethod === 'oxxo' || paymentMethod === 'spei'
+	          ? `${baseUrl}/pago-pendiente?session_id={CHECKOUT_SESSION_ID}&method=${encodeURIComponent(paymentMethod)}`
+	          : `${baseUrl}/complete-purchase?session_id={CHECKOUT_SESSION_ID}${emailForCustomer ? `&email=${encodeURIComponent(emailForCustomer)}` : ''}`,
+	      cancel_url: `${baseUrl}/checkout?canceled=true&pack=${pack.slug}`,
+	      metadata: {
+	        pack_id: pack.id.toString(),
+	        pack_slug: pack.slug,
         ...(loggedUser && {
           user_id: loggedUser.id,
           customer_email: loggedUser.email,

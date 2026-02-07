@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic'
 
 const VIDEOS_BASE_PATH = process.env.VIDEOS_PATH || path.join(process.cwd(), 'Videos Enero 2026')
 const DEMOS_ENABLED = true
+const VIDEO_EXT = /\.(mp4|mov|avi|mkv|webm)$/i
 
 interface VideoMetadata {
   duration: string
@@ -65,7 +66,7 @@ function getBaseUrlForThumbnails(): string {
   return ''
 }
 
-/** Construye URL de portada. Con thumbnail en DB → thumbnail-cdn. En producción sin thumb: thumbnail-from-video (genera on-demand y guarda en DB). Local: thumbnail desde disco. */
+/** Construye URL de portada. Con thumbnail en DB → thumbnail-cdn. Sin thumbnail en DB: por convención usa .jpg junto al video (Bunny o FTP fallback). Local: thumbnail desde disco. */
 function buildThumbnailUrl(
   thumbnailUrlFromDb: string | null,
   relativePath: string,
@@ -80,11 +81,9 @@ function buildThumbnailUrl(
     }
     urlPath = `/api/thumbnail-cdn?path=${encodeURIComponent(thumbnailUrlFromDb)}`
   } else if (process.env.NODE_ENV === 'production') {
-    // Sin portada en DB: generar on-demand (descarga video, extrae frame, sube a Bunny, guarda en DB)
-    urlPath = `/api/thumbnail-from-video?path=${encodeURIComponent(relativePath)}`
-    if (artist || title) {
-      urlPath += `&artist=${encodeURIComponent(artist || '')}&title=${encodeURIComponent(title || '')}`
-    }
+    // Sin portada en DB: usar la convención "mismo nombre .jpg" (rápido y evita depender de ffmpeg en prod)
+    const jpgPath = (relativePath || '').replace(VIDEO_EXT, '.jpg')
+    urlPath = `/api/thumbnail-cdn?path=${encodeURIComponent(jpgPath)}`
   } else {
     urlPath = `/api/thumbnail/${encodeURIComponent(relativePath)}`
   }

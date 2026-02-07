@@ -115,7 +115,7 @@ function PaywallModal({ isOpen, onClose, fileName }: { isOpen: boolean; onClose:
           <div className="text-6xl mb-4">🔒</div>
           <h3 className="text-2xl font-black mb-2">¡Este video es premium!</h3>
           <p className="text-gray-400 mb-4">
-            Para descargar <span className="text-bear-blue font-bold">"{fileName}"</span> y los otros 3,246 videos, obtén tu acceso ahora.
+            Para descargar <span className="text-bear-blue font-bold">&quot;{fileName}&quot;</span> y los otros 3,246 videos, obtén tu acceso ahora.
           </p>
           
           <div className="bg-bear-blue/20 rounded-xl p-4 mb-6">

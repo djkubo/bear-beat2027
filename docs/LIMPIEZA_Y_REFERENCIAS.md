@@ -20,7 +20,6 @@ Estas rutas no están enlazadas desde botones ni páginas; pueden usarse por URL
 | API | Uso posible |
 |-----|-------------|
 | `GET /api/tracks-pdf` | Genera PDF con listado de tracks por género (branding Bear Beat). Uso: abrir en navegador o enlazar desde contenido/dashboard si se añade botón "Descargar listado PDF". |
-| `POST /api/setup/make-admin` | Asignar rol admin (setup inicial o recuperación). Uso: script o llamada manual. |
 | `POST /api/setup-database` | Setup inicial de BD. Uso: script o despliegue inicial. |
 
 No se han eliminado; se dejan disponibles. Si en el futuro se confirma que no se usarán, se pueden eliminar y actualizar [INDICE_COMPLETO.md](./INDICE_COMPLETO.md).

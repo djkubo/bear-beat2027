@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
 import { getMessengerUrl } from '@/config/contact'
 
 // ==========================================
@@ -15,7 +14,6 @@ import { getMessengerUrl } from '@/config/contact'
 export default function PagoPendientePage() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const supabase = createClient()
   
   const sessionId = searchParams.get('session_id')
   const method = searchParams.get('method') || 'oxxo'
@@ -29,17 +27,13 @@ export default function PagoPendientePage() {
 
     const checkPayment = async () => {
       try {
-        const { data } = await supabase
-          .from('pending_purchases')
-          .select('status')
-          .eq('stripe_session_id', sessionId)
-          .single()
-
-        if (data?.status === 'awaiting_completion') {
+        const res = await fetch(`/api/verify-payment?session_id=${encodeURIComponent(sessionId)}`)
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && data?.success && data?.paymentStatus === 'paid') {
           // Pago confirmado! Redirigir a completar
           setPaymentConfirmed(true)
           setTimeout(() => {
-            router.push(`/complete-purchase?session_id=${sessionId}`)
+            router.push(`/complete-purchase?session_id=${encodeURIComponent(sessionId)}`)
           }, 2000)
         }
       } catch (err) {
@@ -47,29 +41,26 @@ export default function PagoPendientePage() {
       }
     }
 
-    // Verificar cada 30 segundos
-    const interval = setInterval(checkPayment, 30000)
+    // OXXO puede tardar horas: no queremos spamear el endpoint ni la API de Stripe.
+    const intervalMs = method === 'oxxo' ? 5 * 60 * 1000 : 60 * 1000
+    const interval = setInterval(checkPayment, intervalMs)
     
     // También verificar al cargar
     checkPayment()
 
     return () => clearInterval(interval)
-  }, [sessionId])
+  }, [sessionId, method, router])
 
   const handleCheckManually = async () => {
     setChecking(true)
     
     try {
-      const { data } = await supabase
-        .from('pending_purchases')
-        .select('status')
-        .eq('stripe_session_id', sessionId)
-        .single()
-
-      if (data?.status === 'awaiting_completion') {
+      const res = await fetch(`/api/verify-payment?session_id=${encodeURIComponent(sessionId || '')}`)
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data?.success && data?.paymentStatus === 'paid') {
         setPaymentConfirmed(true)
         setTimeout(() => {
-          router.push(`/complete-purchase?session_id=${sessionId}`)
+          router.push(`/complete-purchase?session_id=${encodeURIComponent(sessionId || '')}`)
         }, 1500)
       } else {
         // Aún no confirmado
@@ -78,6 +69,27 @@ export default function PagoPendientePage() {
     } catch (err) {
       setChecking(false)
     }
+  }
+
+  if (!sessionId) {
+    return (
+      <div className="min-h-screen bg-bear-black text-white flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center bg-white/5 border border-bear-blue/30 rounded-2xl p-6">
+          <h1 className="text-2xl font-black mb-2">No encontramos tu sesión</h1>
+          <p className="text-gray-400 text-sm mb-6">
+            Si acabas de pagar, revisa el enlace desde tu correo o vuelve al checkout. Si necesitas ayuda, escríbenos.
+          </p>
+          <a
+            href={getMessengerUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center w-full bg-bear-blue text-bear-black font-bold py-3 rounded-xl hover:bg-bear-blue/90 transition-colors"
+          >
+            Ayuda en línea
+          </a>
+        </div>
+      </div>
+    )
   }
 
   if (paymentConfirmed) {
@@ -152,7 +164,7 @@ export default function PagoPendientePage() {
                   <div className="flex items-start gap-3">
                     <span className="text-2xl">2️⃣</span>
                     <div>
-                      <p className="font-bold">Dile al cajero que pagas un "servicio"</p>
+                      <p className="font-bold">Dile al cajero que pagas un &quot;servicio&quot;</p>
                       <p className="text-sm text-gray-400">Muestra el código de barras</p>
                     </div>
                   </div>

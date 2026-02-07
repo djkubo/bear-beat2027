@@ -1,18 +1,40 @@
-import { OpenAI } from 'openai';
-import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
-import { getOpenAIChatModel } from '@/lib/openai-config';
+import { OpenAI } from 'openai'
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase/server'
+import { getOpenAIChatModel } from '@/lib/openai-config'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'dummy-key-for-build' });
+const DUMMY_KEY = 'dummy-key-for-build'
+const CHAT_MODEL_FALLBACK = 'gpt-4o'
 
-/** Modelo de chat: configurable por OPENAI_CHAT_MODEL; si no existe en API, usar gpt-4o */
-const CHAT_MODEL_FALLBACK = 'gpt-4o';
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || DUMMY_KEY })
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-key';
-const supabase = createClient(supabaseUrl, supabaseKey);
+type RateBucket = { resetAt: number; count: number }
+const RATE_WINDOW_MS = 60_000
+const RATE_MAX = 25
 
-export const runtime = 'edge';
+function getRateMap(): Map<string, RateBucket> {
+  const g = globalThis as unknown as { __bb_chat_rate?: Map<string, RateBucket> }
+  if (!g.__bb_chat_rate) g.__bb_chat_rate = new Map<string, RateBucket>()
+  return g.__bb_chat_rate
+}
+
+function getClientIp(req: NextRequest): string {
+  const xff = req.headers.get('x-forwarded-for') || ''
+  const first = xff.split(',')[0]?.trim()
+  return first || req.headers.get('x-real-ip') || 'unknown'
+}
+
+function isRateLimited(key: string): boolean {
+  const now = Date.now()
+  const map = getRateMap()
+  const bucket = map.get(key)
+  if (!bucket || now > bucket.resetAt) {
+    map.set(key, { resetAt: now + RATE_WINDOW_MS, count: 1 })
+    return false
+  }
+  bucket.count += 1
+  return bucket.count > RATE_MAX
+}
 
 /** Construye el system prompt con conciencia de usuario (perfil inyectado). Cerebro bipolar: Ventas + Soporte. */
 function buildSystemPrompt(userContext: string): string {
@@ -47,183 +69,182 @@ MODULACIÓN DE RESPUESTA:
 
 IMPORTANTE: SIEMPRE consulta el bloque de "CONTEXTO RAG" que se te enviará abajo para respuestas específicas.
 SI NO SABES ALGO: "Ese dato no lo tengo, escribe AGENTE para hablar con un humano."
-`.trim();
+`.trim()
 }
 
-const DUMMY_KEY = 'dummy-key-for-build';
-
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey || apiKey === DUMMY_KEY) {
       return NextResponse.json(
         { role: 'assistant', content: 'Sistema de IA reiniciando, intenta en breve.' },
         { status: 503 }
-      );
+      )
     }
 
-    const { message, history, userId, sessionId } = await req.json();
-    const currentSessionId = sessionId || 'guest-' + Date.now();
+    // Rate limit simple (anti-abuso/costos). No es perfecto en serverless, pero reduce spam.
+    if (process.env.NODE_ENV === 'production') {
+      const ip = getClientIp(req)
+      if (isRateLimited(ip)) {
+        return NextResponse.json(
+          { role: 'assistant', content: 'Estás enviando demasiados mensajes. Espera un minuto y vuelve a intentar.' },
+          { status: 429 }
+        )
+      }
+    }
 
-    // —— Inyección de perfil de usuario (Conciencia de Usuario / Inteligencia Híbrida) ——
-    let userContext = 'Usuario Anónimo (Tratar como Lead Frío).';
+    const body = await req.json().catch(() => ({} as any))
+    const message = typeof body.message === 'string' ? body.message.trim() : ''
+    const history = Array.isArray(body.history) ? body.history : []
+    const sessionId =
+      typeof body.sessionId === 'string' && body.sessionId.trim()
+        ? body.sessionId.trim()
+        : `guest-${Date.now()}`
+
+    if (!message) {
+      return NextResponse.json(
+        { role: 'assistant', content: 'No recibí tu mensaje. Intenta de nuevo.' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id || null
+
+    // —— Inyección de perfil de usuario (solo si el request está autenticado) ——
+    let userContext = 'Usuario Anónimo (Tratar como Lead Frío).'
     if (userId) {
-      const { data: profile } = await supabase
-        .from('users')
+      const { data: profile } = await (supabase.from('users') as any)
         .select('name, email')
         .eq('id', userId)
-        .single();
+        .maybeSingle()
 
-      const { data: purchases } = await supabase
-        .from('purchases')
+      const { data: purchases } = await (supabase.from('purchases') as any)
         .select('pack_id, purchased_at')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
 
-      const purchaseCount = purchases?.length ?? 0;
-      const lastPurchase = purchases?.length
-        ? purchases.reduce((prev, curr) =>
-            new Date((curr?.purchased_at) || 0) > new Date((prev?.purchased_at) || 0) ? curr : prev
+      const purchaseCount = (purchases as any[])?.length ?? 0
+      const lastPurchase = (purchases as any[])?.length
+        ? (purchases as any[]).reduce((prev, curr) =>
+            new Date(curr?.purchased_at || 0) > new Date(prev?.purchased_at || 0) ? curr : prev
           )
-        : null;
+        : null
       const lastPurchaseDate = lastPurchase?.purchased_at
         ? new Date(lastPurchase.purchased_at).toLocaleDateString('es-MX', { dateStyle: 'short' })
-        : 'N/A';
+        : 'N/A'
 
       userContext = `PERFIL DEL DJ:
 - Nombre: ${profile?.name || 'Colega'}
 - Estatus: ${purchaseCount ? 'CLIENTE VIP 💎' : 'VISITANTE 👀'}
 - Compras Previas: ${purchaseCount} Packs.
 - Última compra: ${lastPurchaseDate}
-- Tono a usar: ${purchaseCount ? 'Familiar, de respeto, agradecido.' : 'Persuasivo, energético, enfocado en cierre.'}`;
+- Tono a usar: ${purchaseCount ? 'Familiar, de respeto, agradecido.' : 'Persuasivo, energético, enfocado en cierre.'}`
     }
 
-    const SYSTEM_PROMPT = buildSystemPrompt(userContext);
+    const SYSTEM_PROMPT = buildSystemPrompt(userContext)
 
-    let historyFromDb: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-    if (userId) {
-      const { data: pastMessages } = await supabase
-        .from('chat_messages')
-        .select('role, content')
-        .eq('user_id', userId)
-        .in('role', ['user', 'assistant'])
-        .order('created_at', { ascending: false })
-        .limit(20);
-      if (pastMessages?.length) {
-        historyFromDb = [...pastMessages]
-          .reverse()
-          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content || '' }));
-      }
-    }
-
-    if (userId) {
-      await supabase.from('chat_messages').insert({
-        session_id: currentSessionId,
+    // Persistencia ligera (no crítica). chat_messages tiene policy de INSERT abierta.
+    try {
+      await (supabase.from('chat_messages') as any).insert({
+        session_id: sessionId,
         user_id: userId,
         role: 'user',
-        content: message,
-      });
+        content: message.slice(0, 8000),
+      })
+    } catch {
+      // ignore
     }
 
-    const conversationHistory = historyFromDb.length ? historyFromDb : (history || []).slice(-10).map((h: { role?: string; content?: string }) => ({
-      role: (h.role === 'assistant' ? 'assistant' : 'user') as 'user' | 'assistant',
-      content: h.content || '',
-    }));
+    const conversationHistory = history
+      .slice(-10)
+      .map((h: { role?: string; content?: string }) => ({
+        role: (h?.role === 'assistant' ? 'assistant' : 'user') as 'user' | 'assistant',
+        content: typeof h?.content === 'string' ? h.content : '',
+      }))
 
-    let reply: string;
-    let contextText = '';
+    let reply = ''
+    let contextText = ''
+
     try {
       const embedding = await openai.embeddings.create({
         model: 'text-embedding-3-large',
-        input: message,
-      });
+        input: message.slice(0, 8000),
+      })
 
-      const { data: documents } = await supabase.rpc('match_documents', {
+      const { data: documents } = await (supabase as any).rpc('match_documents', {
         query_embedding: embedding.data[0].embedding,
         match_threshold: 0.3,
         match_count: 5,
-      });
+      })
 
-      contextText = documents?.map((d: any) => d.content).join('\n\n') || '';
-      console.log('Contexto recuperado:', contextText.substring(0, 200));
+      contextText = (documents as any[])?.map((d) => d?.content).filter(Boolean).join('\n\n') || ''
 
-      const chatModel = getOpenAIChatModel();
+      const chatModel = getOpenAIChatModel()
       const createParams: Parameters<typeof openai.chat.completions.create>[0] = {
         model: chatModel,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'system', content: "CONTEXTO RAG (USAR OBLIGATORIAMENTE):\n" + contextText },
+          { role: 'system', content: 'CONTEXTO RAG (USAR OBLIGATORIAMENTE):\n' + contextText },
           ...conversationHistory,
-          { role: 'user', content: message }
+          { role: 'user', content: message },
         ],
         temperature: 0.7,
         max_completion_tokens: 300,
         stream: false,
-      };
-      if (chatModel.startsWith('gpt-5')) {
-        (createParams as unknown as Record<string, unknown>).reasoning_effort = 'none';
       }
-      const response = await openai.chat.completions.create(createParams);
-      const completion = response as { choices: Array<{ message?: { content?: string | null } }> };
-      reply = completion.choices[0]?.message?.content ?? '';
+      if (chatModel.startsWith('gpt-5')) {
+        ;(createParams as unknown as Record<string, unknown>).reasoning_effort = 'none'
+      }
 
-      if (userId && reply) {
-        await supabase.from('chat_messages').insert({
-          session_id: currentSessionId,
+      const response = await openai.chat.completions.create(createParams as any)
+      reply = (response as any)?.choices?.[0]?.message?.content ?? ''
+
+      try {
+        await (supabase.from('chat_messages') as any).insert({
+          session_id: sessionId,
           user_id: userId,
           role: 'assistant',
-          content: reply,
+          content: reply.slice(0, 8000),
           is_bot: true,
-        });
+        })
+      } catch {
+        // ignore
       }
     } catch (apiError: unknown) {
-      const errMsg = apiError instanceof Error ? apiError.message : String(apiError);
-      console.error('AI API Error:', errMsg, apiError);
+      const errMsg = apiError instanceof Error ? apiError.message : String(apiError)
+      console.error('AI API Error:', errMsg, apiError)
+
+      // Fallback de modelo si el configurado falla
       if (errMsg.includes('model') || errMsg.includes('Invalid') || errMsg.includes('404')) {
         try {
           const fallbackParams: Parameters<typeof openai.chat.completions.create>[0] = {
             model: CHAT_MODEL_FALLBACK,
             messages: [
               { role: 'system', content: SYSTEM_PROMPT },
-              { role: 'system', content: "CONTEXTO RAG (USAR OBLIGATORIAMENTE):\n" + contextText },
+              { role: 'system', content: 'CONTEXTO RAG (USAR OBLIGATORIAMENTE):\n' + contextText },
               ...conversationHistory,
-              { role: 'user', content: message }
+              { role: 'user', content: message },
             ],
             temperature: 0.7,
             max_completion_tokens: 300,
             stream: false,
-          };
-          const fallback = await openai.chat.completions.create(fallbackParams);
-          const fallbackCompletion = fallback as { choices: Array<{ message?: { content?: string | null } }> };
-          const fallbackReply = fallbackCompletion.choices[0]?.message?.content ?? '';
-          if (fallbackReply) {
-            if (userId) {
-              await supabase.from('chat_messages').insert({
-                session_id: currentSessionId,
-                user_id: userId,
-                role: 'assistant',
-                content: fallbackReply,
-                is_bot: true,
-              });
-            }
-            return NextResponse.json({ role: 'assistant', content: fallbackReply });
           }
+          const fallback = await openai.chat.completions.create(fallbackParams as any)
+          reply = (fallback as any)?.choices?.[0]?.message?.content ?? ''
         } catch (fallbackErr) {
-          console.error('Fallback model failed:', fallbackErr);
+          console.error('Fallback model failed:', fallbackErr)
         }
       }
-      return NextResponse.json(
-        { role: 'assistant', content: 'Estoy actualizando mis sistemas de venta, dame un momento.' },
-        { status: 200 }
-      );
     }
 
-    return NextResponse.json({ role: 'assistant', content: reply });
-
+    if (!reply) reply = 'Estoy actualizando mis sistemas de venta, dame un momento.'
+    return NextResponse.json({ role: 'assistant', content: reply })
   } catch (error) {
-    console.error('Chat Error:', error);
+    console.error('Chat Error:', error)
     return NextResponse.json(
       { role: 'assistant', content: 'Estoy actualizando mis sistemas de venta, dame un momento.' },
       { status: 200 }
-    );
+    )
   }
 }

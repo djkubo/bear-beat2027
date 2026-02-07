@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Link from 'next/link'
 
 interface State {
   hasError: boolean
@@ -63,12 +64,12 @@ export class GlobalErrorBoundary extends React.Component<
               >
                 Recargar
               </button>
-              <a
+              <Link
                 href="/"
                 className="px-4 py-2 rounded-xl border border-white/20 text-white font-bold hover:bg-white/5"
               >
                 Ir al inicio
-              </a>
+              </Link>
             </div>
             {process.env.NODE_ENV === 'development' && this.state.error && (
               <pre className="mt-4 p-4 rounded-lg bg-zinc-900 text-xs text-left overflow-auto max-h-40">

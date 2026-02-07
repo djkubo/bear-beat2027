@@ -57,14 +57,12 @@ export default function CompletePurchasePage() {
   const [generatedCredentials, setGeneratedCredentials] = useState<{email: string, password: string} | null>(null)
   const [ftpCredentials, setFtpCredentials] = useState<{ ftp_username?: string; ftp_password?: string; ftp_host?: string } | null>(null)
   const [showEmailNotConfirmed, setShowEmailNotConfirmed] = useState(false)
-  const [claimMode, setClaimMode] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
-  const [claimLoading, setClaimLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
   const [guideOpenDone, setGuideOpenDone] = useState<'ftp' | 'drive' | 'web' | null>(null)
   const [ftpClientTabDone, setFtpClientTabDone] = useState<'filezilla' | 'airexplorer'>('filezilla')
   const [pollingElapsed, setPollingElapsed] = useState(0)
   const confettiFired = useRef(false)
-  const checkEmailTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Confeti al entrar en estado "done" (una sola vez)
@@ -112,7 +110,6 @@ export default function CompletePurchasePage() {
   // Limpiar debounce y polling al desmontar
   useEffect(() => {
     return () => {
-      if (checkEmailTimeoutRef.current) clearTimeout(checkEmailTimeoutRef.current)
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current)
         pollingIntervalRef.current = null
@@ -165,7 +162,6 @@ export default function CompletePurchasePage() {
     if (stripeData.customerEmail) {
       setEmail(stripeData.customerEmail)
       setEmailFromPayment(true)
-      await checkExistingAccount(stripeData.customerEmail)
     }
     if (stripeData.customerName) setName(stripeData.customerName)
     if (stripeData.customerPhone) setPhone(stripeData.customerPhone)
@@ -207,62 +203,16 @@ export default function CompletePurchasePage() {
         return
       }
 
-      // Fallback: si verify falló (webhook tardó o pago aún procesando), buscar en pending_purchases
-      let pendingData: any = null
-      let pendingError: boolean = true
-      try {
-        if (sessionId && provider !== 'paypal') {
-          const res = await supabase.from('pending_purchases').select('*, pack:packs(*)').eq('stripe_session_id', sessionId).single()
-          pendingData = res.data
-          pendingError = !!res.error
-        } else if (paymentIntentId) {
-          const res = await supabase.from('pending_purchases').select('*, pack:packs(*)').eq('stripe_payment_intent', paymentIntentId).single()
-          pendingData = res.data
-          pendingError = !!res.error
-        }
-
-        if (!pendingError && pendingData) {
-          if (pendingData.status === 'completed') {
-            toast.success('¡Tu compra ya está activa!')
-            router.push('/dashboard')
-            return
-          }
-          const pack = Array.isArray(pendingData.pack) ? pendingData.pack[0] : pendingData.pack
-          setPurchaseData({
-            stripe_session_id: sessionId || paymentIntentId,
-            pack_id: pendingData.pack_id,
-            pack: pack || { name: 'Pack' },
-            amount_paid: pendingData.amount_paid,
-            currency: (pendingData.currency || 'MXN').toUpperCase(),
-            payment_provider: pendingData.payment_provider || 'stripe',
-            customer_email: pendingData.customer_email,
-            customer_name: pendingData.customer_name,
-          })
-          if (pendingData.customer_email) {
-            setEmail(pendingData.customer_email)
-            setEmailFromPayment(true)
-            await checkExistingAccount(pendingData.customer_email)
-          }
-          if (pendingData.customer_name) setName(pendingData.customer_name)
-          setState('success')
-          setTimeout(() => setState('form'), 2500)
-          return
-        }
-      } catch (dbErr) {
-        console.log('DB not available, continuing with Stripe data')
-      }
-
-            if (!stripeRes.ok) {
-        const msg = String(stripeData?.error || stripeData?.status || '')
-        if (msg.toLowerCase().includes('card') || msg.includes('402')) {
-          setError('Tu tarjeta no pasó. No te preocupes: intenta de nuevo con OXXO o transferencia SPEI (desde la página de pago).')
-          setState('error')
-        } else {
-          setError(null)
-          setState('loading')
-          setPollingElapsed(0)
-          startPurchasePolling()
-        }
+      // Si verify falló (webhook tardó o pago aún procesando), iniciar polling hasta confirmar.
+      const msg = String(stripeData?.error || stripeData?.status || '')
+      if (msg.toLowerCase().includes('card') || msg.includes('402')) {
+        setError('Tu tarjeta no pasó. No te preocupes: intenta de nuevo con OXXO o transferencia SPEI (desde la página de pago).')
+        setState('error')
+      } else {
+        setError(null)
+        setState('loading')
+        setPollingElapsed(0)
+        startPurchasePolling()
       }
 
     } catch (err) {
@@ -272,43 +222,10 @@ export default function CompletePurchasePage() {
     }
   }
 
-  const checkExistingAccount = async (checkEmail: string) => {
-    try {
-      const { data, error: qError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', checkEmail)
-        .maybeSingle()
-      if (qError) {
-        setHasExistingAccount(false)
-        return
-      }
-      setHasExistingAccount(!!data)
-    } catch {
-      setHasExistingAccount(false)
-    }
-  }
-
-  // Debounce validación de email para evitar 406 / spam a Supabase
-  const handleEmailChange = (newEmail: string) => {
-    setEmail(newEmail)
-    if (checkEmailTimeoutRef.current) {
-      clearTimeout(checkEmailTimeoutRef.current)
-      checkEmailTimeoutRef.current = null
-    }
-    if (!newEmail.includes('@') || newEmail.length < 6) {
-      setHasExistingAccount(false)
-      return
-    }
-    checkEmailTimeoutRef.current = setTimeout(() => {
-      checkEmailTimeoutRef.current = null
-      checkExistingAccount(newEmail)
-    }, 500)
-  }
-
   // Completar con cuenta existente (login)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setHasExistingAccount(true)
     setShowEmailNotConfirmed(false)
     setState('activating')
 
@@ -322,7 +239,7 @@ export default function CompletePurchasePage() {
         const msg = (loginError.message || '').toLowerCase()
         if (msg.includes('email not confirmed') || msg.includes('email_not_confirmed')) {
           setShowEmailNotConfirmed(true)
-          toast.error('Tu email aún no está confirmado. Reenvía el correo o establece tu contraseña abajo.')
+          toast.error('Tu email aún no está confirmado. Reenvía el correo o restablece tu contraseña.')
         } else {
           toast.error('Contraseña incorrecta')
         }
@@ -371,21 +288,6 @@ export default function CompletePurchasePage() {
       const finalPassword = password || `Bear${Math.random().toString(36).slice(2, 10)}!`
       const normalizedPhone = normalizePhoneNumber(phone, country) || phone
 
-      // Verificar si email ya existe en tabla users (evitar conflicto con webhook)
-      try {
-        const { data: existing } = await supabase
-          .from('users')
-          .select('id')
-          .eq('email', email)
-          .maybeSingle()
-        if (existing?.id) {
-          toast.error('Este email ya tiene cuenta. Inicia sesión con tu contraseña.')
-          setHasExistingAccount(true)
-          setState('login')
-          return
-        }
-      } catch (_) {}
-
       const createRes = await fetch('/api/auth/create-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -394,12 +296,14 @@ export default function CompletePurchasePage() {
           password: finalPassword,
           name,
           phone: normalizedPhone,
+          paymentRef: purchaseData?.stripe_session_id || sessionId || paymentIntentId,
+          provider: provider || purchaseData?.payment_provider,
         }),
       })
       const createData = await createRes.json().catch(() => ({}))
 
       if (createRes.status === 409 || createData?.error === 'already_exists') {
-        toast.info('Tu cuenta ya existe. Inicia sesión con tu contraseña o usa "Establecer contraseña" si aún no la tienes.')
+        toast.info('Tu cuenta ya existe. Inicia sesión con tu contraseña o restablécela si aún no la tienes.')
         setHasExistingAccount(true)
         setState('login')
         return
@@ -707,7 +611,7 @@ export default function CompletePurchasePage() {
                     type="email"
                     value={email}
                     readOnly={emailFromPayment}
-                    onChange={(e) => !emailFromPayment && handleEmailChange(e.target.value)}
+                    onChange={(e) => !emailFromPayment && setEmail(e.target.value)}
                     className={`w-full px-4 py-3 rounded-xl text-lg focus:outline-none ${
                       emailFromPayment
                         ? 'bg-white/5 border-2 border-zinc-600 text-gray-300 cursor-default'
@@ -799,16 +703,18 @@ export default function CompletePurchasePage() {
                 </button>
               </form>
 
-              {hasExistingAccount && (
-                <div className="mt-4 text-center">
-                  <button
-                    onClick={() => setState('login')}
-                    className="text-bear-blue hover:underline text-sm"
-                  >
-                    ¿Ya tienes cuenta? Inicia sesión
-                  </button>
-                </div>
-              )}
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHasExistingAccount(true)
+                    setState('login')
+                  }}
+                  className="text-bear-blue hover:underline text-sm"
+                >
+                  ¿Ya tienes cuenta? Inicia sesión
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -824,105 +730,73 @@ export default function CompletePurchasePage() {
               </div>
 
               <div className="bg-blue-500/20 border border-blue-500 rounded-xl p-4 mb-6 text-center">
-                <p className="text-blue-400 font-bold">Este email ya tiene cuenta</p>
-                <p className="text-blue-300 text-sm">Inicia sesión para activar tu compra</p>
+                <p className="text-blue-400 font-bold">Inicia sesión para activar</p>
+                <p className="text-blue-300 text-sm">Si no tienes cuenta, vuelve y crea una con tu email de pago.</p>
               </div>
 
               <h2 className="text-2xl font-black text-center mb-8">
                 Inicia sesión
               </h2>
 
-              {showEmailNotConfirmed && (
-                <div className="bg-amber-500/20 border border-amber-500 rounded-xl p-4 mb-6">
-                  <p className="text-amber-300 font-bold mb-2">Tu email aún no está confirmado</p>
-                  <p className="text-amber-200/90 text-sm mb-4">
-                    Si acabas de pagar, puedes reenviar el correo de confirmación o establecer tu contraseña aquí (si aún no la tienes).
-                  </p>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      disabled={resendLoading}
+	              {showEmailNotConfirmed && (
+	                <div className="bg-amber-500/20 border border-amber-500 rounded-xl p-4 mb-6">
+	                  <p className="text-amber-300 font-bold mb-2">Tu email aún no está confirmado</p>
+	                  <p className="text-amber-200/90 text-sm mb-4">
+	                    Si acabas de pagar, puedes reenviar el correo de confirmación o pedir un link para restablecer tu contraseña.
+	                  </p>
+	                  <div className="flex flex-wrap gap-3">
+	                    <button
+	                      type="button"
+	                      disabled={resendLoading}
                       onClick={async () => {
                         setResendLoading(true)
                         try {
                           const { error } = await supabase.auth.resend({ type: 'signup', email })
-                          if (error) throw error
-                          toast.success('Correo reenviado. Revisa tu bandeja (y spam).')
-                        } catch (e: any) {
-                          toast.error(e?.message || 'No se pudo reenviar. Prueba "Establecer contraseña".')
-                        } finally {
-                          setResendLoading(false)
-                        }
-                      }}
-                      className="px-4 py-2 bg-amber-500/30 hover:bg-amber-500/50 rounded-lg text-amber-200 text-sm font-medium disabled:opacity-50"
-                    >
-                      {resendLoading ? 'Enviando…' : 'Reenviar correo de confirmación'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setClaimMode(!claimMode)}
-                      className="px-4 py-2 bg-cyan-500/30 hover:bg-cyan-500/50 rounded-lg text-cyan-200 text-sm font-medium"
-                    >
-                      {claimMode ? 'Ocultar' : 'Establecer contraseña (reclamar cuenta)'}
-                    </button>
-                  </div>
-                  {claimMode && (
-                    <form
-                      className="mt-4 pt-4 border-t border-amber-500/40 space-y-3"
-                      onSubmit={async (e) => {
-                        e.preventDefault()
-                        if (!password || password.length < 6 || password !== confirmPassword) {
-                          toast.error('Contraseña mínimo 6 caracteres y deben coincidir')
-                          return
-                        }
-                        setClaimLoading(true)
-                        try {
-                          const res = await fetch('/api/claim-account', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email, password }),
-                          })
-                          const data = await res.json().catch(() => ({}))
-                          if (!res.ok) throw new Error(data?.error || 'Error')
-                          toast.success('Contraseña establecida. Inicia sesión abajo.')
-                          setClaimMode(false)
-                        } catch (err: any) {
-                          toast.error(err?.message || 'No se pudo establecer la contraseña')
-                        } finally {
-                          setClaimLoading(false)
-                        }
-                      }}
-                    >
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Nueva contraseña (mín. 6)"
-                        className="w-full px-3 py-2 bg-white/5 border border-amber-500/40 rounded-lg text-sm"
-                        minLength={6}
-                      />
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Confirmar contraseña"
-                        className="w-full px-3 py-2 bg-white/5 border border-amber-500/40 rounded-lg text-sm"
-                        minLength={6}
-                      />
-                      <button type="submit" disabled={claimLoading} className="px-4 py-2 bg-cyan-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
-                        {claimLoading ? 'Guardando…' : 'Guardar contraseña'}
-                      </button>
-                    </form>
-                  )}
-                </div>
-              )}
+	                          if (error) throw error
+	                          toast.success('Correo reenviado. Revisa tu bandeja (y spam).')
+	                        } catch (e: any) {
+	                          toast.error(e?.message || 'No se pudo reenviar. Prueba "Restablecer contraseña".')
+	                        } finally {
+	                          setResendLoading(false)
+	                        }
+	                      }}
+	                      className="px-4 py-2 bg-amber-500/30 hover:bg-amber-500/50 rounded-lg text-amber-200 text-sm font-medium disabled:opacity-50"
+	                    >
+	                      {resendLoading ? 'Enviando…' : 'Reenviar correo de confirmación'}
+	                    </button>
+	                    <button
+	                      type="button"
+	                      disabled={resetLoading}
+	                      onClick={async () => {
+	                        setResetLoading(true)
+	                        try {
+	                          const res = await fetch('/api/auth/forgot-password', {
+	                            method: 'POST',
+	                            headers: { 'Content-Type': 'application/json' },
+	                            body: JSON.stringify({ email }),
+	                          })
+	                          const data = await res.json().catch(() => ({}))
+	                          if (!res.ok) throw new Error(data?.error || 'No se pudo enviar el link')
+	                          toast.success('Listo. Te enviamos un link para restablecer tu contraseña (revisa spam).')
+	                        } catch (e: any) {
+	                          toast.error(e?.message || 'No se pudo enviar el link')
+	                        } finally {
+	                          setResetLoading(false)
+	                        }
+	                      }}
+	                      className="px-4 py-2 bg-cyan-500/30 hover:bg-cyan-500/50 rounded-lg text-cyan-200 text-sm font-medium"
+	                    >
+	                      {resetLoading ? 'Enviando…' : 'Restablecer contraseña'}
+	                    </button>
+	                  </div>
+	                </div>
+	              )}
 
-              {!claimMode && (
-                <form onSubmit={handleLogin} className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-bold mb-2">📧 Email</label>
-                    <input
-                      type="email"
+	              <form onSubmit={handleLogin} className="space-y-5">
+	                  <div>
+	                    <label className="block text-sm font-bold mb-2">📧 Email</label>
+	                    <input
+	                      type="email"
                       value={email}
                       className="w-full px-4 py-3 bg-white/10 border-2 border-gray-600 rounded-xl text-lg"
                       disabled
@@ -946,9 +820,8 @@ export default function CompletePurchasePage() {
                     className="w-full bg-bear-blue text-bear-black font-black text-xl py-4 rounded-xl hover:bg-bear-blue/90 transition-colors"
                   >
                     INICIAR SESIÓN Y ACTIVAR →
-                  </button>
-                </form>
-              )}
+	                  </button>
+	              </form>
 
               <div className="mt-4 text-center space-y-2">
                 <p className="text-xs text-gray-500">
@@ -963,7 +836,6 @@ export default function CompletePurchasePage() {
                     setHasExistingAccount(false)
                     setState('form')
                     setShowEmailNotConfirmed(false)
-                    setClaimMode(false)
                   }}
                   className="block w-full text-gray-400 hover:text-white text-sm"
                 >

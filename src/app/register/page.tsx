@@ -179,20 +179,11 @@ export default function RegisterPage() {
         email,
         password,
         options: {
-          data: { name, phone: normalizedPhone },
+          data: { name, phone: normalizedPhone, country_code: country },
           emailRedirectTo: `${baseUrl || (typeof window !== 'undefined' ? window.location.origin : '')}/auth/callback`,
         },
       })
       if (error) throw error
-      if (authData.user) {
-        await supabase.from('users').insert({
-          id: authData.user.id,
-          email,
-          name,
-          phone: normalizedPhone,
-          country_code: country,
-        })
-      }
       toast.success('¡Cuenta creada! Revisa tu email para verificar.')
       router.push(`/verify-email?email=${encodeURIComponent(email)}`)
     } catch (e: unknown) {

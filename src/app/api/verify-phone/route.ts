@@ -59,6 +59,14 @@ export async function POST(req: NextRequest) {
         })
       }
 
+      // En producción NO usamos fallback en memoria (no es confiable en serverless y puede abrir abuso).
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json(
+          { error: 'Twilio Verify no configurado. Configura TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y TWILIO_VERIFY_SERVICE_SID.' },
+          { status: 503 }
+        )
+      }
+
       // Fallback sin Twilio Verify: generar código y opcionalmente enviar por send-sms
       const code = Math.floor(100000 + Math.random() * 900000).toString()
       verificationCodes.set(toE164Phone, {
