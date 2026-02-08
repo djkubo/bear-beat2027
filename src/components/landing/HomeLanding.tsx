@@ -9,11 +9,10 @@ import { downloadFile } from '@/lib/download'
 import { registerServiceWorker, requestNotificationPermission, subscribeToPush, isPushSupported } from '@/lib/push-notifications'
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
-import { useFeaturedPack } from '@/lib/hooks/useFeaturedPack'
 import { StatsSection } from '@/components/landing/stats-section'
 import { Play, CheckCircle2, Check, Download, Wifi, Folder, Music2, Search, ChevronRight, Lock, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 
 // ==========================================
@@ -123,9 +122,14 @@ function VideoDemoDialog({
         </div>
 
         <div className="p-6 text-center">
-          <h3 className="text-xl font-bold text-white">
-            {video.artist} - {video.title}
-          </h3>
+          <DialogHeader className="px-0 pt-0">
+            <DialogTitle className="text-xl font-bold text-white">
+              {video.artist} - {video.title}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-zinc-400">
+              {hasAccess ? 'Descarga disponible para miembros con acceso.' : 'Escucha el demo. Desbloquea para descargar.'}
+            </DialogDescription>
+          </DialogHeader>
           <div className="flex justify-center gap-3 mt-2 text-sm text-zinc-400">
             {video.bpm && <span className="bg-zinc-800 px-2 py-1 rounded">{video.bpm} BPM</span>}
             {video.key && <span className="bg-zinc-800 px-2 py-1 rounded">{video.key}</span>}
@@ -160,14 +164,35 @@ function VideoDemoDialog({
 // ==========================================
 // HOME LANDING PRINCIPAL
 // ==========================================
-export default function HomeLanding() {
-  const { pack: featuredPack } = useFeaturedPack()
-  const packSlug = featuredPack?.slug || 'enero-2026'
-  const packName = featuredPack?.name || 'Pack Enero 2026'
-  const priceMXNFromPack = Number(featuredPack?.price_mxn) || 350
+type HomeLandingProps = {
+  initialPack?: {
+    slug: string
+    name: string
+    description?: string | null
+    price_mxn: number
+    price_usd?: number | null
+  }
+  initialPackInfo?: PackInfo | null
+  initialHeroThumbUrl?: string | null
+}
+
+export default function HomeLanding({ initialPack, initialPackInfo, initialHeroThumbUrl }: HomeLandingProps) {
+  // La landing debe renderizar estable en SSR. Estos defaults evitan "flicker" de precio/pack.
+  const FALLBACK_PACK = {
+    slug: 'enero-2026',
+    name: 'Pack Enero 2026',
+    description: null as string | null,
+    price_mxn: 350,
+    price_usd: 19,
+  }
+
+  const pack = initialPack || FALLBACK_PACK
+  const packSlug = pack.slug || 'enero-2026'
+  const packName = pack.name || 'Pack Enero 2026'
+  const priceMXNFromPack = Number(pack.price_mxn) || 350
 
   const [genres, setGenres] = useState<Genre[]>([])
-  const [packInfo, setPackInfo] = useState<PackInfo | null>(null)
+  const [packInfo, setPackInfo] = useState<PackInfo | null>(initialPackInfo || null)
   const [loading, setLoading] = useState(true)
   const [loadingAll, setLoadingAll] = useState(false)
   const [loadingGenreId, setLoadingGenreId] = useState<string | null>(null)
@@ -311,7 +336,11 @@ export default function HomeLanding() {
   const totalVideos = packInfo?.totalVideos ?? 0
   const totalPurchases = packInfo?.totalPurchases ?? 0
   const priceMXN = priceMXNFromPack
-  const heroThumbVideo = genres.find((g) => (g.videos || []).length > 0)?.videos?.[0]
+  const heroThumbVideo = initialHeroThumbUrl ? null : genres.find((g) => (g.videos || []).length > 0)?.videos?.[0]
+  const heroThumbSrc =
+    initialHeroThumbUrl ||
+    (heroThumbVideo ? getThumbnailUrl(heroThumbVideo) : '/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png')
+  const heroThumbIsPreview = Boolean(initialHeroThumbUrl || heroThumbVideo)
   const totalSizeCopy = totalSizeFormatted && totalSizeFormatted !== '0 B' ? totalSizeFormatted : 'todo el pack'
 
   // Mismo filtro que /contenido: artista, título, displayName, género, key, BPM
@@ -374,10 +403,11 @@ export default function HomeLanding() {
       <AnimatePresence>
         {showPushModal && (
           <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 18 }}
-            className="fixed bottom-4 left-4 z-[44] w-[min(420px,calc(100vw-2rem))] pointer-events-none"
+            // Evitar animar opacity (reduce contraste y falla auditorías a11y en cargas rápidas).
+            initial={{ y: 18 }}
+            animate={{ y: 0 }}
+            exit={{ y: 18 }}
+            className="fixed left-4 z-[44] w-[min(420px,calc(100vw-2rem))] pointer-events-none bottom-20 md:bottom-4"
             style={{
               paddingBottom: 'env(safe-area-inset-bottom, 0)',
               paddingLeft: 'env(safe-area-inset-left, 0)',
@@ -400,7 +430,7 @@ export default function HomeLanding() {
                     setShowPushModal(false)
                     if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('bb_push_prompt_shown', '1')
                   }}
-                  className="text-zinc-500 hover:text-white p-1 -m-1"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40"
                   aria-label="Cerrar"
                 >
                   <X className="h-4 w-4" />
@@ -503,16 +533,12 @@ export default function HomeLanding() {
               <div className="order-last lg:order-first relative">
 	                <a
 	                  href="#catalogo"
-	                  aria-label="Ver catálogo"
 	                  className="relative block rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black aspect-video group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40"
 	                >
+                    <span className="sr-only">Ver catálogo</span>
 	                  <Image
-	                    src={
-	                      heroThumbVideo
-	                        ? getThumbnailUrl(heroThumbVideo)
-	                        : '/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png'
-	                    }
-	                    alt={heroThumbVideo ? `Preview ${packName}` : 'Bear Beat'}
+	                    src={heroThumbSrc}
+	                    alt={heroThumbIsPreview ? `Preview ${packName}` : 'Bear Beat'}
 	                    fill
 	                    sizes="(max-width: 1024px) 92vw, 50vw"
 	                    priority
@@ -547,7 +573,7 @@ export default function HomeLanding() {
 
                 <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-4 py-2">
                   <div className="text-center lg:text-left">
-                    <p className="text-sm text-zinc-500 line-through mb-0.5">$1,500 MXN</p>
+                    <p className="text-sm text-zinc-400 line-through mb-0.5">$1,500 MXN</p>
                     <div className="text-4xl lg:text-5xl font-black text-white flex items-baseline justify-center lg:justify-start gap-1">
                       <span className="text-xl text-bear-blue">$</span>{priceMXN}
                       <span className="text-lg font-bold text-zinc-400 ml-1">MXN</span>
@@ -571,7 +597,7 @@ export default function HomeLanding() {
                   >
                     Ver catálogo y escuchar demos
                   </a>
-                  <p className="text-xs text-zinc-500 flex justify-center lg:justify-start gap-3 flex-wrap">
+                  <p className="text-xs text-zinc-400 flex justify-center lg:justify-start gap-3 flex-wrap">
                     <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-green-500" /> 🔒 Si no te hace ganar más dinero, te devolvemos todo.</span>
                   </p>
                 </div>
@@ -594,26 +620,29 @@ export default function HomeLanding() {
 
           {/* UNA SOLA FILA DE BENEFICIOS (Dolor vs Placer) */}
           <section className="py-12 border-y border-white/5">
-            <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-black/40 border border-white/10">
-                <div className="w-10 h-10 rounded-lg bg-bear-blue/20 flex items-center justify-center shrink-0 text-bear-blue"><Play className="h-5 w-5" /></div>
-                <div>
-                  <h3 className="font-bold text-white">Tus Pantallas LED Merecen Respeto</h3>
-                  <p className="text-zinc-500 text-sm">No más pixelación vergonzosa. Proyecta imagen de artista Top, no de amateur.</p>
+            <div className="max-w-7xl mx-auto px-4">
+              <h2 className="sr-only">Beneficios</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-black/40 border border-white/10">
+                  <div className="w-10 h-10 rounded-lg bg-bear-blue/20 flex items-center justify-center shrink-0 text-bear-blue"><Play className="h-5 w-5" /></div>
+                  <div>
+                    <h3 className="font-bold text-white">Tus Pantallas LED Merecen Respeto</h3>
+                    <p className="text-zinc-400 text-sm">No más pixelación vergonzosa. Proyecta imagen de artista Top, no de amateur.</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-black/40 border border-white/10">
-                <div className="w-10 h-10 rounded-lg bg-bear-blue/20 flex items-center justify-center shrink-0 text-bear-blue"><Wifi className="h-5 w-5" /></div>
-                <div>
-                  <h3 className="font-bold text-white">Mezcla Como un Cirujano</h3>
-                  <p className="text-zinc-500 text-sm">Olvídate de entrenar el oído. Todo está calculado matemáticamente para que tus mezclas sean perfectas.</p>
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-black/40 border border-white/10">
+                  <div className="w-10 h-10 rounded-lg bg-bear-blue/20 flex items-center justify-center shrink-0 text-bear-blue"><Wifi className="h-5 w-5" /></div>
+                  <div>
+                    <h3 className="font-bold text-white">Mezcla Como un Cirujano</h3>
+                    <p className="text-zinc-400 text-sm">Olvídate de entrenar el oído. Todo está calculado matemáticamente para que tus mezclas sean perfectas.</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-black/40 border border-white/10">
-                <div className="w-10 h-10 rounded-lg bg-bear-blue/20 flex items-center justify-center shrink-0 text-bear-blue"><Download className="h-5 w-5" /></div>
-                <div>
-                  <h3 className="font-bold text-white">Tu Tiempo Vale Oro</h3>
-                  <p className="text-zinc-500 text-sm">Descarga {totalSizeCopy} mientras duermes. Levántate con el trabajo sucio ya hecho.</p>
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-black/40 border border-white/10">
+                  <div className="w-10 h-10 rounded-lg bg-bear-blue/20 flex items-center justify-center shrink-0 text-bear-blue"><Download className="h-5 w-5" /></div>
+                  <div>
+                    <h3 className="font-bold text-white">Tu Tiempo Vale Oro</h3>
+                    <p className="text-zinc-400 text-sm">Descarga {totalSizeCopy} mientras duermes. Levántate con el trabajo sucio ya hecho.</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -664,7 +693,7 @@ export default function HomeLanding() {
                   <label htmlFor="landing-catalog-search" className="sr-only">
                     Buscar en el catálogo
                   </label>
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 pointer-events-none" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
                   <Input
                     id="landing-catalog-search"
                     type="text"
@@ -677,7 +706,7 @@ export default function HomeLanding() {
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
                       aria-label="Borrar búsqueda"
                     >
                       ✕
@@ -685,7 +714,7 @@ export default function HomeLanding() {
                   )}
                 </div>
                 {loadingAll && (
-                  <p className="mt-2 text-xs text-zinc-500">Cargando catálogo completo para búsqueda…</p>
+                  <p className="mt-2 text-xs text-zinc-400">Cargando catálogo completo para búsqueda…</p>
                 )}
               </div>
 
@@ -736,7 +765,7 @@ export default function HomeLanding() {
                                 </div>
                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                                   <h3 className="font-bold text-white truncate">{genre.name}</h3>
-                                  <p className="text-sm text-gray-500">
+                                  <p className="text-sm text-zinc-400">
                                     {genre.videoCount} videos · {genre.totalSizeFormatted}
                                   </p>
                                   <p className="mt-1 text-xs text-bear-blue font-medium flex items-center gap-1">
@@ -854,7 +883,7 @@ export default function HomeLanding() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                               <p className="font-medium text-white truncate">{video.artist}</p>
-                                              <p className="text-sm text-gray-500 truncate">{video.title}</p>
+                                              <p className="text-sm text-zinc-400 truncate">{video.title}</p>
                                             </div>
                                           </button>
                                           <div className="flex items-center gap-2 shrink-0">
@@ -934,7 +963,7 @@ export default function HomeLanding() {
                           </div>
                         </div>
                         <p className="font-bold text-white truncate">{selectedVideo.artist}</p>
-                        <p className="text-sm text-gray-500 truncate">{selectedVideo.title}</p>
+                        <p className="text-sm text-zinc-400 truncate">{selectedVideo.title}</p>
                         <div className="flex gap-2 mt-2 flex-wrap">
                           {selectedVideo.key && <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-300">{selectedVideo.key}</span>}
                           {selectedVideo.bpm && <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-300">{selectedVideo.bpm} BPM</span>}
@@ -951,17 +980,17 @@ export default function HomeLanding() {
                     ) : (
                       <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-8 text-center">
                         <Music2 className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
-                        <p className="text-sm text-gray-500">Selecciona un video</p>
-                        <p className="text-xs text-gray-600">para ver la preview</p>
+                        <p className="text-sm text-zinc-400">Selecciona un video</p>
+                        <p className="text-xs text-zinc-400">para ver la preview</p>
                       </div>
                     )}
 
-                    <div className="rounded-2xl border-2 border-bear-blue/60 bg-bear-blue/5 p-6 shadow-[0_0_30px_rgba(8,225,247,0.08)]">
+                      <div className="rounded-2xl border-2 border-bear-blue/60 bg-bear-blue/5 p-6 shadow-[0_0_30px_rgba(8,225,247,0.08)]">
                       <h3 className="font-black text-white text-lg mb-1">¿Cuánto vale tu reputación?</h3>
                       <p className="text-xs text-amber-400 font-medium mb-2">🔥 El 93% de las licencias de Enero ya se vendieron. Quedan pocas.</p>
-                      <p className="text-2xl text-zinc-500 line-through mb-0.5">Valor Real del Material $12,680 MXN</p>
+                      <p className="text-2xl text-zinc-400 line-through mb-0.5">Valor Real del Material $12,680 MXN</p>
                       <p className="text-3xl font-black text-bear-blue mb-1">Tu Inversión Ridícula: ${priceMXN} MXN</p>
-                      <p className="text-xs text-gray-500 mb-4">Pago único · Descarga web y FTP</p>
+                      <p className="text-xs text-zinc-400 mb-4">Pago único · Descarga web y FTP</p>
                       <ul className="space-y-2 mb-5 text-sm text-gray-300">
                         {[`${totalVideos > 0 ? totalVideos.toLocaleString() : '…'} videos HD`, 'Descarga ilimitada', 'Acceso FTP incluido'].map((item, i) => (
                           <li key={i} className="flex items-center gap-2">
@@ -1007,7 +1036,7 @@ export default function HomeLanding() {
           {!userState.hasAccess && (
             <div className="fixed bottom-0 left-0 right-0 z-[30] md:hidden border-t border-white/10 bg-[#0a0a0a]/95 backdrop-blur p-3 safe-area-pb">
               <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-zinc-400">
                   <span className="text-white font-bold">{totalVideos > 0 ? totalVideos.toLocaleString() : '…'}</span> videos · ${priceMXN} MXN
                 </p>
                 <Link

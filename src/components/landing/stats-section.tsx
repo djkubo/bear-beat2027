@@ -12,7 +12,7 @@ export function StatsSection({ totalPurchases, totalVideos }: StatsSectionProps 
   return (
     <section className="py-10 border-y border-white/5 bg-black/50">
       <div className="max-w-7xl mx-auto px-4 text-center">
-        <p className="text-sm font-mono text-zinc-500 mb-4 uppercase tracking-widest">
+        <p className="text-sm font-mono text-zinc-400 mb-4 uppercase tracking-widest">
           Compatible con Serato, Rekordbox, VirtualDJ y más
         </p>
 

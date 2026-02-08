@@ -8,8 +8,9 @@ import { ClientErrorLogger } from '@/components/tracking/ClientErrorLogger'
 import { GlobalErrorBoundary } from '@/components/tracking/GlobalErrorBoundary'
 
 export const metadata: Metadata = {
-  title: 'Bear Beat | Video Remixes para DJs 2026 - Catalogo HD por Genero',
-  description: 'Video Remixes para DJs 2026: biblioteca HD organizada por genero. Demos, descargas por video, ZIP por carpeta o FTP (FileZilla, Air Explorer). Pago unico. PayPal, tarjeta, OXXO, SPEI.',
+  title: 'Bear Beat | Video Remixes para DJs (2026) — Catálogo HD por Género',
+  description:
+    'Video remixes para DJs (2026): biblioteca HD organizada por género. Demos, descargas por video, ZIP por carpeta o FTP (FileZilla, Air Explorer). Pago único. PayPal, tarjeta, OXXO, SPEI.',
   icons: {
     icon: [{ url: '/favicon.png', type: 'image/png' }],
     apple: [{ url: '/favicon.png', type: 'image/png' }],
@@ -29,9 +30,32 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const toOrigin = (value?: string): string | null => {
+    if (!value) return null
+    try {
+      return new URL(value).origin
+    } catch {
+      return null
+    }
+  }
+
+  // Improves LCP for thumbnails/media (Bunny) and auth/catalog fetches (Supabase).
+  const preconnectOrigins = Array.from(
+    new Set([
+      toOrigin(process.env.NEXT_PUBLIC_SUPABASE_URL),
+      toOrigin(process.env.BUNNY_CDN_URL),
+    ].filter(Boolean))
+  ) as string[]
+
   return (
-    <html lang="es" className="scroll-smooth">
+    <html lang="es" className="scroll-smooth dark">
       <head>
+        {preconnectOrigins.map((origin) => (
+          <link key={`${origin}-dns`} rel="dns-prefetch" href={`//${new URL(origin).host}`} />
+        ))}
+        {preconnectOrigins.map((origin) => (
+          <link key={origin} rel="preconnect" href={origin} crossOrigin="" />
+        ))}
         <Suspense fallback={null}>
           <TrackingScripts />
         </Suspense>

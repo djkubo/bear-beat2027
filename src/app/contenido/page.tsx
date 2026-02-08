@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useFeaturedPack } from '@/lib/hooks/useFeaturedPack'
 import { Folder, Music2, Search, Lock, ChevronRight, Check, Play, Download, Archive, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 
 // ==========================================
@@ -903,10 +903,12 @@ export default function ContenidoPage() {
                 <Lock className="h-7 w-7" />
               </span>
             </div>
-            <h3 className="text-xl font-black text-white mb-2">🔒 MATERIAL CLASIFICADO</h3>
-            <p className="text-gray-400 text-sm mb-6">
-              Solo los miembros VIP pueden descargar esta joya. ¿Vas a dejar que otro la toque antes que tú?
-            </p>
+            <DialogHeader className="px-0 pt-0">
+              <DialogTitle className="text-xl font-black text-white">🔒 MATERIAL CLASIFICADO</DialogTitle>
+              <DialogDescription className="text-zinc-400 text-sm">
+                Solo los miembros VIP pueden descargar esta joya. ¿Vas a dejar que otro la toque antes que tú?
+              </DialogDescription>
+            </DialogHeader>
             <div className="rounded-xl bg-bear-blue/10 border border-bear-blue/30 p-4 mb-6">
               <p className="text-sm text-gray-400 mb-1">Pago único</p>
               <p className="text-3xl font-black text-bear-blue">${priceMXNFromPack} MXN</p>
@@ -921,7 +923,7 @@ export default function ContenidoPage() {
             <button
               type="button"
               onClick={() => setShowPaywall(false)}
-              className="mt-4 text-sm text-gray-500 hover:text-gray-400"
+              className="mt-4 text-sm text-zinc-400 hover:text-white transition"
             >
               Cerrar
             </button>

@@ -14,7 +14,7 @@ import { usePackBySlug } from '@/lib/hooks/usePackBySlug'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Shield, Lock, CreditCard, Building2, Banknote, Wallet, ChevronRight } from 'lucide-react'
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 // ==========================================
 // CHECKOUT – Tarjeta (redirect Stripe) | PayPal (nativo) | OXXO/SPEI (redirect Stripe)
@@ -192,13 +192,14 @@ export default function CheckoutPage() {
       <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
         <DialogContent className="max-w-md p-0 overflow-hidden">
           <div className="bg-zinc-900 border-2 border-amber-500/50 rounded-2xl p-6 w-full shadow-[0_0_40px_rgba(245,158,11,0.2)]">
-            <p className="text-3xl mb-3">🎁</p>
-            <h2 className="text-2xl font-black text-white mb-2">
-              ¡ESPERA! ¿{currency === 'mxn' ? `$${priceMxn}` : `$${priceUsd}`} es mucho?
-            </h2>
-            <p className="text-zinc-300 mb-6">
-              Llévate el Pack de Prueba (50 videos) por solo <strong className="text-amber-400">$99 MXN</strong>.
-            </p>
+            <DialogHeader className="px-0 pt-0 mb-6">
+              <DialogTitle className="text-2xl font-black text-white">
+                🎁 ¡ESPERA! ¿{currency === 'mxn' ? `$${priceMxn}` : `$${priceUsd}`} es mucho?
+              </DialogTitle>
+              <DialogDescription className="text-zinc-300">
+                Llévate el Pack de Prueba (50 videos) por solo <strong className="text-amber-400">$99 MXN</strong>.
+              </DialogDescription>
+            </DialogHeader>
             <div className="flex flex-col gap-3">
               <Link
                 href={`/checkout?pack=${DOWNSELL_PACK_SLUG}`}

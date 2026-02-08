@@ -151,7 +151,8 @@ main {
 
 /* Safe area para barras fijas en móvil (notch, home indicator) */
 .safe-area-pb {
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0));
+  /* Keep fixed bottom bars fully tappable (Safari home indicator, Lighthouse target-size). */
+  padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0) + 0.75rem));
 }
 .safe-area-pt {
   padding-top: env(safe-area-inset-top, 0);
