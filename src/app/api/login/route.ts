@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { getPublicAppOrigin } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
+
+function toRedirectUrl(req: NextRequest, path: string): string {
+  // Avoid redirecting to internal origins like https://0.0.0.0:10000 in production.
+  const origin = getPublicAppOrigin(req)
+  if (origin) return new URL(path, origin).toString()
+  return path
+}
 
 function normalizeRedirectPath(value: string | null | undefined): string | null {
   const v = String(value || '').trim()
@@ -64,18 +72,17 @@ export async function POST(req: NextRequest) {
   const redirectTo = normalizeRedirectPath(redirectRaw) || '/dashboard'
 
   if (!email || !password) {
-    return NextResponse.redirect(new URL('/login?error=missing', req.url), 303)
+    return NextResponse.redirect(toRedirectUrl(req, '/login?error=missing'), 303)
   }
 
   try {
     const supabase = await createServerClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      return NextResponse.redirect(new URL('/login?error=invalid', req.url), 303)
+      return NextResponse.redirect(toRedirectUrl(req, '/login?error=invalid'), 303)
     }
-    return NextResponse.redirect(new URL(redirectTo, req.url), 303)
+    return NextResponse.redirect(toRedirectUrl(req, redirectTo), 303)
   } catch {
-    return NextResponse.redirect(new URL('/login?error=server', req.url), 303)
+    return NextResponse.redirect(toRedirectUrl(req, '/login?error=server'), 303)
   }
 }
-
