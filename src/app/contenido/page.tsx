@@ -70,6 +70,7 @@ export default function ContenidoPage() {
   const [showPaywall, setShowPaywall] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [hasAccess, setHasAccess] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [posterError, setPosterError] = useState(false)
   const [demoError, setDemoError] = useState(false)
   const [downloadingZipGenreId, setDownloadingZipGenreId] = useState<string | null>(null)
@@ -134,9 +135,12 @@ export default function ContenidoPage() {
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
+      setIsLoggedIn(!!user)
       if (user) {
         const { data: purchases } = await supabase.from('purchases').select('*').eq('user_id', user.id)
         setHasAccess(Boolean(purchases && purchases.length > 0))
+      } else {
+        setHasAccess(false)
       }
     } catch {
       // ignore
@@ -326,7 +330,7 @@ export default function ContenidoPage() {
               </Link>
             )}
             <div className="md:hidden shrink-0">
-              <MobileMenu currentPath="/contenido" userHasAccess={hasAccess} isLoggedIn={hasAccess} />
+              <MobileMenu currentPath="/contenido" userHasAccess={hasAccess} isLoggedIn={isLoggedIn} />
             </div>
           </div>
         </div>
