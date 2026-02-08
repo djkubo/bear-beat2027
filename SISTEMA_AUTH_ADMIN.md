@@ -349,7 +349,7 @@ Links: text-bear-blue con hover:underline
 -- Esto creará:
 -- ✅ Tabla users con campo 'role'
 -- ✅ Función get_admin_stats()
--- ✅ 12 géneros de ejemplo
+-- ✅ Géneros de ejemplo (ej. 19 carpetas en Enero 2026)
 -- ✅ Pack de ejemplo (Enero 2026)
 ```
 

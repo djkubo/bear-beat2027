@@ -135,7 +135,7 @@ npm run dev
 ✅ Botón GIGANTE: "🛒 COMPRAR AHORA"
 ✅ 6 beneficios con emojis grandes
 ✅ 3 videos de preview
-✅ 12 géneros musicales
+✅ Géneros dinámicos por carpeta (ej. 19 en Enero 2026)
 ✅ 4 pasos de "Cómo funciona"
 ✅ Pricing claro
 ✅ FAQ con 8 preguntas

@@ -157,10 +157,10 @@ En **producción (Render)** el admin está en: **https://bear-beat2027.onrender.
 ### 6.3 Verificar Géneros
 
 ```sql
-SELECT * FROM genres ORDER BY video_count DESC;
+SELECT id, name, slug FROM genres ORDER BY name;
 ```
 
-Deberías ver 12 géneros con sus contadores.
+Deberías ver los géneros del pack (ej. 19 carpetas en Enero 2026).
 
 ---
 

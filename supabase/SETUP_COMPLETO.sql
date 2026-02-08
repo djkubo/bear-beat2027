@@ -703,18 +703,25 @@ CREATE POLICY "Service role can do everything on abandoned_cart_reminders"
 
 -- Insertar géneros
 INSERT INTO genres (name, slug, video_count) VALUES
-('Reggaeton', 'reggaeton', 450),
-('EDM', 'edm', 380),
-('Hip Hop', 'hip-hop', 420),
-('Pop', 'pop', 390),
-('Rock', 'rock', 280),
-('Electro House', 'electro-house', 350),
-('Banda', 'banda', 220),
-('Cumbia', 'cumbia', 180),
-('Latin', 'latin', 300),
-('House', 'house', 250),
-('Trap', 'trap', 310),
-('Salsa', 'salsa', 160)
+('Bachata', 'bachata', 0),
+('Banda', 'banda', 0),
+('Cubaton', 'cubaton', 0),
+('Cumbia', 'cumbia', 0),
+('Cumbia Norteña', 'cumbia-nortena', 0),
+('Cumbia Remix', 'cumbia-remix', 0),
+('Cumbia Sonidera', 'cumbia-sonidera', 0),
+('Cumbia Tropical', 'cumbia-tropical', 0),
+('Dembow', 'dembow', 0),
+('Guaracha', 'guaracha', 0),
+('Latino', 'latino', 0),
+('Latino Urbano', 'latino-urbano', 0),
+('Merengue', 'merengue', 0),
+('Pop', 'pop', 0),
+('Punta', 'punta', 0),
+('Reggaeton', 'reggaeton', 0),
+('Reguetton Vs', 'reguetton-vs', 0),
+('Retro En Español', 'retro-en-espanol', 0),
+('Salsa', 'salsa', 0)
 ON CONFLICT (slug) DO NOTHING;
 
 -- =====================================================

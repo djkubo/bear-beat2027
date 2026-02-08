@@ -60,7 +60,7 @@ Abre: **http://localhost:3001**
    - `packs`
    - `purchases`
    - `pending_purchases`
-   - `genres` ← Debería tener 12 géneros
+   - `genres` ← Géneros del pack (ej. 19 carpetas en Enero 2026)
    - `videos`
    - `downloads`
 
@@ -76,7 +76,7 @@ Abre: **http://localhost:3001**
 ✅ Botón gigante azul "COMPRAR AHORA"
 ✅ Sección "¿Por qué comprar aquí?" con 6 beneficios
 ✅ 3 videos de ejemplo con botón play
-✅ 12 géneros musicales en cards
+✅ Géneros del pack en cards (ej. 19 carpetas en Enero 2026)
 ✅ Cómo funciona en 4 pasos
 ✅ Pricing con precio destacado
 ✅ FAQ con 8 preguntas simples

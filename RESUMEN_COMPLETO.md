@@ -55,7 +55,7 @@ Hosting:
    - Botón "COMPRAR AHORA" 4x más grande
    - Sección "¿Por qué comprar aquí?" (6 beneficios)
    - Preview de 3 videos
-   - 12 géneros musicales
+   - Géneros dinámicos por carpeta (ej. 19 en Enero 2026)
    - Cómo funciona (4 pasos)
    - Pricing section
    - FAQ (8 preguntas)
@@ -175,7 +175,7 @@ Hosting:
 1. ✅ `users` - Usuarios (con phone, country_code, role, phone_verified)
 2. ✅ `packs` - Packs mensuales
 3. ✅ `purchases` - Compras con FTP credentials
-4. ✅ `genres` - Géneros musicales (12 pre-cargados)
+4. ✅ `genres` - Géneros musicales (seed acorde a carpetas; ej. 19 en Enero 2026)
 5. ✅ `videos` - Videos individuales
 6. ✅ `bundles` - Ofertas de múltiples packs
 7. ✅ `pack_notifications` - Preferencias de notificaciones
@@ -186,7 +186,7 @@ Hosting:
 - ✅ `get_admin_stats()` - Estadísticas para admin
 
 ### Seeds:
-- ✅ 12 géneros con contadores
+- ✅ Géneros (slugs) listos para sincronizar con FTP/Bunny (ej. 19 en Enero 2026)
 - ✅ Pack de ejemplo (Enero 2026)
 - ✅ Bundle de ejemplo (3x$900)
 

@@ -88,7 +88,7 @@ Deberías ver:
 ✅ "3,000 Videos Para DJs"
 ✅ Precio $350 MXN grande
 ✅ Botón azul "COMPRAR AHORA"
-✅ 12 géneros (Reggaeton, EDM, etc.)
+✅ Géneros del pack (ej. Bachata, Guaracha, Reggaeton…; 19 carpetas en Enero 2026)
 ✅ Sección "¿Cómo funciona?"
 ✅ FAQ
 ```
