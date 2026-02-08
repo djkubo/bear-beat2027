@@ -18,6 +18,36 @@ const VIDEOS_BASE_PATH = process.env.VIDEOS_PATH || path.join(process.cwd(), 'Vi
 const DEMOS_ENABLED = true
 const VIDEO_EXT = /\.(mp4|mov|avi|mkv|webm)$/i
 
+function normalizeTextNfc(input: string): string {
+  const s = String(input ?? '')
+  try {
+    return s.normalize('NFC').trim()
+  } catch {
+    return s.trim()
+  }
+}
+
+function slugifyGenreId(input: string): string {
+  const base = normalizeTextNfc(input)
+  if (!base) return ''
+  try {
+    return base
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '') // remove diacritics
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  } catch {
+    return base
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/ñ/g, 'n')
+      .replace(/[^a-z0-9-]+/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  }
+}
+
 interface VideoMetadata {
   duration: string
   durationSeconds: number
@@ -111,26 +141,25 @@ async function getStatsAndPreview(
   const totalPurchasesCount = purchasesRes.count ?? 0
 
   let totalSize = 0
-  const byGenre: Record<string, { count: number; size: number }> = {}
+  const byGenre: Record<string, { id: string; name: string; count: number; size: number }> = {}
   const PAGE_SIZE = 1000
   let offset = 0
   let hasMore = true
   while (hasMore) {
     const { data: page } = await supabase
       .from('videos')
-      .select('file_size, genre_id')
+      .select('file_size, file_path')
       .eq('pack_id', pack.id)
       .range(offset, offset + PAGE_SIZE - 1)
     if (!page?.length) break
     for (const row of page) {
       const size = Number(row.file_size) || 0
       totalSize += size
-      if (row.genre_id) {
-        const id = String(row.genre_id)
-        if (!byGenre[id]) byGenre[id] = { count: 0, size: 0 }
-        byGenre[id].count += 1
-        byGenre[id].size += size
-      }
+      const folder = normalizeTextNfc(String(row.file_path || '').split('/')[0] || 'Sin género')
+      const genreId = slugifyGenreId(folder) || 'sin-genero'
+      if (!byGenre[genreId]) byGenre[genreId] = { id: genreId, name: folder || 'Sin género', count: 0, size: 0 }
+      byGenre[genreId].count += 1
+      byGenre[genreId].size += size
     }
     hasMore = page.length === PAGE_SIZE
     offset += PAGE_SIZE
@@ -175,20 +204,20 @@ async function getStatsAndPreview(
     }
   })
 
-  // Mostrar TODOS los géneros de la DB (como en login: "Todos los géneros: Reggaeton, Cumbia...")
-  const { data: genreRows } = await supabase.from('genres').select('id, name, slug').order('name')
-  const marqueeGenres: GenreFolder[] = (genreRows || []).map((g: { id: string; name: string; slug: string }) => {
-    const stats = byGenre[String(g.id)] || { count: 0, size: 0 }
-    return {
-      id: (g.slug || g.name.toLowerCase().replace(/\s+/g, '-').replace(/ñ/g, 'n')),
+  // Mostrar géneros reales por carpeta/file_path (source of truth para el catálogo).
+  // Esto evita "carpetas 0" cuando la tabla `genres` no coincide con el almacenamiento.
+  const marqueeGenres: GenreFolder[] = Object.values(byGenre)
+    .filter((g) => g.count > 0)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((g) => ({
+      id: g.id,
       name: g.name,
       type: 'folder' as const,
-      videoCount: stats.count,
-      totalSize: stats.size,
-      totalSizeFormatted: formatBytes(stats.size),
+      videoCount: g.count,
+      totalSize: g.size,
+      totalSizeFormatted: formatBytes(g.size),
       videos: [],
-    }
-  })
+    }))
   const previewGenres: GenreFolder[] = previewVideos.length
     ? [{
         id: 'preview',
@@ -302,8 +331,9 @@ export async function GET(req: NextRequest) {
       structure = await readVideoStructure(VIDEOS_BASE_PATH, hasAccess, withMetadata)
     }
 
-    const filtered = genre 
-      ? structure.filter(g => g.id === genre.toLowerCase())
+    const filteredGenreId = genre ? slugifyGenreId(genre) : null
+    const filtered = filteredGenreId
+      ? structure.filter((g) => g.id === filteredGenreId)
       : structure
 
     const totalVideos = structure.reduce((sum, g) => sum + g.videoCount, 0)
@@ -399,8 +429,8 @@ async function readVideoStructureFromDb(
       // Sin videos en DB: devolver géneros con lista vacía para que la página muestre al menos los géneros
       const { data: genresRows } = await supabase.from('genres').select('id, name, slug').order('name')
       return (genresRows || []).map((g) => ({
-        id: (g.slug || g.name.toLowerCase().replace(/\s+/g, '-')),
-        name: g.name,
+        id: slugifyGenreId(g.slug || g.name) || 'sin-genero',
+        name: normalizeTextNfc(g.name),
         type: 'folder' as const,
         videoCount: 0,
         totalSize: 0,
@@ -414,8 +444,8 @@ async function readVideoStructureFromDb(
 
     for (const row of videosRows as Row[]) {
       const folderFromPath = row.file_path?.split('/')[0]
-      const genreName = row.genres?.name ?? folderFromPath ?? 'Sin género'
-      const genreSlug = (row.genres?.slug ?? genreName.toLowerCase().replace(/\s+/g, '-').replace(/ñ/g, 'n')) as string
+      const genreName = normalizeTextNfc(row.genres?.name ?? folderFromPath ?? 'Sin género')
+      const genreSlug = slugifyGenreId(row.genres?.slug ?? folderFromPath ?? genreName) || 'sin-genero'
       const fileName = row.file_path?.split('/').pop() || row.title || `video-${row.id}`
       const relativePath = row.file_path || `${genreName}/${fileName}`
 
@@ -493,8 +523,8 @@ async function readVideoStructure(basePath: string, hasAccess: boolean, withMeta
         const totalDurationSeconds = videos.reduce((sum, v) => sum + (v.durationSeconds || 0), 0)
         
         genres.push({
-          id: entry.name.toLowerCase().replace(/\s+/g, '-'),
-          name: entry.name,
+          id: slugifyGenreId(entry.name) || 'sin-genero',
+          name: normalizeTextNfc(entry.name),
           type: 'folder',
           videoCount: videos.length,
           totalSize,
