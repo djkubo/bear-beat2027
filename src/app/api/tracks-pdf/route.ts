@@ -6,8 +6,11 @@
 import { NextResponse } from 'next/server'
 import path from 'path'
 import fs from 'fs'
+// pdfkit en server-bundles de Next puede perder los .afm de fuentes estándar.
+// Usamos el build standalone que embebe métricas de fuentes (Helvetica, etc.) como strings.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const PDFDocument = require('pdfkit')
+const PDFKit = require('pdfkit/js/pdfkit.standalone.js')
+const PDFDocument = PDFKit?.default ?? PDFKit
 
 import { createServerClient } from '@/lib/supabase/server'
 

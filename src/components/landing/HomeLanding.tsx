@@ -203,6 +203,11 @@ export default function HomeLanding() {
     if (video.path) return `/api/thumbnail-cdn?path=${encodeURIComponent(video.path)}`
     return '/api/placeholder/thumb?text=V'
   }
+  const getPlaceholderThumbUrl = (video: Video): string => {
+    const artist = encodeURIComponent(video.artist || '')
+    const title = encodeURIComponent(video.title || video.displayName || '')
+    return `/api/placeholder/thumb?artist=${artist}&title=${title}`
+  }
   const totalSizeFormatted = packInfo?.totalSizeFormatted ?? '0 B'
   const genreCount = packInfo?.genreCount ?? 0
 
@@ -496,22 +501,30 @@ export default function HomeLanding() {
 
               {/* VIDEO (IZQUIERDA EN DESKTOP) - Portada dinámica del primer video disponible */}
               <div className="order-last lg:order-first relative">
-                <a
-                  href="#catalogo"
-                  aria-label="Ver catálogo"
-                  className="relative block rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black aspect-video group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40"
-                >
-                  <div
-                    className="absolute inset-0 bg-cover bg-center opacity-60 group-hover:scale-105 transition duration-700"
-                    style={{
-                      backgroundImage: `url(${heroThumbVideo ? getThumbnailUrl(heroThumbVideo) : '/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png'})`,
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <div className="w-20 h-20 bg-bear-blue rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(8,225,247,0.6)] animate-pulse">
-                      <Play className="w-8 h-8 text-black fill-black ml-1" />
-                    </div>
-                  </div>
+	                <a
+	                  href="#catalogo"
+	                  aria-label="Ver catálogo"
+	                  className="relative block rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black aspect-video group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40"
+	                >
+	                  <Image
+	                    src={
+	                      heroThumbVideo
+	                        ? getThumbnailUrl(heroThumbVideo)
+	                        : '/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png'
+	                    }
+	                    alt={heroThumbVideo ? `Preview ${packName}` : 'Bear Beat'}
+	                    fill
+	                    sizes="(max-width: 1024px) 92vw, 50vw"
+	                    priority
+	                    // /api/thumbnail-cdn ya redirige a Bunny (CDN). No queremos pasar por el optimizador.
+	                    unoptimized
+	                    className="absolute inset-0 object-cover opacity-60 group-hover:scale-105 transition duration-700"
+	                  />
+	                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+	                    <div className="w-20 h-20 bg-bear-blue rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(8,225,247,0.6)] animate-pulse">
+	                      <Play className="w-8 h-8 text-black fill-black ml-1" />
+	                    </div>
+	                  </div>
                   <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur px-3 py-1 rounded-full text-xs font-mono text-bear-blue border border-bear-blue/30">
                     PREVIEW 2026 • HD 1080P
                   </div>
@@ -800,48 +813,50 @@ export default function HomeLanding() {
                                       genre.videos.map((video) => (
                                         <div
                                           key={video.id}
-                                          role="button"
-                                          tabIndex={0}
-                                          className={`flex items-center gap-3 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40 ${selectedVideo?.id === video.id ? 'bg-bear-blue/10' : ''}`}
-                                          onClick={() => setSelectedVideo(video)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                              e.preventDefault()
-                                              setSelectedVideo(video)
-                                            }
-                                          }}
-                                          aria-label={`Seleccionar ${video.artist} - ${video.title}`}
+                                          className={`flex items-center gap-3 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors ${selectedVideo?.id === video.id ? 'bg-bear-blue/10' : ''}`}
                                         >
                                           <button
                                             type="button"
                                             className="p-2 rounded-lg bg-bear-blue/20 text-bear-blue hover:bg-bear-blue/30 transition shrink-0"
                                             onClick={(e) => {
-                                              e.stopPropagation()
                                               setSelectedVideo(video)
                                               setDemoVideo(video)
                                             }}
-                                            aria-label="Reproducir demo"
+                                            aria-label="Ver demo"
                                           >
                                             <Play className="h-4 w-4" />
                                           </button>
-                                          <div className="w-14 h-10 sm:w-16 sm:h-10 shrink-0 rounded overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
-                                            {!thumbErrors.has(video.id) ? (
-                                              <img
-                                                src={getThumbnailUrl(video)}
-                                                alt={`Portada ${video.artist} - ${video.title}`}
-                                                className="w-full h-full object-cover"
-                                                loading="lazy"
-                                                decoding="async"
-                                                onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
-                                              />
-                                            ) : (
-                                              <Play className="h-5 w-5 text-bear-blue/60" />
-                                            )}
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-white truncate">{video.artist}</p>
-                                            <p className="text-sm text-gray-500 truncate">{video.title}</p>
-                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedVideo(video)}
+                                            className="flex items-center gap-3 flex-1 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40 rounded-lg"
+                                            aria-label={`Seleccionar ${video.artist} - ${video.title}`}
+                                          >
+                                            <div className="w-14 h-10 sm:w-16 sm:h-10 shrink-0 rounded overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
+                                              {!thumbErrors.has(video.id) ? (
+                                                <img
+                                                  src={getThumbnailUrl(video)}
+                                                  alt={`Portada ${video.artist} - ${video.title}`}
+                                                  className="w-full h-full object-cover"
+                                                  loading="lazy"
+                                                  decoding="async"
+                                                  onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
+                                                />
+                                              ) : (
+                                                <img
+                                                  src={getPlaceholderThumbUrl(video)}
+                                                  alt={`Portada ${video.artist} - ${video.title}`}
+                                                  className="w-full h-full object-cover opacity-90"
+                                                  loading="lazy"
+                                                  decoding="async"
+                                                />
+                                              )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium text-white truncate">{video.artist}</p>
+                                              <p className="text-sm text-gray-500 truncate">{video.title}</p>
+                                            </div>
+                                          </button>
                                           <div className="flex items-center gap-2 shrink-0">
                                             {video.key && (
                                               <span className="px-2 py-0.5 rounded text-xs font-mono bg-purple-500/20 text-purple-300">
@@ -857,7 +872,6 @@ export default function HomeLanding() {
                                               <button
                                                 type="button"
                                                 onClick={(e) => {
-                                                  e.stopPropagation()
                                                   handleDownloadFromList(video)
                                                   trackCTAClick('download_from_list', 'landing', video.name)
                                                 }}

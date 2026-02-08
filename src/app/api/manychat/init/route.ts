@@ -27,6 +27,20 @@ function isKeySet(): boolean {
  * - { action: 'status' } - Ver estado actual
  */
 export async function POST(req: NextRequest) {
+  if (!isKeySet()) {
+    const isProd = process.env.NODE_ENV === 'production'
+    const hint = isProd
+      ? 'Render: Environment → MANYCHAT_API_KEY. Después de añadirla, haz "Manual Deploy" para que cargue.'
+      : 'Añade MANYCHAT_API_KEY en .env.local.'
+    return NextResponse.json(
+      {
+        error: 'ManyChat no está configurado (MANYCHAT_API_KEY faltante).',
+        hint,
+        keySet: false,
+      },
+      { status: 503 }
+    )
+  }
   try {
     console.log('ManyChat Key Presente:', !!process.env.MANYCHAT_API_KEY)
     const body = await req.json().catch(() => ({}))
@@ -100,6 +114,20 @@ export async function POST(req: NextRequest) {
  * Obtiene el estado actual de la configuración de ManyChat
  */
 export async function GET() {
+  if (!isKeySet()) {
+    const isProd = process.env.NODE_ENV === 'production'
+    const hint = isProd
+      ? 'Render: Environment → MANYCHAT_API_KEY (API Key de ManyChat → Settings → API). Después de añadirla, haz "Manual Deploy".'
+      : 'Añade MANYCHAT_API_KEY en .env.local (API Key de ManyChat → Settings → API).'
+    return NextResponse.json(
+      {
+        error: 'ManyChat no está configurado (MANYCHAT_API_KEY faltante).',
+        hint,
+        keySet: false,
+      },
+      { status: 503 }
+    )
+  }
   try {
     await verifyConnection()
     const existingTags = await getPageTags()
@@ -153,13 +181,9 @@ export async function GET() {
     const hint = isProd
       ? 'Render: Environment → MANYCHAT_API_KEY (valor = API Key de ManyChat → Settings → API). Después de añadirla, haz "Manual Deploy" para que cargue.'
       : 'Añade MANYCHAT_API_KEY en .env.local (API Key de ManyChat → Settings → API).'
-    return NextResponse.json(
-      {
-        error: error.message || 'Failed to get status',
-        hint,
-        keySet: isKeySet(),
-      },
-      { status: 500 }
-    )
+    const msg = String(error?.message || 'Failed to get status')
+    // ManyChat rechaza la key (401/403) => esto no es un 500 del servidor.
+    const status = msg.includes('API key rechazada') ? 401 : 500
+    return NextResponse.json({ error: msg, hint, keySet: isKeySet() }, { status })
   }
 }

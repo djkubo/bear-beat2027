@@ -549,56 +549,52 @@ export default function ContenidoPage() {
                           genre.videos.map((video) => (
                             <div
                               key={video.id}
-                              role="button"
-                              tabIndex={0}
-                              className={`flex items-center gap-3 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40 ${
+                              className={`flex items-center gap-3 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors ${
                                 selectedVideo?.id === video.id ? 'bg-bear-blue/10' : ''
                               }`}
-                              onClick={() => handlePreview(video)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault()
-                                  handlePreview(video)
-                                }
-                              }}
-                              aria-label={`Seleccionar ${video.artist} - ${video.title}`}
                             >
                               <button
                                 type="button"
                                 className="p-2 rounded-lg bg-bear-blue/20 text-bear-blue hover:bg-bear-blue/30 transition shrink-0"
                                 onClick={(e) => {
-                                  e.stopPropagation()
                                   handlePreview(video)
                                 }}
-                                aria-label="Reproducir demo"
+                                aria-label="Ver demo"
                               >
                                 <Play className="h-4 w-4" />
                               </button>
-                              {/* Portada real (thumbnail) por video – estilo Rekordbox */}
-                              <div className="w-14 h-10 sm:w-16 sm:h-10 shrink-0 rounded overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
-                                {!thumbErrors.has(video.id) ? (
-                                  <img
-                                    src={getThumbnailUrl(video)}
-                                    alt={`Portada ${video.artist} - ${video.title}`}
-                                    className="w-full h-full object-cover"
-                                    loading="lazy"
-                                    decoding="async"
-                                    onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
-                                  />
-                                ) : (
-                                  <img
-                                    src={getPlaceholderThumbUrl(video)}
-                                    alt={`Portada ${video.artist} - ${video.title}`}
-                                    className="w-full h-full object-cover opacity-90"
-                                    loading="lazy"
-                                    decoding="async"
-                                  />
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-white truncate">{video.artist}</p>
-                                <p className="text-sm text-gray-500 truncate">{video.title}</p>
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handlePreview(video)}
+                                className="flex items-center gap-3 flex-1 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40 rounded-lg"
+                                aria-label={`Seleccionar ${video.artist} - ${video.title}`}
+                              >
+                                {/* Portada real (thumbnail) por video – estilo Rekordbox */}
+                                <div className="w-14 h-10 sm:w-16 sm:h-10 shrink-0 rounded overflow-hidden bg-zinc-800 border border-white/5 flex items-center justify-center">
+                                  {!thumbErrors.has(video.id) ? (
+                                    <img
+                                      src={getThumbnailUrl(video)}
+                                      alt={`Portada ${video.artist} - ${video.title}`}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                      decoding="async"
+                                      onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
+                                    />
+                                  ) : (
+                                    <img
+                                      src={getPlaceholderThumbUrl(video)}
+                                      alt={`Portada ${video.artist} - ${video.title}`}
+                                      className="w-full h-full object-cover opacity-90"
+                                      loading="lazy"
+                                      decoding="async"
+                                    />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-white truncate">{video.artist}</p>
+                                  <p className="text-sm text-gray-500 truncate">{video.title}</p>
+                                </div>
+                              </button>
                               <div className="flex items-center gap-2 shrink-0">
                                 {video.key && (
                                   <span className="px-2 py-0.5 rounded text-xs font-mono bg-purple-500/20 text-purple-300">
@@ -614,7 +610,6 @@ export default function ContenidoPage() {
                                   <button
                                     type="button"
                                     onClick={(e) => {
-                                      e.stopPropagation()
                                       handleDownloadAttempt(video)
                                     }}
                                     disabled={downloadingVideoId === video.id}
