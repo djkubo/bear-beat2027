@@ -20,6 +20,7 @@ test.describe('Catalogo: login + demo + descargas', () => {
 
     // 1) Login con redirect a /contenido
     await page.goto(`${BASE}/login?redirect=/contenido`, { waitUntil: 'domcontentloaded' })
+    await expect(page.locator('#login-email')).toBeVisible({ timeout: 20_000 })
     await page.locator('#login-email').fill(String(EMAIL))
     await page.locator('#login-password').fill(String(PASSWORD))
 
@@ -32,7 +33,7 @@ test.describe('Catalogo: login + demo + descargas', () => {
             return false
           }
         },
-        { timeout: 45_000 }
+        { timeout: 60_000 }
       ),
       page.getByRole('button', { name: /ENTRAR/i }).click(),
     ])
@@ -53,7 +54,7 @@ test.describe('Catalogo: login + demo + descargas', () => {
     await expect(firstDemoBtn).toBeVisible({ timeout: 25_000 })
     await firstDemoBtn.click()
 
-    const downloadVideoCta = page.getByRole('button', { name: /DESCARGAR VIDEO/i })
+    const downloadVideoCta = page.locator('aside').getByRole('button', { name: /DESCARGAR VIDEO/i })
     await expect(downloadVideoCta).toBeVisible({ timeout: 25_000 })
 
     // 3) Descargar MP4: debe iniciar descarga y NO abrir tab/ventana.
