@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { toRelativeApiUrl } from '@/lib/utils'
+import { downloadFile } from '@/lib/download'
 
 // ==========================================
 // REPRODUCTOR PROTEGIDO - Anti-descarga
@@ -47,6 +48,15 @@ export function ProtectedPlayer({
   const demoUrlByPath = demoPath ? `/api/demo-url?path=${encodeURIComponent(demoPath)}` : null
   const thumbnailSrc = toRelativeApiUrl(thumbnail)
   const previewSrc = toRelativeApiUrl(previewUrl)
+  const handleDownload = async () => {
+    if (!downloadUrl) return
+    setError(null)
+    try {
+      await downloadFile(downloadUrl)
+    } catch (e) {
+      setError((e as Error)?.message || 'Error al descargar')
+    }
+  }
 
   // Bloquear click derecho
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -254,13 +264,13 @@ export function ProtectedPlayer({
               </span>
             )}
             {mode === 'full' && downloadUrl && (
-              <a
-                href={downloadUrl}
+              <button
+                type="button"
+                onClick={() => void handleDownload()}
                 className="bg-green-500 px-3 py-1 rounded text-xs font-bold text-white pointer-events-auto hover:bg-green-600"
-                download
               >
                 ⬇️ Descargar
-              </a>
+              </button>
             )}
           </div>
         </div>

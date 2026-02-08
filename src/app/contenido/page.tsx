@@ -76,6 +76,10 @@ export default function ContenidoPage() {
   const [downloadingZipGenreId, setDownloadingZipGenreId] = useState<string | null>(null)
   const [downloadingVideoId, setDownloadingVideoId] = useState<string | null>(null)
   const [thumbErrors, setThumbErrors] = useState<Set<string>>(new Set())
+  const [showDiagnostic, setShowDiagnostic] = useState(false)
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false)
+  const [diagnosticError, setDiagnosticError] = useState<string | null>(null)
+  const [diagnosticData, setDiagnosticData] = useState<any | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const expandedSectionRef = useRef<HTMLDivElement>(null)
 
@@ -130,6 +134,32 @@ export default function ContenidoPage() {
     }, 600)
     return () => clearTimeout(t)
   }, [searchQuery])
+
+  useEffect(() => {
+    if (!showDiagnostic) return
+    let cancelled = false
+    async function load() {
+      try {
+        setDiagnosticLoading(true)
+        setDiagnosticError(null)
+        setDiagnosticData(null)
+        const res = await fetch('/api/download/diagnostic', { cache: 'no-store' })
+        const json = await res.json().catch(() => null)
+        if (cancelled) return
+        setDiagnosticData(json)
+        if (!res.ok) setDiagnosticError('No se pudo cargar el diagnóstico.')
+      } catch (e) {
+        if (cancelled) return
+        setDiagnosticError((e as Error)?.message || 'Error al cargar diagnóstico')
+      } finally {
+        if (!cancelled) setDiagnosticLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [showDiagnostic])
 
   const verificarAcceso = async () => {
     try {
@@ -407,14 +437,13 @@ export default function ContenidoPage() {
           {hasAccess && (
             <p className="mt-3 text-xs text-gray-500">
               ¿No te descarga?{' '}
-              <a
-                href="/api/download/diagnostic"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-bear-blue hover:underline"
+              <button
+                type="button"
+                onClick={() => setShowDiagnostic(true)}
+                className="text-bear-blue hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40 rounded"
               >
                 Revisa el diagnóstico
-              </a>
+              </button>
             </p>
           )}
         </div>
@@ -927,6 +956,93 @@ export default function ContenidoPage() {
             >
               Cerrar
             </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDiagnostic} onOpenChange={setShowDiagnostic}>
+        <DialogContent className="max-w-lg p-0 overflow-hidden">
+          <div className="p-6">
+            <DialogHeader className="px-0 pt-0">
+              <DialogTitle className="text-xl font-black text-white">Diagnóstico de descarga</DialogTitle>
+              <DialogDescription className="text-sm text-zinc-400">
+                Revisa si tu sesión, compra y servidor (FTP/Bunny) están listos. No abre pestañas nuevas.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4 space-y-3">
+              {diagnosticLoading ? (
+                <div className="flex items-center gap-3 text-sm text-zinc-300">
+                  <span
+                    className="h-5 w-5 inline-block rounded-full border-2 border-bear-blue/30 border-t-bear-blue animate-spin"
+                    aria-hidden="true"
+                  />
+                  Cargando…
+                </div>
+              ) : diagnosticError ? (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+                  {diagnosticError}
+                </div>
+              ) : diagnosticData ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                      <p className="text-zinc-400 text-xs uppercase tracking-wide">Sesión</p>
+                      <p className="font-bold text-white">{diagnosticData.loggedIn ? 'OK' : 'No logueado'}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                      <p className="text-zinc-400 text-xs uppercase tracking-wide">Compra</p>
+                      <p className="font-bold text-white">{diagnosticData.hasPurchases ? 'OK' : 'Sin compra'}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                      <p className="text-zinc-400 text-xs uppercase tracking-wide">FTP</p>
+                      <p className="font-bold text-white">
+                        {diagnosticData.ftpConfigured ? 'Configurado' : 'No configurado'}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                      <p className="text-zinc-400 text-xs uppercase tracking-wide">Bunny</p>
+                      <p className="font-bold text-white">
+                        {diagnosticData.bunnyConfigured ? 'Configurado' : 'No configurado'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {diagnosticData?.bunnyStatus && (
+                    <div className="rounded-xl border border-white/10 bg-black/30 p-3 text-sm">
+                      <p className="text-zinc-400 text-xs uppercase tracking-wide">Bunny Status</p>
+                      <p className="font-bold text-white">{diagnosticData.bunnyStatus.ok ? 'OK' : 'Incompleto'}</p>
+                      {!diagnosticData.bunnyStatus.ok && (
+                        <p className="mt-1 text-xs text-zinc-400">
+                          {[...(diagnosticData.bunnyStatus.missing || []), ...(diagnosticData.bunnyStatus.invalid || [])]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {diagnosticData?.nextStep && (
+                    <div className="rounded-xl border border-bear-blue/25 bg-bear-blue/10 p-4 text-sm text-zinc-200">
+                      <p className="font-black text-white mb-1">Siguiente paso</p>
+                      <p className="text-zinc-300">{String(diagnosticData.nextStep)}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-zinc-400">Sin datos.</p>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDiagnostic(false)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-sm font-bold border border-white/10 transition"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

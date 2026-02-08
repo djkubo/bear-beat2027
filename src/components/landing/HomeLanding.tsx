@@ -4,11 +4,13 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { trackCTAClick, trackPageView } from '@/lib/tracking'
 import { downloadFile } from '@/lib/download'
 import { registerServiceWorker, requestNotificationPermission, subscribeToPush, isPushSupported } from '@/lib/push-notifications'
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { createClient } from '@/lib/supabase/client'
+import { useFeaturedPack } from '@/lib/hooks/useFeaturedPack'
 import { StatsSection } from '@/components/landing/stats-section'
 import { Play, CheckCircle2, Check, Download, Wifi, Folder, Music2, Search, ChevronRight, Lock, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -177,6 +179,9 @@ type HomeLandingProps = {
 }
 
 export default function HomeLanding({ initialPack, initialPackInfo, initialHeroThumbUrl }: HomeLandingProps) {
+  const router = useRouter()
+  const { pack: featuredPack } = useFeaturedPack()
+
   // La landing debe renderizar estable en SSR. Estos defaults evitan "flicker" de precio/pack.
   const FALLBACK_PACK = {
     slug: 'enero-2026',
@@ -186,7 +191,7 @@ export default function HomeLanding({ initialPack, initialPackInfo, initialHeroT
     price_usd: 19,
   }
 
-  const pack = initialPack || FALLBACK_PACK
+  const pack = initialPack ? { ...featuredPack, ...initialPack } : featuredPack || FALLBACK_PACK
   const packSlug = pack.slug || 'enero-2026'
   const packName = pack.name || 'Pack Enero 2026'
   const priceMXNFromPack = Number(pack.price_mxn) || 350
@@ -242,11 +247,19 @@ export default function HomeLanding({ initialPack, initialPackInfo, initialHeroT
   }, [])
 
   const checkUser = async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: purchases } = await supabase.from('purchases').select('id').eq('user_id', user.id)
-      setUserState({ isLoggedIn: true, hasAccess: !!purchases?.length, userName: user.email?.split('@')[0] })
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: purchases } = await supabase.from('purchases').select('id').eq('user_id', user.id)
+        const hasAccess = !!purchases?.length
+        setUserState({ isLoggedIn: true, hasAccess, userName: user.email?.split('@')[0] })
+        if (hasAccess) {
+          router.replace('/dashboard')
+        }
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -317,6 +330,7 @@ export default function HomeLanding({ initialPack, initialPackInfo, initialHeroT
     setIsFullCatalogLoaded(false)
     setLoadingAll(false)
     setLoadingGenreId(null)
+    setPackInfo(initialPackInfo || null)
     loadStats()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packSlug])

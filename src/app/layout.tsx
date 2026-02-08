@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Suspense } from 'react'
 import './globals.css'
 import ChatWidgetLazy from '@/components/chat/ChatWidgetLazy'
 import { Toaster } from 'sonner'
@@ -56,9 +55,6 @@ export default function RootLayout({
         {preconnectOrigins.map((origin) => (
           <link key={origin} rel="preconnect" href={origin} crossOrigin="" />
         ))}
-        <Suspense fallback={null}>
-          <TrackingScripts />
-        </Suspense>
       </head>
       <body className="font-sans relative min-w-0 overflow-x-hidden overflow-y-auto bg-black text-white antialiased">
         <a
@@ -72,6 +68,7 @@ export default function RootLayout({
             {children}
           </main>
         </GlobalErrorBoundary>
+        <TrackingScripts />
         <ClientErrorLogger />
         <ChatWidgetLazy />
         <Toaster position="top-center" theme="dark" />
