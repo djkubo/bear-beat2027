@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import './globals.css'
 import ChatWidgetLazy from '@/components/chat/ChatWidgetLazy'
 import { Toaster } from 'sonner'
@@ -68,7 +69,9 @@ export default function RootLayout({
             {children}
           </main>
         </GlobalErrorBoundary>
-        <TrackingScripts />
+        <Suspense fallback={null}>
+          <TrackingScripts />
+        </Suspense>
         <ClientErrorLogger />
         <ChatWidgetLazy />
         <Toaster position="top-center" theme="dark" />
