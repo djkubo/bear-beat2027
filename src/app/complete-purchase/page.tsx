@@ -604,7 +604,7 @@ export default function CompletePurchasePage() {
                 Completa estos datos para poder descargar
               </p>
 
-              <form onSubmit={handleRegister} className="space-y-5">
+              <form onSubmit={handleRegister} className="space-y-5" method="post">
                 <div>
                   <label className="block text-sm font-bold mb-2">📧 Email</label>
                   <input
@@ -792,7 +792,7 @@ export default function CompletePurchasePage() {
 	                </div>
 	              )}
 
-	              <form onSubmit={handleLogin} className="space-y-5">
+		              <form onSubmit={handleLogin} className="space-y-5" method="post">
 	                  <div>
 	                    <label className="block text-sm font-bold mb-2">📧 Email</label>
 	                    <input

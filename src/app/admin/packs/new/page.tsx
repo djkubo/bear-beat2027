@@ -89,7 +89,7 @@ export default function AdminPackNewPage() {
       </Link>
       <h1 className="text-2xl font-black text-white mb-6">Crear nuevo pack</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border border-white/5 bg-zinc-900/80 p-6">
+      <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border border-white/5 bg-zinc-900/80 p-6" method="post">
         <div>
           <label className="block text-sm font-medium text-zinc-400 mb-1">Nombre *</label>
           <input

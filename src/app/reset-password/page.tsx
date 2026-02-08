@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
 
               {/* Form Card */}
               <div className="bg-white/5 backdrop-blur border border-bear-blue/30 rounded-3xl p-8">
-                <form onSubmit={handleResetPassword} className="space-y-5">
+                <form onSubmit={handleResetPassword} className="space-y-5" method="post">
                   {/* New Password */}
                   <div>
                     <label className="block text-sm font-bold mb-2 text-gray-300">

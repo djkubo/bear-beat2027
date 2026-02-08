@@ -46,7 +46,7 @@ export function SendAccessEmailForm() {
       <p className="text-sm text-zinc-500 mb-4">
         Para reenviar el correo (Panel Web + Google Drive) a quien ya pagó y no lo recibió. No activa compras.
       </p>
-      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3" method="post">
         <div className="flex-1 min-w-[200px]">
           <label className="block text-xs font-bold text-zinc-400 mb-1">Email</label>
           <input

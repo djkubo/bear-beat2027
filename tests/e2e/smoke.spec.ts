@@ -58,7 +58,8 @@ test.describe('Smoke: Home y navegación', () => {
     const routes = ['/', '/contenido', '/checkout', '/login', '/register', '/terminos', '/privacidad', '/preview']
     for (const route of routes) {
       consoleErrors.length = 0
-      const res = await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle' })
+      // `networkidle` es frágil en páginas con Stripe/PayPal (mantienen requests abiertos).
+      const res = await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded', timeout: 45_000 })
       expect(res?.status(), `GET ${route} debe ser 200`).toBe(200)
       expect(consoleErrors, `Consola en ${route} sin errores críticos`).toHaveLength(0)
     }

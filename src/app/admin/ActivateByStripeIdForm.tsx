@@ -47,7 +47,7 @@ export function ActivateByStripeIdForm() {
       <p className="text-sm text-zinc-400 mb-4">
         Si el cliente pagó en Stripe pero no tiene acceso (el webhook no creó el registro), pega aquí el <strong>Session ID</strong> (cs_...) o el <strong>Payment Intent</strong> (pi_...). Lo encuentras en Stripe → Pago → Eventos o en &quot;Se completó una sesión de Checkout&quot;.
       </p>
-      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3" method="post">
         <label className="flex-1 min-w-[200px]">
           <span className="sr-only">Session ID o Payment Intent</span>
           <input

@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
                 Ingresa tu email y te enviaremos las instrucciones para restablecerla.
               </p>
 
-              <form onSubmit={handleResetPassword} className="space-y-5">
+              <form onSubmit={handleResetPassword} className="space-y-5" method="post">
                 {/* Input con icono Mail (estilo Login) */}
                 <div>
                   <label htmlFor="forgot-email" className="sr-only">

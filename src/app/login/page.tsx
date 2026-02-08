@@ -188,7 +188,13 @@ export default function LoginPage() {
             </div>
 
             <div className="rounded-2xl border border-zinc-800 bg-black/40 p-6 sm:p-8">
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+              <form
+                onSubmit={handleSubmit(onSubmit)}
+                className="space-y-5"
+                noValidate
+                method="post"
+                action="/api/login"
+              >
                 <div>
                   <label htmlFor="login-email" className="block text-sm font-medium text-gray-400 mb-2">
                     Email

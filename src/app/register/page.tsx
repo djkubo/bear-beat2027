@@ -326,7 +326,7 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="rounded-2xl border border-zinc-800 bg-black/40 p-6 sm:p-8">
-                    <form onSubmit={handleSubmit(onStep1)} className="space-y-5" noValidate>
+                    <form onSubmit={handleSubmit(onStep1)} className="space-y-5" noValidate method="post">
                       <div>
                         <label htmlFor="reg-name" className="block text-sm font-medium text-gray-400 mb-2">
                           Nombre
@@ -479,7 +479,7 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="rounded-2xl border border-zinc-800 bg-black/40 p-6 sm:p-8">
-                    <form onSubmit={onStep2} className="space-y-6">
+                    <form onSubmit={onStep2} className="space-y-6" method="post">
                       {/* OTP: 6 inputs separados */}
                       <div className="flex justify-center gap-2 sm:gap-3">
                         {[0, 1, 2, 3, 4, 5].map((index) => (

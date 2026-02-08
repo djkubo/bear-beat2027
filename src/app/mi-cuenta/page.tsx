@@ -180,7 +180,7 @@ export default function MiCuentaPage() {
         {/* Tarjeta: Datos del perfil */}
         <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950 p-6 md:p-8 mb-6">
           <h2 className="text-lg font-bold text-white mb-6">Datos del perfil</h2>
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" method="post">
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-2">Nombre</label>
               <input
@@ -245,7 +245,7 @@ export default function MiCuentaPage() {
               Cambiar contraseña
             </button>
           ) : (
-            <form onSubmit={handleChangePassword} className="space-y-4">
+            <form onSubmit={handleChangePassword} className="space-y-4" method="post">
               <div>
                 <label className="block text-sm font-medium text-zinc-400 mb-2">Nueva contraseña</label>
                 <input

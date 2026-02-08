@@ -56,7 +56,7 @@ export function ManualRescueForm() {
         Pega una lista de <code className="bg-white/10 px-1 rounded">pi_...</code> que cobraron en Stripe pero no activaron. Se activará la compra y se enviará el email de rescate por Brevo.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" method="post">
         <div>
           <label className="block text-sm font-bold text-zinc-400 mb-2">
             IDs de Stripe (pi_...), uno por línea o separados por coma
