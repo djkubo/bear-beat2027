@@ -1,141 +1,87 @@
 /**
- * Abre la URL de descarga en nueva pestaña mediante un clic en un enlace.
- * Así el navegador trata la descarga como acción del usuario y no suele bloquearla.
+ * Descarga sin abrir nuevas pestañas/ventanas.
+ *
+ * Estrategia:
+ * - Iniciamos la descarga con un iframe oculto (navegación real del navegador).
+ * - Si la respuesta es un JSON de error (401/403/503), intentamos leerlo (same-origin)
+ *   y lanzamos una excepción para que la UI muestre el mensaje.
+ *
+ * Ventajas:
+ * - No abre tabs (mejor UX).
+ * - Mantiene la descarga como "download" nativo del navegador (continúa aunque cambies de página).
  */
-function openDownloadInNewTab(href: string): void {
-  const a = document.createElement('a')
-  a.href = href
-  a.target = '_blank'
-  a.rel = 'noopener noreferrer'
-  a.style.display = 'none'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-}
 
-const DOWNLOAD_FETCH_TIMEOUT_MS = 20_000 // 20 s para obtener 302/401/503 (evita colgar si el servidor no responde)
+let downloadIframe: HTMLIFrameElement | null = null
 
-/** Abre un tab "preparando descarga" para que el popup no sea bloqueado (debe ejecutarse dentro del gesto del usuario). */
-function openPreparingTab(): Window | null {
-  try {
-    const tab = window.open('', '_blank')
-    if (!tab) return null
-    try {
-      tab.opener = null
-    } catch {
-      // ignore
-    }
-    try {
-      // about:blank es same-origin; se puede escribir para feedback inmediato.
-      tab.document.title = 'Preparando descarga...'
-      tab.document.body.style.margin = '0'
-      tab.document.body.style.background = '#000'
-      tab.document.body.style.color = '#fff'
-      tab.document.body.style.fontFamily = 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial'
-      tab.document.body.innerHTML = `
-        <div style="display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px;text-align:center;">
-          <div style="max-width:520px">
-            <div style="font-weight:800;font-size:18px;margin-bottom:8px;">Preparando tu descarga...</div>
-            <div style="opacity:.75;font-size:14px;line-height:1.4">
-              Si esta pestaña se queda aquí más de 20 segundos, vuelve e intenta de nuevo.
-            </div>
-          </div>
-        </div>
-      `
-    } catch {
-      // ignore
-    }
-    return tab
-  } catch {
-    return null
-  }
+function getOrCreateDownloadIframe(): HTMLIFrameElement {
+  if (downloadIframe && document.body.contains(downloadIframe)) return downloadIframe
+  const iframe = document.createElement('iframe')
+  iframe.title = 'Bear Beat Download'
+  iframe.setAttribute('aria-hidden', 'true')
+  iframe.tabIndex = -1
+  // No usar display:none: algunos navegadores bloquean descargas desde iframes no "renderizados".
+  iframe.style.position = 'fixed'
+  iframe.style.left = '-9999px'
+  iframe.style.top = '-9999px'
+  iframe.style.width = '1px'
+  iframe.style.height = '1px'
+  iframe.style.border = '0'
+  iframe.style.opacity = '0'
+  document.body.appendChild(iframe)
+  downloadIframe = iframe
+  return iframe
 }
 
 /**
- * Descarga un archivo vía /api/download.
- * Si el servidor redirige (302) a CDN, abre esa URL en nueva pestaña (con enlace para evitar bloqueo de popups).
- * Si el servidor devuelve el archivo (200), navega esa pestaña a /api/download para que el navegador haga stream a disco
- * (evita descargar por blob y reventar memoria en videos grandes).
+ * Inicia una descarga nativa del navegador usando un iframe oculto.
+ * Resuelve cuando la descarga se "dispara" (no cuando termina).
  */
 export async function downloadFile(fileParam: string): Promise<void> {
-  const url = `/api/download?file=${encodeURIComponent(fileParam)}`
-  const tab = openPreparingTab()
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_FETCH_TIMEOUT_MS)
-  let res: Response
-  try {
-    res = await fetch(url, { credentials: 'include', redirect: 'manual', signal: controller.signal })
-  } catch (e) {
-    clearTimeout(timeoutId)
-    try {
-      tab?.close()
-    } catch {
-      // ignore
-    }
-    if ((e as Error)?.name === 'AbortError') {
-      throw new Error('La descarga tardó demasiado en responder. Prueba de nuevo o descarga por FTP desde tu panel.')
-    }
-    throw e
-  }
-  clearTimeout(timeoutId)
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
 
-  if (res.type === 'opaqueredirect' || res.status === 302) {
-    const location = res.headers.get('Location')
-    const targetUrl = location || url
-    if (tab && !tab.closed) {
+  const baseUrl = `/api/download?file=${encodeURIComponent(fileParam)}`
+  const url = `${baseUrl}&_dl=${Date.now()}`
+
+  const iframe = getOrCreateDownloadIframe()
+
+  // Usamos una promesa para poder surfacear errores JSON de auth/not-found.
+  await new Promise<void>((resolve, reject) => {
+    let settled = false
+    const settle = (fn: () => void) => {
+      if (settled) return
+      settled = true
+      iframe.removeEventListener('load', onLoad)
+      clearTimeout(timer)
+      fn()
+    }
+
+    const timer = window.setTimeout(() => {
+      // Si no hubo load, asumimos que el navegador disparó la descarga (o siguió un redirect cross-origin).
+      settle(resolve)
+    }, 1500)
+
+    const onLoad = () => {
+      // Si es same-origin y devolvió JSON, podemos leerlo.
       try {
-        tab.location.href = targetUrl
+        const doc = iframe.contentDocument
+        const text = doc?.body?.innerText?.trim()
+        if (text && text.startsWith('{')) {
+          const json = JSON.parse(text)
+          const msg = [json.error, json.message].filter(Boolean).join(' — ')
+          if (msg) {
+            settle(() => reject(new Error(msg)))
+            return
+          }
+        }
       } catch {
-        openDownloadInNewTab(targetUrl)
+        // Cross-origin (Bunny) u otra restricción: no podemos inspeccionar, pero la descarga ya debió iniciar.
       }
-    } else {
-      openDownloadInNewTab(targetUrl)
+      settle(resolve)
     }
-    return
-  }
-  if (!res.ok) {
-    const text = await res.text()
-    let err: Error
-    try {
-      const json = JSON.parse(text)
-      const msg = [json.error, json.message].filter(Boolean).join(' — ') || res.statusText
-      err = new Error(msg || 'Error al descargar')
-    } catch {
-      err = new Error(res.statusText || text || 'Error al descargar')
-    }
-    try {
-      tab?.close()
-    } catch {
-      // ignore
-    }
-    throw err
-  }
 
-  // Si la respuesta es JSON (ej. error que devolvió 200 por proxy/cache), mostrar mensaje
-  const contentType = res.headers.get('Content-Type') || ''
-  if (contentType.includes('application/json')) {
-    const json = await res.json().catch(() => ({}))
-    try {
-      tab?.close()
-    } catch {
-      // ignore
-    }
-    throw new Error((json.error || json.message || 'El servidor devolvió un error.').toString())
-  }
+    iframe.addEventListener('load', onLoad)
 
-  // Evitar descargar por blob. Mejor navegar la pestaña a la URL para stream directo (mejor UX y menos memoria).
-  try {
-    controller.abort()
-  } catch {
-    // ignore
-  }
-  if (tab && !tab.closed) {
-    try {
-      tab.location.href = url
-    } catch {
-      openDownloadInNewTab(url)
-    }
-  } else {
-    openDownloadInNewTab(url)
-  }
+    // Disparar descarga
+    iframe.src = url
+  })
 }
