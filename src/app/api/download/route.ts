@@ -19,6 +19,40 @@ function safeDownloadFilename(name: string): string {
   return base.length > 200 ? base.slice(0, 200) : base
 }
 
+function asciiFallbackFilename(name: string): string {
+  let out = name || 'download'
+  // Replace common unicode punctuation with ASCII equivalents.
+  out = out
+    // hyphens/dashes/minus
+    .replace(/[\u2010-\u2015\u2212]/g, '-')
+    // smart quotes
+    .replace(/[“”„‟]/g, '"')
+    .replace(/[‘’‚‛]/g, "'")
+  // Strip diacritics and any remaining non-ASCII to keep Node's header validator happy.
+  try {
+    out = out.normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC')
+  } catch {
+    // ignore
+  }
+  out = out.replace(/[^\x20-\x7E]/g, '')
+  out = out.replace(/[\x00-\x1f\x7f"\\<>|*?;=]/g, '').trim()
+  return out.length > 200 ? out.slice(0, 200) : (out || 'download')
+}
+
+function encodeRFC5987ValueChars(str: string): string {
+  return encodeURIComponent(str)
+    .replace(/['()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase())
+}
+
+function buildContentDisposition(filename: string, inline: boolean): string {
+  const type = inline ? 'inline' : 'attachment'
+  const safe = safeDownloadFilename(filename)
+  const fallback = asciiFallbackFilename(safe)
+  const needsExtended = safe !== fallback || /[^\x20-\x7E]/.test(safe)
+  if (!needsExtended) return `${type}; filename="${fallback}"`
+  return `${type}; filename="${fallback}"; filename*=UTF-8''${encodeRFC5987ValueChars(safe)}`
+}
+
 function joinPaths(...parts: Array<string | null | undefined>): string {
   return parts
     .filter((p): p is string => !!p && typeof p === 'string')
@@ -125,9 +159,7 @@ export async function GET(req: NextRequest) {
 
     const filename = safeDownloadFilename(sanitizedPath.split('/').pop() || 'download')
     const contentType = getContentType(sanitizedPath)
-    const disposition = streamInline
-      ? 'inline'
-      : `attachment; filename="${filename.replace(/"/g, '\\"')}"`
+    const disposition = buildContentDisposition(filename, streamInline)
 
     const tryProxyFromBunny = async (url: string): Promise<NextResponse | null> => {
       try {
