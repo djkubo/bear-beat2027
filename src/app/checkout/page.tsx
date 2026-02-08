@@ -70,11 +70,7 @@ export default function CheckoutPage() {
     if (name && name.trim()) setCheckoutName(name.trim())
   }, [])
 
-  // HARDCODED FOR TESTING: forzar MX para ver OXXO/SPEI desde cualquier país (ej. USA)
-  useEffect(() => {
-    setCountry('MX')
-    setCurrency('mxn')
-  }, [])
+  // Nota: antes se forzaba MXN para pruebas. Ya es el default; no lo forzamos para permitir geolocalización si se activa.
   // Lógica real (geolocalización) — descomentar para producción:
   // useEffect(() => {
   //   fetch('https://ipapi.co/json/')
