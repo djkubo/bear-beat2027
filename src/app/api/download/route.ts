@@ -129,6 +129,38 @@ export async function GET(req: NextRequest) {
       ? 'inline'
       : `attachment; filename="${filename.replace(/"/g, '\\"')}"`
 
+    const tryProxyFromBunny = async (url: string): Promise<NextResponse | null> => {
+      try {
+        // No usamos timeout aquí: es un stream grande y el cliente puede tardar minutos descargando.
+        const range = req.headers.get('range') || undefined
+        const bunnyRes = await fetch(url, {
+          cache: 'no-store',
+          headers: range ? { Range: range } : undefined,
+        })
+        if (bunnyRes.ok && bunnyRes.body) {
+          return new NextResponse(bunnyRes.body, {
+            status: bunnyRes.status,
+            headers: {
+              'Content-Type': contentType,
+              'Cache-Control': 'private, max-age=3600',
+              'Content-Disposition': disposition,
+              'X-Content-Type-Options': 'nosniff',
+              ...(bunnyRes.headers.get('accept-ranges') && { 'Accept-Ranges': bunnyRes.headers.get('accept-ranges')! }),
+              ...(bunnyRes.headers.get('content-range') && { 'Content-Range': bunnyRes.headers.get('content-range')! }),
+              ...(bunnyRes.headers.get('content-length') && {
+                'Content-Length': bunnyRes.headers.get('content-length')!,
+              }),
+            },
+          })
+        }
+        // Si falló el proxy, intentar FTP más abajo; si también falla, para ZIP/stream inline podemos redirigir.
+        console.warn('[download] Bunny proxy failed:', bunnyRes.status, 'path:', sanitizedPath)
+      } catch (proxyErr) {
+        console.warn('[download] Proxy Bunny falló:', (proxyErr as Error)?.message || proxyErr, 'path:', sanitizedPath)
+      }
+      return null
+    }
+
     // Intentar inferir el pack del usuario para probar prefijos típicos (packs/<slug>/...).
     let purchasedPackSlug: string | null = null
     try {
@@ -261,46 +293,25 @@ export async function GET(req: NextRequest) {
         // ZIP: redirigir a Bunny (evita 502 por timeout/memoria al hacer proxy de archivos grandes)
         if (isZip) return NextResponse.redirect(signedUrl, 302)
 
-        // Video: proxy con Content-Disposition: attachment para forzar descarga (no abrir en pestaña)
-        try {
-          // No usamos timeout aquí: es un stream grande y el cliente puede tardar minutos descargando.
-          const range = req.headers.get('range') || undefined
-          const bunnyRes = await fetch(signedUrl, {
-            cache: 'no-store',
-            headers: range ? { Range: range } : undefined,
-          })
-          if (bunnyRes.ok && bunnyRes.body) {
-            return new NextResponse(bunnyRes.body, {
-              status: bunnyRes.status,
-              headers: {
-                'Content-Type': contentType,
-                'Cache-Control': 'private, max-age=3600',
-                'Content-Disposition': disposition,
-                'X-Content-Type-Options': 'nosniff',
-                ...(bunnyRes.headers.get('accept-ranges') && { 'Accept-Ranges': bunnyRes.headers.get('accept-ranges')! }),
-                ...(bunnyRes.headers.get('content-range') && { 'Content-Range': bunnyRes.headers.get('content-range')! }),
-                ...(bunnyRes.headers.get('content-length') && {
-                  'Content-Length': bunnyRes.headers.get('content-length')!,
-                }),
-              },
-            })
-          }
-          // Si falló el proxy, intentar FTP más abajo; si también falla, redirigir a Bunny como último recurso.
-          console.warn('[download] Bunny proxy failed:', bunnyRes.status, 'path:', sanitizedPath)
-          bunnyFallbackUrl = signedUrl
-          bunnyFallbackPath = signedUrlPath || null
-        } catch (proxyErr) {
-          console.warn('[download] Proxy Bunny falló:', (proxyErr as Error)?.message || proxyErr, 'path:', sanitizedPath)
-          bunnyFallbackUrl = signedUrl
-          bunnyFallbackPath = signedUrlPath || null
-        }
+        // Video: proxy con Content-Disposition (download) / inline (demo).
+        const proxied = await tryProxyFromBunny(signedUrl)
+        if (proxied) return proxied
+        bunnyFallbackUrl = signedUrl
+        bunnyFallbackPath = signedUrlPath || null
       } else if (signedUrlMaybe) {
-        // No se pudo confirmar, pero guardamos un fallback a Bunny para último recurso.
-        // (En algunos entornos el server no puede hacer probe/proxy, pero el cliente sí puede descargar desde el CDN).
-        bunnyFallbackUrl = signedUrlMaybe
-        bunnyFallbackPath = signedUrlMaybePath || null
-        // Si no hay FTP, no hay nada más que intentar: redirect inmediato.
-        if (!isFtpConfigured()) return NextResponse.redirect(signedUrlMaybe, 302)
+        // No se pudo confirmar (timeout/cached en otra región), pero el path suele ser correcto.
+        // ZIP: redirigir (mejor performance). Video: intentar proxy igual para forzar download/inline.
+        if (isZip) {
+          bunnyFallbackUrl = signedUrlMaybe
+          bunnyFallbackPath = signedUrlMaybePath || null
+          // Si no hay FTP, no hay nada más que intentar.
+          if (!isFtpConfigured()) return NextResponse.redirect(signedUrlMaybe, 302)
+        } else {
+          const proxied = await tryProxyFromBunny(signedUrlMaybe)
+          if (proxied) return proxied
+          bunnyFallbackUrl = signedUrlMaybe
+          bunnyFallbackPath = signedUrlMaybePath || null
+        }
       }
 
       // Adjuntar debug a req para el 503 final (sin exponer URLs firmadas).
@@ -387,7 +398,9 @@ export async function GET(req: NextRequest) {
     const supportUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/contenido` : '/contenido'
     if (isFtpConfigured() || isBunnyConfigured()) {
       if (bunnyFallbackUrl) {
-        return NextResponse.redirect(bunnyFallbackUrl, 302)
+        // ZIP: redirect es ideal (CDN directo). Stream inline: redirect mantiene playback rápido.
+        // Descarga de video (attachment): NO redirigir, porque el navegador abre el MP4 (no descarga).
+        if (isZip || streamInline) return NextResponse.redirect(bunnyFallbackUrl, 302)
       }
       console.warn('[download] File not found in any source:', {
         path: sanitizedPath,
