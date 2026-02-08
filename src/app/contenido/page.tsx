@@ -9,7 +9,6 @@ import { downloadFile } from '@/lib/download'
 import { fbTrackViewContent, fbTrackSearch } from '@/components/analytics/MetaPixel'
 // Demo: /api/demo-url redirige a CDN firmado (rápido) o a proxy
 import { MobileMenu } from '@/components/ui/MobileMenu'
-import { createClient } from '@/lib/supabase/client'
 import { useFeaturedPack } from '@/lib/hooks/useFeaturedPack'
 import { Folder, Music2, Search, Lock, ChevronRight, Check, Play, Download, Archive, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -117,7 +116,6 @@ export default function ContenidoPage() {
 
   useEffect(() => {
     trackPageView('contenido')
-    verificarAcceso()
     fbTrackViewContent(
       { content_name: `Biblioteca Bear Beat — ${packName}`, content_type: 'product', content_ids: [packSlug] },
       undefined
@@ -161,20 +159,13 @@ export default function ContenidoPage() {
     }
   }, [showDiagnostic])
 
-  const verificarAcceso = async () => {
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      setIsLoggedIn(!!user)
-      if (user) {
-        const { data: purchases } = await supabase.from('purchases').select('*').eq('user_id', user.id)
-        setHasAccess(Boolean(purchases && purchases.length > 0))
-      } else {
-        setHasAccess(false)
-      }
-    } catch {
-      // ignore
-    }
+  const applyAccessFromApi = (data: any) => {
+    // /api/videos ya calcula acceso en servidor usando cookies (misma fuente que /api/download).
+    // Esto evita una llamada duplicada a Supabase desde el cliente.
+    const isAuth = Boolean(data?.userAccess?.isAuthenticated ?? data?.userId)
+    const has = Boolean(data?.hasAccess ?? data?.userAccess?.canDownload)
+    setIsLoggedIn(isAuth)
+    setHasAccess(has)
   }
 
   const loadStats = async () => {
@@ -185,6 +176,7 @@ export default function ContenidoPage() {
       if (data.success) {
         setGenres(data.genres || [])
         if (data.pack) setPackInfo(data.pack)
+        applyAccessFromApi(data)
       }
     } catch {
       // ignore
@@ -202,6 +194,7 @@ export default function ContenidoPage() {
       if (data.success) {
         setGenres(data.genres || [])
         if (data.pack) setPackInfo(data.pack)
+        applyAccessFromApi(data)
         setIsFullCatalogLoaded(true)
       }
     } catch {
@@ -227,6 +220,7 @@ export default function ContenidoPage() {
         const loadedGenre: Genre = data.genres[0]
         setGenres((prev) => prev.map((g) => (g.id === genreId ? loadedGenre : g)))
         if (data.pack) setPackInfo((prev) => ({ ...prev, ...data.pack }))
+        applyAccessFromApi(data)
       }
     } catch {
       // ignore

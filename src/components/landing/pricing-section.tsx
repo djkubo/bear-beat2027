@@ -95,14 +95,13 @@ export function PricingSection({ pack, totalVideos: totalVideosProp, totalSizeFo
             </ul>
 
             {/* CTA - GIGANTE Y OBVIO */}
-            <Link href={`/checkout?pack=${slug}`}>
-              <Button 
-                size="xl" 
-                className="w-full mb-4 bg-bear-blue text-bear-black hover:bg-bear-blue/90 font-extrabold text-2xl py-8 shadow-2xl rounded-2xl"
-              >
-                💎 UNIRME A LA ÉLITE AHORA
-              </Button>
-            </Link>
+            <Button
+              asChild
+              size="xl"
+              className="w-full mb-4 bg-bear-blue text-bear-black hover:bg-bear-blue/90 font-extrabold text-2xl py-8 shadow-2xl rounded-2xl"
+            >
+              <Link href={`/checkout?pack=${slug}`}>💎 UNIRME A LA ÉLITE AHORA</Link>
+            </Button>
             
             <p className="text-center text-sm font-bold text-bear-blue mb-6">
               👆 Haz clic aquí para ir a pagar 👆

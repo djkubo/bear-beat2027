@@ -336,8 +336,15 @@ export async function GET(req: NextRequest) {
         if (isZip) {
           bunnyFallbackUrl = signedUrlMaybe
           bunnyFallbackPath = signedUrlMaybePath || null
-          // Si no hay FTP, no hay nada más que intentar.
-          if (!isFtpConfigured()) return NextResponse.redirect(signedUrlMaybe, 302)
+          // Importante UX/performance:
+          // - Nunca proxy ZIPs grandes desde Render/FTP (tiende a timeouts y se siente lento).
+          // - Si el probe no devolvió 404, preferimos asumir que el path es correcto y descargar directo desde Bunny.
+          // Excepción: si todo lo que vimos fue 403, suele ser token auth mal configurado.
+          // En ese caso intentamos FTP como último recurso para no dejar al usuario sin descarga.
+          const all403 = bunnyDebug.length > 0 && bunnyDebug.every((r) => r.status === 403)
+          if (!all403) return NextResponse.redirect(signedUrlMaybe, 302)
+          bunnyFallbackUrl = null
+          bunnyFallbackPath = null
         } else {
           const proxied = await tryProxyFromBunny(signedUrlMaybe)
           if (proxied) return proxied

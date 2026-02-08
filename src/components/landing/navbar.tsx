@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MobileMenu } from '@/components/ui/MobileMenu'
 import { useFeaturedPack } from '@/lib/hooks/useFeaturedPack'
+import Image from 'next/image'
 
 export function NavBar() {
   const pathname = usePathname()
@@ -43,9 +44,12 @@ export function NavBar() {
         <div className="flex justify-between items-center h-14 md:h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <img
+            <Image
               src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png"
               alt="Bear Beat Logo"
+              width={40}
+              height={40}
+              priority
               className="h-9 w-auto md:h-10"
             />
             <span className="text-lg md:text-xl font-bold text-bear-blue tracking-tight">BEAR BEAT</span>
@@ -68,26 +72,25 @@ export function NavBar() {
           <div className="hidden md:flex items-center gap-3">
             {isLoggedIn ? (
               <>
-                <Link href="/dashboard">
-                  <Button variant="ghost" size="sm" className="text-zinc-300 hover:text-bear-blue">Mi Panel</Button>
-                </Link>
-                <Link href="/mi-cuenta">
-                  <Button variant="ghost" size="sm" className="text-zinc-300 hover:text-bear-blue">Mi cuenta</Button>
-                </Link>
+                <Button asChild variant="ghost" size="sm" className="text-zinc-300 hover:text-bear-blue">
+                  <Link href="/dashboard">Mi Panel</Link>
+                </Button>
+                <Button asChild variant="ghost" size="sm" className="text-zinc-300 hover:text-bear-blue">
+                  <Link href="/mi-cuenta">Mi cuenta</Link>
+                </Button>
               </>
             ) : (
-              <Link href="/login">
-                <Button variant="ghost" size="sm" className="text-zinc-300 hover:text-bear-blue">Iniciar Sesión</Button>
-              </Link>
-            )}
-            <Link href={`/checkout?pack=${packSlug}`}>
-              <Button
-                size="sm"
-                className={`bg-bear-blue text-zinc-950 hover:brightness-110 font-bold shadow-[0_0_16px_rgba(8,225,247,0.3)] ${!userHasAccess ? 'animate-pulse' : ''}`}
-              >
-                Acceso Total ${priceMXN}
+              <Button asChild variant="ghost" size="sm" className="text-zinc-300 hover:text-bear-blue">
+                <Link href="/login">Iniciar Sesión</Link>
               </Button>
-            </Link>
+            )}
+            <Button
+              asChild
+              size="sm"
+              className={`bg-bear-blue text-zinc-950 hover:brightness-110 font-bold shadow-[0_0_16px_rgba(8,225,247,0.3)] ${!userHasAccess ? 'animate-pulse' : ''}`}
+            >
+              <Link href={`/checkout?pack=${packSlug}`}>Acceso Total ${priceMXN}</Link>
+            </Button>
           </div>
 
           {/* Menú móvil – componente único, botón alineado a la derecha, z-index coherente */}

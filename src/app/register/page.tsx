@@ -15,6 +15,8 @@ import { z } from 'zod'
 import { Check, TrendingUp, Eye, EyeOff, MessageSquare, Pencil } from 'lucide-react'
 import { CountryCode } from 'libphonenumber-js'
 import { parsePhoneNumber } from 'libphonenumber-js'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 // ==========================================
 // REGISTER PAGE – Dark Mode Premium (alineado a Login y Home)
@@ -331,16 +333,17 @@ export default function RegisterPage() {
                         <label htmlFor="reg-name" className="block text-sm font-medium text-gray-400 mb-2">
                           Nombre
                         </label>
-                        <input
+                        <Input
                           id="reg-name"
                           type="text"
                           autoComplete="name"
                           placeholder="Tu nombre"
-                          className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white placeholder-gray-600 outline-none transition-colors focus:border-bear-blue focus:ring-2 focus:ring-bear-blue/20"
+                          aria-invalid={Boolean(errors.name)}
+                          className="placeholder:text-gray-600"
                           {...register('name')}
                         />
                         {errors.name && (
-                          <p className="mt-1.5 text-sm text-red-400">{errors.name.message}</p>
+                          <p className="mt-1.5 text-sm text-red-400" role="alert">{errors.name.message}</p>
                         )}
                       </div>
 
@@ -348,16 +351,17 @@ export default function RegisterPage() {
                         <label htmlFor="reg-email" className="block text-sm font-medium text-gray-400 mb-2">
                           Email
                         </label>
-                        <input
+                        <Input
                           id="reg-email"
                           type="email"
                           autoComplete="email"
                           placeholder="tu@email.com"
-                          className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white placeholder-gray-600 outline-none transition-colors focus:border-bear-blue focus:ring-2 focus:ring-bear-blue/20"
+                          aria-invalid={Boolean(errors.email)}
+                          className="placeholder:text-gray-600"
                           {...register('email')}
                         />
                         {errors.email && (
-                          <p className="mt-1.5 text-sm text-red-400">{errors.email.message}</p>
+                          <p className="mt-1.5 text-sm text-red-400" role="alert">{errors.email.message}</p>
                         )}
                       </div>
 
@@ -384,18 +388,21 @@ export default function RegisterPage() {
                           Contraseña
                         </label>
                         <div className="relative">
-                          <input
+                          <Input
                             id="reg-password"
                             type={showPassword ? 'text' : 'password'}
                             autoComplete="new-password"
                             placeholder="Mínimo 6 caracteres"
-                            className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 pr-12 text-white placeholder-gray-600 outline-none transition-colors focus:border-bear-blue focus:ring-2 focus:ring-bear-blue/20"
+                            aria-invalid={Boolean(errors.password)}
+                            className="pr-14 placeholder:text-gray-600"
                             {...register('password')}
                           />
-                          <button
+                          <Button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
                             aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                           >
                             {showPassword ? (
@@ -403,23 +410,23 @@ export default function RegisterPage() {
                             ) : (
                               <Eye className="h-5 w-5" />
                             )}
-                          </button>
+                          </Button>
                         </div>
                         {errors.password && (
-                          <p className="mt-1.5 text-sm text-red-400">{errors.password.message}</p>
+                          <p className="mt-1.5 text-sm text-red-400" role="alert">{errors.password.message}</p>
                         )}
                       </div>
 
                       {formError && (
                         <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
-                          <p className="text-sm text-red-400">{formError}</p>
+                          <p className="text-sm text-red-400" role="alert">{formError}</p>
                         </div>
                       )}
 
-                      <button
+                      <Button
                         type="submit"
                         disabled={loading}
-                        className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-lg transition-all hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#050505] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full text-lg"
                       >
                         {loading ? (
                           <span className="flex items-center justify-center gap-2">
@@ -432,7 +439,7 @@ export default function RegisterPage() {
                         ) : (
                           'CONTINUAR →'
                         )}
-                      </button>
+                      </Button>
                     </form>
                   </div>
                 </motion.div>
