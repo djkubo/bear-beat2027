@@ -11,6 +11,7 @@ const EXPIRY_VIDEO = 3600 // 1 h
 const EXPIRY_ZIP = 10800 // 3 h (los ZIP tardan más en bajar)
 const LEGACY_VIDEOS_FOLDER = 'Videos Enero 2026'
 const BUNNY_PROBE_TIMEOUT_MS = 7000
+const MAX_BUNNY_PROBES = 18 // Evita colgarse cuando el archivo no existe o el origin está lento
 
 /** Nombre de archivo seguro para Content-Disposition (evita caracteres problemáticos). */
 function safeDownloadFilename(name: string): string {
@@ -71,7 +72,12 @@ async function probeSignedUrl(url: string): Promise<{ ok: boolean; status: numbe
  */
 export async function GET(req: NextRequest) {
   try {
+    const startedAt = Date.now()
     const filePath = req.nextUrl.searchParams.get('file')
+    const debug = req.nextUrl.searchParams.get('debug') === '1'
+    let debugInfo: any = null
+    let bunnyFallbackUrl: string | null = null
+    let bunnyFallbackPath: string | null = null
 
     if (!filePath) {
       return NextResponse.json({ error: 'File path required' }, { status: 400 })
@@ -202,21 +208,36 @@ export async function GET(req: NextRequest) {
       const pathVariants = Array.from(new Set(rawVariants.filter(Boolean)))
 
       let signedUrl = ''
+      let signedUrlPath = ''
       let signedUrlMaybe = ''
+      let signedUrlMaybePath = ''
+      const bunnyDebug: Array<{ path: string; status: number; ok: boolean; ms: number }> = []
       for (const bunnyPath of pathVariants) {
+        if (bunnyDebug.length >= MAX_BUNNY_PROBES) break
         if (!bunnyPath) continue
         try {
           const url = generateSignedUrl(bunnyPath, expiresIn)
+          const t0 = Date.now()
           const probe = await probeSignedUrl(url)
+          bunnyDebug.push({ path: bunnyPath, status: probe.status, ok: probe.ok, ms: Date.now() - t0 })
           if (probe.ok) {
             signedUrl = url
+            signedUrlPath = bunnyPath
             break
           }
-          if (probe.status !== 404 && probe.status !== 0 && !signedUrlMaybe) signedUrlMaybe = url
+          // No 404 => podría existir pero Bunny no respondió (timeout/origin lento) o rechazó el rango.
+          // Guardamos el primer candidato "probable" para intentar usarlo aunque no podamos confirmar.
+          if (!signedUrlMaybe && probe.status !== 404) {
+            signedUrlMaybe = url
+            signedUrlMaybePath = bunnyPath
+          }
+          // Si ni siquiera pudimos hacer el probe (status 0), no vale la pena seguir probando 50 variantes.
+          if (probe.status === 0) break
         } catch {
           if (!signedUrlMaybe) {
             try {
               signedUrlMaybe = generateSignedUrl(bunnyPath, expiresIn)
+              signedUrlMaybePath = bunnyPath
             } catch {
               // ignore
             }
@@ -243,30 +264,58 @@ export async function GET(req: NextRequest) {
         // Video: proxy con Content-Disposition: attachment para forzar descarga (no abrir en pestaña)
         try {
           // No usamos timeout aquí: es un stream grande y el cliente puede tardar minutos descargando.
-          const bunnyRes = await fetch(signedUrl, { cache: 'no-store' })
+          const range = req.headers.get('range') || undefined
+          const bunnyRes = await fetch(signedUrl, {
+            cache: 'no-store',
+            headers: range ? { Range: range } : undefined,
+          })
           if (bunnyRes.ok && bunnyRes.body) {
             return new NextResponse(bunnyRes.body, {
+              status: bunnyRes.status,
               headers: {
                 'Content-Type': contentType,
                 'Cache-Control': 'private, max-age=3600',
                 'Content-Disposition': disposition,
                 'X-Content-Type-Options': 'nosniff',
+                ...(bunnyRes.headers.get('accept-ranges') && { 'Accept-Ranges': bunnyRes.headers.get('accept-ranges')! }),
+                ...(bunnyRes.headers.get('content-range') && { 'Content-Range': bunnyRes.headers.get('content-range')! }),
                 ...(bunnyRes.headers.get('content-length') && {
                   'Content-Length': bunnyRes.headers.get('content-length')!,
                 }),
               },
             })
           }
-          // Si falló el proxy, intentar FTP más abajo; si no hay, redirigir a Bunny.
+          // Si falló el proxy, intentar FTP más abajo; si también falla, redirigir a Bunny como último recurso.
           console.warn('[download] Bunny proxy failed:', bunnyRes.status, 'path:', sanitizedPath)
-          if (!isFtpConfigured()) return NextResponse.redirect(signedUrl, 302)
+          bunnyFallbackUrl = signedUrl
+          bunnyFallbackPath = signedUrlPath || null
         } catch (proxyErr) {
           console.warn('[download] Proxy Bunny falló:', (proxyErr as Error)?.message || proxyErr, 'path:', sanitizedPath)
-          if (!isFtpConfigured()) return NextResponse.redirect(signedUrl, 302)
+          bunnyFallbackUrl = signedUrl
+          bunnyFallbackPath = signedUrlPath || null
         }
-      } else if (signedUrlMaybe && !isFtpConfigured()) {
-        // No se pudo confirmar, pero al menos intentar con Bunny si no hay FTP.
-        return NextResponse.redirect(signedUrlMaybe, 302)
+      } else if (signedUrlMaybe) {
+        // No se pudo confirmar, pero guardamos un fallback a Bunny para último recurso.
+        // (En algunos entornos el server no puede hacer probe/proxy, pero el cliente sí puede descargar desde el CDN).
+        bunnyFallbackUrl = signedUrlMaybe
+        bunnyFallbackPath = signedUrlMaybePath || null
+        // Si no hay FTP, no hay nada más que intentar: redirect inmediato.
+        if (!isFtpConfigured()) return NextResponse.redirect(signedUrlMaybe, 302)
+      }
+
+      // Adjuntar debug a req para el 503 final (sin exponer URLs firmadas).
+      if (debug) {
+        debugInfo = {
+          tookMs: Date.now() - startedAt,
+          bunny: {
+            attempted: bunnyDebug,
+            foundPath: signedUrlPath || null,
+            maybePath: signedUrlMaybePath || null,
+            fallbackPath: bunnyFallbackPath,
+            attemptedCount: bunnyDebug.length,
+            totalCandidates: pathVariants.length,
+          },
+        }
       }
     }
 
@@ -337,6 +386,9 @@ export async function GET(req: NextRequest) {
 
     const supportUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/contenido` : '/contenido'
     if (isFtpConfigured() || isBunnyConfigured()) {
+      if (bunnyFallbackUrl) {
+        return NextResponse.redirect(bunnyFallbackUrl, 302)
+      }
       console.warn('[download] File not found in any source:', {
         path: sanitizedPath,
         isZip,
@@ -352,6 +404,7 @@ export async function GET(req: NextRequest) {
           redirect: '/dashboard',
           path: sanitizedPath,
           pack: purchasedPackSlug,
+          ...(debugInfo ? { debug: debugInfo } : {}),
         },
         { status: 503 }
       )

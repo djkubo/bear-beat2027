@@ -10,6 +10,11 @@ import { GlobalErrorBoundary } from '@/components/tracking/GlobalErrorBoundary'
 export const metadata: Metadata = {
   title: 'Bear Beat | Video Remixes para DJs 2026 - Catalogo HD por Genero',
   description: 'Video Remixes para DJs 2026: biblioteca HD organizada por genero. Demos, descargas por video, ZIP por carpeta o FTP (FileZilla, Air Explorer). Pago unico. PayPal, tarjeta, OXXO, SPEI.',
+  icons: {
+    icon: [{ url: '/favicon.png', type: 'image/png' }],
+    apple: [{ url: '/favicon.png', type: 'image/png' }],
+  },
+  manifest: '/manifest.json',
 }
 
 export const viewport = {

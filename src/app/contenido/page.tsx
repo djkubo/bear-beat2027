@@ -89,6 +89,12 @@ export default function ContenidoPage() {
     return `/api/thumbnail-cdn?path=${encodeURIComponent(pathJpg)}`
   }
 
+  const getPlaceholderThumbUrl = (video: Video): string => {
+    const artist = encodeURIComponent(video.artist || '')
+    const title = encodeURIComponent(video.title || video.displayName || '')
+    return `/api/placeholder/thumb?artist=${artist}&title=${title}`
+  }
+
   useEffect(() => {
     setPosterError(false)
     setDemoError(false)
@@ -267,6 +273,10 @@ export default function ContenidoPage() {
   const handleDownloadFolderZip = async (genre: Genre) => {
     if (!hasAccess) {
       setShowPaywall(true)
+      return
+    }
+    if (!genre.videoCount || genre.videoCount <= 0) {
+      toast.info('ZIP no disponible para este género.')
       return
     }
     const zipName = `${genre.name}.zip`
@@ -482,12 +492,13 @@ export default function ContenidoPage() {
                           {hasAccess && (
                             <button
                               type="button"
-                              disabled={downloadingZipGenreId === genre.id}
+                              aria-disabled={!genre.videoCount || genre.videoCount <= 0}
+                              disabled={downloadingZipGenreId === genre.id || !genre.videoCount || genre.videoCount <= 0}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleDownloadFolderZip(genre)
                               }}
-                              className="inline-flex items-center gap-2 min-h-[48px] px-4 py-3 rounded-lg bg-bear-blue/20 text-bear-blue font-bold text-base hover:bg-bear-blue/30 transition border border-bear-blue/40 shrink-0 disabled:opacity-70"
+                              className="inline-flex items-center gap-2 min-h-[48px] px-4 py-3 rounded-lg bg-bear-blue/20 text-bear-blue font-bold text-base hover:bg-bear-blue/30 transition border border-bear-blue/40 shrink-0 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
                               {downloadingZipGenreId === genre.id ? (
                                 <>
@@ -499,8 +510,8 @@ export default function ContenidoPage() {
                                 <>
                                   <span className="text-lg">⬇️</span>
                                   <Archive className="h-5 w-5 shrink-0" />
-                                  <span className="hidden sm:inline">DESCARGAR CARPETA ZIP</span>
-                                  <span className="sm:hidden">ZIP</span>
+                                  <span className="hidden sm:inline">{genre.videoCount > 0 ? 'DESCARGAR CARPETA ZIP' : 'ZIP NO DISPONIBLE'}</span>
+                                  <span className="sm:hidden">{genre.videoCount > 0 ? 'ZIP' : 'N/A'}</span>
                                 </>
                               )}
                             </button>
@@ -570,10 +581,18 @@ export default function ContenidoPage() {
                                     src={getThumbnailUrl(video)}
                                     alt={`Portada ${video.artist} - ${video.title}`}
                                     className="w-full h-full object-cover"
+                                    loading="lazy"
+                                    decoding="async"
                                     onError={() => setThumbErrors((s) => new Set(s).add(video.id))}
                                   />
                                 ) : (
-                                  <Play className="h-5 w-5 text-bear-blue/60" />
+                                  <img
+                                    src={getPlaceholderThumbUrl(video)}
+                                    alt={`Portada ${video.artist} - ${video.title}`}
+                                    className="w-full h-full object-cover opacity-90"
+                                    loading="lazy"
+                                    decoding="async"
+                                  />
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
