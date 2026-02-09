@@ -218,6 +218,25 @@ export async function activatePurchase(input: ActivatePurchaseInput): Promise<Ac
     .maybeSingle()
 
   if (existingPurchase) {
+    // Si ya existe la compra pero el pending_purchases quedó sin marcar, marcarlo como completed.
+    // Esto evita que el admin siga viendo el pago como "pendiente" aunque el usuario ya tenga acceso.
+    if (!isPayPal && !isStripePaymentIntent) {
+      try {
+        await (admin as any)
+          .from('pending_purchases')
+          .update({
+            user_id: userId,
+            status: 'completed',
+            customer_email: customerEmail,
+            customer_name: name ?? null,
+            customer_phone: phone ?? null,
+            completed_at: new Date().toISOString(),
+          })
+          .eq('stripe_session_id', sessionId)
+      } catch {
+        // ignore
+      }
+    }
     const ftp_user = existingPurchase.ftp_username || `dj_${userId.slice(0, 8)}`
     const host = ftp_user.includes('-sub')
       ? `${ftp_user}.your-storagebox.de`
@@ -346,4 +365,3 @@ export async function activatePurchase(input: ActivatePurchaseInput): Promise<Ac
     ftp_host,
   }
 }
-

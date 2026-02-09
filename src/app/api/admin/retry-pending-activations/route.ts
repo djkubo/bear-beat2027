@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
 
     let activated = 0
     const errors: string[] = []
+    const skipped: string[] = []
     const isProd = process.env.NODE_ENV === 'production'
 
     for (const row of pendings) {
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
       // En producción, los IDs cs_test_ no existen con la Stripe live key.
       // Estos suelen venir de pruebas antiguas y no deben bloquear el "Reintentar todos".
       if (isProd && sessionId.startsWith('cs_test_')) {
-        errors.push(`${row.customer_email || row.id}: Stripe TEST (cs_test_) ignorado en producción`)
+        skipped.push(`${row.customer_email || row.id}: Stripe TEST (cs_test_) ignorado en producción`)
         continue
       }
       try {
@@ -65,13 +66,14 @@ export async function POST(req: NextRequest) {
     }
 
     const failed = pendings.length - activated
+    const combinedErrors = errors.concat(skipped)
     return NextResponse.json({
       ok: true,
       activated,
       failed,
       total: pendings.length,
-      errors: errors.slice(0, 10),
-      message: `Activados: ${activated}, fallidos: ${failed}.`,
+      errors: combinedErrors.slice(0, 10),
+      message: `Activados: ${activated}, fallidos: ${failed}.` + (skipped.length ? ` (Ignorados TEST: ${skipped.length})` : ''),
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Error interno'
