@@ -4,7 +4,6 @@ import { formatPrice, formatDate } from '@/lib/utils'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import { Users, DollarSign, Package, TrendingUp } from 'lucide-react'
 import { SyncVideosFtpButton } from './SyncVideosFtpButton'
-import { AdminDashboardToolbar } from './AdminDashboardToolbar'
 import { ActivatePendingButton } from './ActivatePendingButton'
 
 const USD_TO_MXN_RATE = Number(process.env.CURRENCY_USD_TO_MXN_RATE) || 17
@@ -193,8 +192,6 @@ export default async function AdminDashboardPage() {
 
   return (
     <>
-      <AdminDashboardToolbar />
-
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         <h1 className="text-2xl md:text-3xl font-black text-white mb-6 tracking-tight">
           Panel de Admin

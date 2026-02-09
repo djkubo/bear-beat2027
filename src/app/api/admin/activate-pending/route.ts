@@ -232,7 +232,8 @@ export async function POST(req: NextRequest) {
 
     if (!userId) return NextResponse.json({ error: 'userId no definido' }, { status: 500 })
 
-    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || 'http://localhost:3000'
+    // Usar el origin real del request para evitar depender de NEXT_PUBLIC_APP_URL mal configurada.
+    const baseUrl = req.nextUrl.origin
     const activateRes = await fetch(`${baseUrl}/api/complete-purchase/activate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

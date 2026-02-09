@@ -44,18 +44,20 @@ export default function AdminManyChat() {
       const response = await fetch('/api/manychat/init')
       const data = await response.json()
       
-      if (!response.ok) {
-        let msg = data.error || 'Error al obtener estado'
-        if (data.hint) msg += '\n\n' + data.hint
-        if (data.keySet === false) {
+      if (!data?.success) {
+        let msg = data?.error || 'Error al obtener estado'
+        if (data?.hint) msg += '\n\n' + data.hint
+        if (data?.keySet === false) {
           msg += '\n\nLa variable no está cargada en el servidor: añádela en Render → Environment y haz "Manual Deploy".'
-        } else if (data.keySet === true) {
+        } else if (data?.keySet === true) {
           msg += '\n\nLa clave está cargada pero ManyChat la rechaza. Comprueba que sea la API Key correcta (ManyChat → Settings → API).'
         }
-        throw new Error(msg)
+        setStatus(null)
+        setError(msg)
+        return
       }
-      
-      setStatus(data)
+
+      setStatus(data as ManyChatStatus)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -77,9 +79,7 @@ export default function AdminManyChat() {
       
       const data = await response.json()
       
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al inicializar')
-      }
+      if (!data?.success) throw new Error(data?.error || 'Error al inicializar')
       
       setInitResult(data)
       
