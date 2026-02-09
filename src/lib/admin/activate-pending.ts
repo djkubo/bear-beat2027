@@ -13,6 +13,7 @@ type PendingPurchaseRow = {
   amount_paid: number | null
   currency: string | null
   payment_provider: string | null
+  payment_status: string | null
 }
 
 type StripeSessionLike = {
@@ -62,7 +63,7 @@ export async function activatePendingPurchase(input: ActivatePendingInput): Prom
     const { data } = await (admin as any)
       .from('pending_purchases')
       .select(
-        'id, stripe_session_id, customer_email, customer_name, customer_phone, pack_id, amount_paid, currency, payment_provider'
+        'id, stripe_session_id, customer_email, customer_name, customer_phone, pack_id, amount_paid, currency, payment_provider, payment_status'
       )
       .eq('stripe_session_id', sessionId)
       .eq('payment_status', 'paid')
@@ -89,6 +90,7 @@ export async function activatePendingPurchase(input: ActivatePendingInput): Prom
           amount_paid: (session.amount_total ?? 0) / 100,
           currency: (session.currency ?? 'MXN').toUpperCase(),
           payment_provider: 'stripe',
+          payment_status: 'paid',
         }
       } else {
         const pi = await stripe.paymentIntents.retrieve(sessionId)
@@ -139,6 +141,7 @@ export async function activatePendingPurchase(input: ActivatePendingInput): Prom
           amount_paid: amountPaid,
           currency,
           payment_provider: 'stripe',
+          payment_status: 'paid',
         }
       }
     }
@@ -146,7 +149,7 @@ export async function activatePendingPurchase(input: ActivatePendingInput): Prom
     const { data } = await (admin as any)
       .from('pending_purchases')
       .select(
-        'id, stripe_session_id, customer_email, customer_name, customer_phone, pack_id, amount_paid, currency, payment_provider'
+        'id, stripe_session_id, customer_email, customer_name, customer_phone, pack_id, amount_paid, currency, payment_provider, payment_status'
       )
       .eq('id', pendingId)
       .eq('payment_status', 'paid')
@@ -255,17 +258,42 @@ export async function activatePendingPurchase(input: ActivatePendingInput): Prom
 
   if (!userId) throw new Error('userId no definido')
 
-  await activatePurchase({
-    sessionId: pending.stripe_session_id,
-    userId,
-    email: pending.customer_email ?? undefined,
-    name: pending.customer_name ?? undefined,
-    phone: pending.customer_phone ?? undefined,
-    packId: pending.pack_id ?? undefined,
-    amountPaid: pending.amount_paid ?? undefined,
-    currency: pending.currency ?? undefined,
-    paymentProvider: pending.payment_provider || 'stripe',
-  })
+  try {
+    await activatePurchase({
+      sessionId: pending.stripe_session_id,
+      userId,
+      email: pending.customer_email ?? undefined,
+      name: pending.customer_name ?? undefined,
+      phone: pending.customer_phone ?? undefined,
+      packId: pending.pack_id ?? undefined,
+      amountPaid: pending.amount_paid ?? undefined,
+      currency: pending.currency ?? undefined,
+      paymentProvider: pending.payment_provider || 'stripe',
+    })
+  } catch (e: unknown) {
+    // Si Stripe dice que NO esta pagado, corregir el payment_status en la tabla para no reintentar eternamente.
+    if (
+      e instanceof HttpError &&
+      e.status === 400 &&
+      e.message === 'Pago no completado o sesión inválida' &&
+      pending.id &&
+      pending.stripe_session_id?.startsWith('cs_')
+    ) {
+      try {
+        const s = await stripe.checkout.sessions.retrieve(pending.stripe_session_id)
+        const ps = String((s as any)?.payment_status || '').trim()
+        if (ps && ps !== pending.payment_status) {
+          await (admin as any)
+            .from('pending_purchases')
+            .update({ payment_status: ps })
+            .eq('id', pending.id)
+        }
+      } catch {
+        // ignore
+      }
+    }
+    throw e
+  }
 
   return {
     ok: true,

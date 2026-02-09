@@ -16,6 +16,7 @@ export default async function AdminPendingPurchasesPage() {
     .from('pending_purchases')
     .select('*, pack:packs(*)')
     .eq('status', 'awaiting_completion')
+    .eq('payment_status', 'paid')
     .order('created_at', { ascending: false })
   
   // Obtener compras completadas recientemente
