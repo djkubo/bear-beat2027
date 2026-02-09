@@ -7,6 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
+import { activatePendingPurchase } from '@/lib/admin/activate-pending'
+import { getErrorMessage } from '@/lib/http-error'
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,10 +43,6 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Importante: este endpoint llama internamente a /api/admin/activate-pending.
-    // Si no reenviamos cookies, activate-pending no detecta al admin (401/403).
-    const baseUrl = req.nextUrl.origin
-    const cookie = req.headers.get('cookie') || ''
     let activated = 0
     const errors: string[] = []
 
@@ -52,20 +50,10 @@ export async function POST(req: NextRequest) {
       const sessionId = row.stripe_session_id
       if (!sessionId) continue
       try {
-        const res = await fetch(`${baseUrl}/api/admin/activate-pending`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', cookie },
-          body: JSON.stringify({ sessionId }),
-        })
-        const data = await res.json().catch(() => ({}))
-        if (res.ok && data?.ok) {
-          activated++
-        } else {
-          errors.push(`${row.customer_email || row.id}: ${data?.error || res.status}`)
-        }
+        const result = await activatePendingPurchase({ sessionId })
+        if (result?.ok) activated++
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'Error'
-        errors.push(`${row.customer_email || row.id}: ${msg}`)
+        errors.push(`${row.customer_email || row.id}: ${getErrorMessage(e)}`)
       }
     }
 
