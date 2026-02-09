@@ -178,6 +178,34 @@ export async function activatePendingPurchase(input: ActivatePendingInput): Prom
   if (existingUser?.id) {
     userId = existingUser.id
   } else {
+    // Si ya existe en auth pero NO existe en public.users (caso común: usuario creado pero row no insertada),
+    // recuperarlo desde auth.users con service role y crear/actualizar la fila en public.users.
+    try {
+      const { data: authUser } = await (admin as any)
+        .schema('auth')
+        .from('users')
+        .select('id')
+        .eq('email', emailLower)
+        .maybeSingle()
+      if (authUser?.id) {
+        userId = authUser.id
+        await (admin as any).from('users').upsert(
+          {
+            id: userId,
+            email: emailLower,
+            name: pending.customer_name ?? null,
+            phone: pending.customer_phone ?? null,
+          },
+          { onConflict: 'id' }
+        )
+      }
+    } catch {
+      // ignore
+    }
+
+    if (userId) {
+      // ya resuelto desde auth.users
+    } else {
     const { data: newAuth, error: createErr } = await (admin.auth as any).admin.createUser({
       email: emailLower,
       password: randomPassword(),
@@ -222,6 +250,7 @@ export async function activatePendingPurchase(input: ActivatePendingInput): Prom
     } else {
       throw new Error('No se pudo crear el usuario')
     }
+    }
   }
 
   if (!userId) throw new Error('userId no definido')
@@ -245,4 +274,3 @@ export async function activatePendingPurchase(input: ActivatePendingInput): Prom
     message: 'Compra activada. El usuario ya tiene acceso al pack.',
   }
 }
-

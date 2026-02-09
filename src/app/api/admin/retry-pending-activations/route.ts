@@ -45,10 +45,17 @@ export async function POST(req: NextRequest) {
 
     let activated = 0
     const errors: string[] = []
+    const isProd = process.env.NODE_ENV === 'production'
 
     for (const row of pendings) {
       const sessionId = row.stripe_session_id
       if (!sessionId) continue
+      // En producción, los IDs cs_test_ no existen con la Stripe live key.
+      // Estos suelen venir de pruebas antiguas y no deben bloquear el "Reintentar todos".
+      if (isProd && sessionId.startsWith('cs_test_')) {
+        errors.push(`${row.customer_email || row.id}: Stripe TEST (cs_test_) ignorado en producción`)
+        continue
+      }
       try {
         const result = await activatePendingPurchase({ sessionId })
         if (result?.ok) activated++
