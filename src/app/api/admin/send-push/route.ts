@@ -38,17 +38,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
-    const { title, body, url, icon } = (await req.json().catch(() => ({}))) as {
+    const { title, body, url, icon, userIds } = (await req.json().catch(() => ({}))) as {
       title?: string
       body?: string
       url?: string
       icon?: string
+      userIds?: unknown
     }
 
     const admin = createAdminClient()
-    const { data: rows, error } = await (admin.from('push_subscriptions') as any)
-      .select('id, endpoint, keys, subscription')
+    const ids = Array.isArray(userIds)
+      ? userIds
+          .filter((x): x is string => typeof x === 'string')
+          .map((x) => x.trim())
+          .filter(Boolean)
+      : []
+
+    let query = (admin.from('push_subscriptions') as any)
+      .select('id, endpoint, keys, subscription, user_id')
       .eq('active', true)
+
+    if (ids.length > 0) {
+      query = query.in('user_id', ids)
+    }
+
+    const { data: rows, error } = await query
 
     if (error || !rows) {
       return NextResponse.json({ error: 'Error obteniendo suscripciones' }, { status: 500 })
@@ -91,6 +105,8 @@ export async function POST(req: NextRequest) {
       failed: rows.length - sent,
       total: rows.length,
       removed: toDelete.length,
+      target: ids.length > 0 ? 'specific_users' : 'all',
+      requestedUsers: ids.length,
     })
   } catch (e: unknown) {
     console.error('send-push error:', e)

@@ -4,11 +4,11 @@
  * Útil cuando el webhook falló y Stripe ya no reintenta.
  */
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -41,7 +41,10 @@ export async function POST() {
       })
     }
 
-    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || 'http://localhost:3000'
+    // Importante: este endpoint llama internamente a /api/admin/activate-pending.
+    // Si no reenviamos cookies, activate-pending no detecta al admin (401/403).
+    const baseUrl = req.nextUrl.origin
+    const cookie = req.headers.get('cookie') || ''
     let activated = 0
     const errors: string[] = []
 
@@ -51,7 +54,7 @@ export async function POST() {
       try {
         const res = await fetch(`${baseUrl}/api/admin/activate-pending`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', cookie },
           body: JSON.stringify({ sessionId }),
         })
         const data = await res.json().catch(() => ({}))

@@ -9,9 +9,21 @@ import {
   BEAR_BEAT_TAGS,
   BEAR_BEAT_FIELDS,
 } from '@/lib/manychat'
+import { getAdminStatus } from '@/lib/admin-check'
 
 function isKeySet(): boolean {
   return (process.env.MANYCHAT_API_KEY || '').trim().length > 0
+}
+
+async function requireAdmin() {
+  const { user, isAdmin } = await getAdminStatus()
+  if (!user) {
+    return { ok: false as const, status: 401, error: 'No autenticado' }
+  }
+  if (!isAdmin) {
+    return { ok: false as const, status: 403, error: 'No autorizado' }
+  }
+  return { ok: true as const }
 }
 
 /**
@@ -27,6 +39,10 @@ function isKeySet(): boolean {
  * - { action: 'status' } - Ver estado actual
  */
 export async function POST(req: NextRequest) {
+  const admin = await requireAdmin()
+  if (!admin.ok) {
+    return NextResponse.json({ success: false, error: admin.error }, { status: admin.status })
+  }
   if (!isKeySet()) {
     const isProd = process.env.NODE_ENV === 'production'
     const hint = isProd
@@ -34,15 +50,16 @@ export async function POST(req: NextRequest) {
       : 'Añade MANYCHAT_API_KEY en .env.local.'
     return NextResponse.json(
       {
+        success: false,
         error: 'ManyChat no está configurado (MANYCHAT_API_KEY faltante).',
         hint,
         keySet: false,
       },
-      { status: 503 }
+      // 200 para no ensuciar consola del navegador en el panel admin.
+      { status: 200 }
     )
   }
   try {
-    console.log('ManyChat Key Presente:', !!process.env.MANYCHAT_API_KEY)
     const body = await req.json().catch(() => ({}))
     const action = body.action || 'all'
 
@@ -76,10 +93,10 @@ export async function POST(req: NextRequest) {
         break
         
       default:
-        return NextResponse.json(
-          { error: 'Invalid action. Use: all, tags, fields, or status' },
-          { status: 400 }
-        )
+        return NextResponse.json({
+          success: false,
+          error: 'Acción inválida. Usa: all, tags, fields, o status.',
+        })
     }
     
     return NextResponse.json({
@@ -99,11 +116,13 @@ export async function POST(req: NextRequest) {
       : 'Añade MANYCHAT_API_KEY en .env.local.'
     return NextResponse.json(
       {
+        success: false,
         error: error.message || 'Initialization failed',
         hint,
         keySet: isKeySet(),
       },
-      { status: 500 }
+      // 200 para no ensuciar consola del navegador en el panel admin.
+      { status: 200 }
     )
   }
 }
@@ -114,6 +133,10 @@ export async function POST(req: NextRequest) {
  * Obtiene el estado actual de la configuración de ManyChat
  */
 export async function GET() {
+  const admin = await requireAdmin()
+  if (!admin.ok) {
+    return NextResponse.json({ success: false, error: admin.error }, { status: admin.status })
+  }
   if (!isKeySet()) {
     const isProd = process.env.NODE_ENV === 'production'
     const hint = isProd
@@ -121,11 +144,13 @@ export async function GET() {
       : 'Añade MANYCHAT_API_KEY en .env.local (API Key de ManyChat → Settings → API).'
     return NextResponse.json(
       {
+        success: false,
         error: 'ManyChat no está configurado (MANYCHAT_API_KEY faltante).',
         hint,
         keySet: false,
       },
-      { status: 503 }
+      // 200 para no ensuciar consola del navegador en el panel admin.
+      { status: 200 }
     )
   }
   try {
@@ -182,8 +207,7 @@ export async function GET() {
       ? 'Render: Environment → MANYCHAT_API_KEY (valor = API Key de ManyChat → Settings → API). Después de añadirla, haz "Manual Deploy" para que cargue.'
       : 'Añade MANYCHAT_API_KEY en .env.local (API Key de ManyChat → Settings → API).'
     const msg = String(error?.message || 'Failed to get status')
-    // ManyChat rechaza la key (401/403) => esto no es un 500 del servidor.
-    const status = msg.includes('API key rechazada') ? 401 : 500
-    return NextResponse.json({ error: msg, hint, keySet: isKeySet() }, { status })
+    // En panel admin preferimos 200 + success:false para que no se vea como "error de recurso" en consola.
+    return NextResponse.json({ success: false, error: msg, hint, keySet: isKeySet() }, { status: 200 })
   }
 }

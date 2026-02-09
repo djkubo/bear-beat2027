@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 
 interface User {
@@ -12,7 +12,6 @@ interface User {
 }
 
 export default function AdminMensajes() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
@@ -21,24 +20,14 @@ export default function AdminMensajes() {
   const [messageType, setMessageType] = useState<'email' | 'push' | 'all'>('email')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
+  const [linkUrl, setLinkUrl] = useState('/')
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
-    checkAdmin()
     loadUsers()
     const userId = searchParams.get('userId')
     if (userId) setSelectedUsers([userId])
   }, [])
-
-  const checkAdmin = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/login')
-      return
-    }
-    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'admin') router.push('/')
-  }
 
   const loadUsers = async () => {
     try {
@@ -75,29 +64,30 @@ export default function AdminMensajes() {
     setSending(true)
     try {
       if (messageType === 'email' || messageType === 'all') {
-        toast.info('Función de emails en desarrollo - Integrar con Resend')
+        toast.info('Emails masivos: pendiente. Para reenviar accesos usa "Rescate pagos".')
       }
       if (messageType === 'push' || messageType === 'all') {
-        const response = await fetch('/api/push/send', {
+        const response = await fetch('/api/admin/send-push', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: subject || 'Mensaje de Bear Beat',
             body: message,
-            url: '/',
-            target: 'specific_users',
-            userIds: selectedUsers
+            url: linkUrl || '/',
+            icon: '/favicon.png',
+            userIds: selectedUsers,
           })
         })
         const data = await response.json()
         if (response.ok) {
-          toast.success(`Push enviado a ${data.sent || 0} usuarios`)
+          toast.success(`Push enviado: ${data.sent || 0}/${data.total || 0}`)
         } else {
           throw new Error(data.error || 'Error al enviar push')
         }
       }
       setSubject('')
       setMessage('')
+      setLinkUrl('/')
       setSelectedUsers([])
     } catch (error: any) {
       toast.error(error.message || 'Error al enviar mensaje')
@@ -162,6 +152,18 @@ export default function AdminMensajes() {
             </div>
 
             <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80">
+              <label className="block text-sm font-bold text-white mb-2">🔗 URL al abrir</label>
+              <input
+                type="text"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="/contenido"
+                className="w-full bg-zinc-800 border border-white/5 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-bear-blue"
+              />
+              <p className="text-xs text-gray-500 mt-2">Tip: usa rutas internas como <code className="bg-zinc-800 px-1 rounded">/contenido</code> o <code className="bg-zinc-800 px-1 rounded">/dashboard</code>.</p>
+            </div>
+
+            <div className="rounded-xl p-6 border border-white/5 bg-zinc-900/80">
               <label className="block text-sm font-bold text-white mb-2">✏️ Mensaje</label>
               <textarea
                 value={message}
@@ -206,20 +208,31 @@ export default function AdminMensajes() {
               Seleccionados: <span className="text-bear-blue font-bold">{selectedUsers.length}</span> de {users.length}
             </p>
             <div className="space-y-2 max-h-[600px] overflow-y-auto">
-              {users.map((user) => (
-                <div
-                  key={user.id}
-                  onClick={() => toggleUser(user.id)}
-                  className={`p-3 rounded-lg cursor-pointer transition border ${
-                    selectedUsers.includes(user.id)
-                      ? 'bg-bear-blue/20 border-bear-blue/40'
-                      : 'bg-zinc-800/50 border-white/5 hover:bg-white/5'
-                  }`}
-                >
-                  <p className="font-bold text-sm text-white">{user.name || 'Sin nombre'}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
-                </div>
-              ))}
+              {users.map((user) => {
+                const checked = selectedUsers.includes(user.id)
+                return (
+                  <label
+                    key={user.id}
+                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition border ${
+                      checked
+                        ? 'bg-bear-blue/15 border-bear-blue/40'
+                        : 'bg-zinc-800/50 border-white/5 hover:bg-white/5'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleUser(user.id)}
+                      className="mt-0.5 h-4 w-4 rounded border-white/30 bg-zinc-900 text-bear-blue focus:ring-bear-blue/40"
+                      aria-label={`Seleccionar ${user.email}`}
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm text-white truncate">{user.name || 'Sin nombre'}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    </div>
+                  </label>
+                )
+              })}
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { verifyBypassCookie, COOKIE_NAME } from '@/lib/admin-bypass'
 import { isAdminEmailWhitelist } from '@/lib/admin-auth'
 import { AdminHeader } from './AdminHeader'
+import { AdminNav } from './AdminNav'
 
 export default async function AdminLayout({
   children,
@@ -16,6 +17,7 @@ export default async function AdminLayout({
     return (
       <div className="min-h-screen bg-[#050505] text-white antialiased">
         <AdminHeader />
+        <AdminNav />
         {children}
       </div>
     )
@@ -38,6 +40,7 @@ export default async function AdminLayout({
     return (
       <div className="min-h-screen bg-[#050505] text-white antialiased">
         <AdminHeader userEmail={user.email ?? undefined} />
+        <AdminNav />
         {children}
       </div>
     )
@@ -56,6 +59,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-[#050505] text-white antialiased">
       <AdminHeader userEmail={user.email ?? undefined} />
+      <AdminNav />
       {children}
     </div>
   )
