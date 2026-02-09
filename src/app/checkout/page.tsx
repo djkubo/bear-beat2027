@@ -15,6 +15,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Check, Shield, Lock, CreditCard, Building2, Banknote, Wallet, ChevronRight } from 'lucide-react'
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 // ==========================================
 // CHECKOUT – Tarjeta (redirect Stripe) | PayPal (nativo) | OXXO/SPEI (redirect Stripe)
@@ -70,11 +72,7 @@ export default function CheckoutPage() {
     if (name && name.trim()) setCheckoutName(name.trim())
   }, [])
 
-  // HARDCODED FOR TESTING: forzar MX para ver OXXO/SPEI desde cualquier país (ej. USA)
-  useEffect(() => {
-    setCountry('MX')
-    setCurrency('mxn')
-  }, [])
+  // Nota: antes se forzaba MXN para pruebas. Ya es el default; no lo forzamos para permitir geolocalización si se activa.
   // Lógica real (geolocalización) — descomentar para producción:
   // useEffect(() => {
   //   fetch('https://ipapi.co/json/')
@@ -201,20 +199,22 @@ export default function CheckoutPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-3">
-              <Link
-                href={`/checkout?pack=${DOWNSELL_PACK_SLUG}`}
-                onClick={() => setShowExitModal(false)}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-4 rounded-xl transition inline-flex items-center justify-center text-center"
+              <Button
+                asChild
+                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black py-4 h-auto rounded-xl transition"
               >
-                Sí, quiero el Pack de Prueba por $99 MXN
-              </Link>
-              <button
+                <Link href={`/checkout?pack=${DOWNSELL_PACK_SLUG}`} onClick={() => setShowExitModal(false)}>
+                  Sí, quiero el Pack de Prueba por $99 MXN
+                </Link>
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setShowExitModal(false)}
-                className="w-full py-2 text-zinc-400 hover:text-white text-sm"
+                className="w-full h-auto py-2 text-zinc-400 hover:text-white text-sm"
               >
                 No, seguir con {packDisplayName}
-              </button>
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -223,7 +223,14 @@ export default function CheckoutPage() {
       <header className="border-b border-white/10 bg-black py-4">
         <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <Link href="/#catalogo" className="flex items-center gap-2 order-2 sm:order-1">
-            <img src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png" className="h-10 w-auto" alt="Logo" />
+            <Image
+              src="/logos/BBIMAGOTIPOFONDOTRANSPARENTE_Mesa de trabajo 1_Mesa de trabajo 1.png"
+              className="h-10 w-auto"
+              alt="Bear Beat"
+              width={40}
+              height={40}
+              priority
+            />
             <span className="font-bold text-xl tracking-tight">CHECKOUT SEGURO 🔒</span>
           </Link>
           <Link href="/#catalogo" className="text-sm text-gray-400 hover:text-bear-blue transition order-1 sm:order-2">
@@ -378,13 +385,13 @@ export default function CheckoutPage() {
                     <label htmlFor="checkout-name" className="block text-sm font-medium text-gray-400 mb-1.5">
                       Tu nombre (para el recibo)
                     </label>
-                    <input
+                    <Input
                       id="checkout-name"
                       type="text"
                       value={checkoutName}
                       onChange={(e) => setCheckoutName(e.target.value)}
                       placeholder="Ej. Gustavo"
-                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-lg text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
+                      className="border-zinc-700 bg-zinc-900/50 text-lg placeholder:text-zinc-500 focus:ring-1 focus:ring-bear-blue/20"
                     />
                   </div>
 
@@ -403,13 +410,13 @@ export default function CheckoutPage() {
                         <span className="text-amber-400"> (necesario para OXXO/SPEI)</span>
                       )}
                     </label>
-                    <input
+                    <Input
                       id="checkout-email"
                       type="email"
                       value={checkoutEmail ?? ''}
                       onChange={(e) => setCheckoutEmail(e.target.value.trim() || null)}
                       placeholder="tu@email.com"
-                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-lg text-white placeholder:text-zinc-500 focus:border-bear-blue focus:ring-1 focus:ring-bear-blue outline-none"
+                      className="border-zinc-700 bg-zinc-900/50 text-lg placeholder:text-zinc-500 focus:ring-1 focus:ring-bear-blue/20"
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Con este correo podrás iniciar sesión después de pagar (invitado o ya registrado).
@@ -424,6 +431,7 @@ export default function CheckoutPage() {
                         <button
                           type="button"
                           onClick={() => { setSelectedMethod('oxxo'); setError(null) }}
+                          aria-pressed={selectedMethod === 'oxxo'}
                           className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
                             selectedMethod === 'oxxo' ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]' : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
                           }`}
@@ -435,6 +443,7 @@ export default function CheckoutPage() {
                         <button
                           type="button"
                           onClick={() => { setSelectedMethod('spei'); setError(null) }}
+                          aria-pressed={selectedMethod === 'spei'}
                           className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
                             selectedMethod === 'spei' ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]' : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
                           }`}
@@ -448,6 +457,7 @@ export default function CheckoutPage() {
                     <button
                       type="button"
                       onClick={() => { setSelectedMethod('card'); setError(null) }}
+                      aria-pressed={selectedMethod === 'card'}
                       className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
                         selectedMethod === 'card' ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]' : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
                       }`}
@@ -459,6 +469,7 @@ export default function CheckoutPage() {
                     <button
                       type="button"
                       onClick={() => { setSelectedMethod('paypal'); setError(null) }}
+                      aria-pressed={selectedMethod === 'paypal'}
                       className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
                         selectedMethod === 'paypal' ? 'border-bear-blue bg-bear-blue/10 shadow-[0_0_20px_rgba(8,225,247,0.2)]' : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
                       }`}
@@ -485,7 +496,7 @@ export default function CheckoutPage() {
                     <>
                       {error && (
                         <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 mb-4">
-                          <p className="text-sm text-red-400">{error}</p>
+                          <p className="text-sm text-red-400" role="alert">{error}</p>
                         </div>
                       )}
                       <div className="flex flex-wrap items-center justify-center gap-2 py-3 text-xs text-gray-400 mb-4">
@@ -495,13 +506,13 @@ export default function CheckoutPage() {
                         <CreditCard className="h-3.5 w-3.5" />
                         <span>Visa, Mastercard, Link</span>
                       </div>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => handleStripeCheckoutRedirect('card')}
-                        className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#0a0a0a] transition-all"
+                        className="w-full"
                       >
                         Ir a pagar con tarjeta → ${price} {currencyLabel}
-                      </button>
+                      </Button>
                       <p className="mt-3 text-center text-xs text-gray-500">
                         Stripe te pedirá los datos de la tarjeta en su página. Pago 100% seguro.
                       </p>
@@ -567,7 +578,7 @@ export default function CheckoutPage() {
                     <>
                       {error && (
                         <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 mb-6">
-                          <p className="text-sm text-red-400">{error}</p>
+                          <p className="text-sm text-red-400" role="alert">{error}</p>
                         </div>
                       )}
                       <div className="flex flex-wrap items-center justify-center gap-2 py-3 text-xs text-gray-400 mb-2">
@@ -580,13 +591,13 @@ export default function CheckoutPage() {
                         <Banknote className="h-3.5 w-3.5" />
                         <span>OXXO</span>
                       </div>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => handleStripeCheckoutRedirect(selectedMethod!)}
-                        className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-base hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#0a0a0a] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        className="w-full"
                       >
                         PAGAR ${price} {currencyLabel} Y ACCEDER →
-                      </button>
+                      </Button>
                       <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500">
                         <Lock className="h-3.5 w-3.5" />
                         <span>Transacción Encriptada 256-bit SSL · Visa, MC, OXXO</span>

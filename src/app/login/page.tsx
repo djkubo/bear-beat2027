@@ -10,6 +10,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Download, Music2, Monitor, Zap, Eye, EyeOff } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 // ==========================================
 // LOGIN PAGE – Premium & Professional (Dark Mode, coherente con Home)
@@ -199,16 +201,16 @@ export default function LoginPage() {
                   <label htmlFor="login-email" className="block text-sm font-medium text-gray-400 mb-2">
                     Email
                   </label>
-                  <input
+                  <Input
                     id="login-email"
                     type="email"
                     autoComplete="email"
                     placeholder="tu@email.com"
-                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white placeholder-gray-600 outline-none transition-colors focus:border-bear-blue focus:ring-2 focus:ring-bear-blue/20"
+                    aria-invalid={Boolean(errors.email)}
                     {...register('email')}
                   />
                   {errors.email && (
-                    <p className="mt-1.5 text-sm text-red-400">{errors.email.message}</p>
+                    <p className="mt-1.5 text-sm text-red-400" role="alert">{errors.email.message}</p>
                   )}
                 </div>
 
@@ -217,18 +219,21 @@ export default function LoginPage() {
                     Contraseña
                   </label>
                   <div className="relative">
-                    <input
+                    <Input
                       id="login-password"
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
                       placeholder="Tu contraseña"
-                      className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 pr-12 text-white placeholder-gray-600 outline-none transition-colors focus:border-bear-blue focus:ring-2 focus:ring-bear-blue/20"
+                      className="pr-14"
+                      aria-invalid={Boolean(errors.password)}
                       {...register('password')}
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bear-blue/40"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
                       aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                     >
                       {showPassword ? (
@@ -236,10 +241,10 @@ export default function LoginPage() {
                       ) : (
                         <Eye className="h-5 w-5" />
                       )}
-                    </button>
+                    </Button>
                   </div>
                   {errors.password && (
-                    <p className="mt-1.5 text-sm text-red-400">{errors.password.message}</p>
+                    <p className="mt-1.5 text-sm text-red-400" role="alert">{errors.password.message}</p>
                   )}
                 </div>
 
@@ -254,14 +259,14 @@ export default function LoginPage() {
 
                 {formError && (
                   <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
-                    <p className="text-sm text-red-400">{formError}</p>
+                    <p className="text-sm text-red-400" role="alert">{formError}</p>
                   </div>
                 )}
 
-                <button
+                <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-12 rounded-xl bg-bear-blue text-bear-black font-black text-lg transition-all hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-bear-blue focus:ring-offset-2 focus:ring-offset-[#050505] disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(8,225,247,0.3)]"
+                  className="w-full text-lg"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -290,7 +295,7 @@ export default function LoginPage() {
                   ) : (
                     'ENTRAR →'
                   )}
-                </button>
+                </Button>
               </form>
             </div>
 

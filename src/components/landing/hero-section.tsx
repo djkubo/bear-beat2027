@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Play, Download, Wifi, CheckCircle2 } from 'lucide-react'
+import { Play, CheckCircle2 } from 'lucide-react'
 import { trackCTAClick } from '@/lib/tracking'
 
 interface HeroSectionProps {
@@ -99,11 +99,14 @@ export function HeroSection({ pack, totalVideos: totalVideosProp }: HeroSectionP
 
             {/* CTA + Garantía */}
             <div className="space-y-4 max-w-lg mx-auto lg:mx-0">
-              <Link href="/checkout" className="block" onClick={() => trackCTAClick('HERO_CTA', 'hero')}>
-                <Button className="w-full h-16 text-xl lg:text-2xl font-black bg-bear-blue hover:brightness-110 text-bear-black rounded-xl shadow-[0_0_40px_-10px_rgba(8,225,247,0.6)] hover:shadow-[0_0_60px_-10px_rgba(8,225,247,0.8)] transition-all transform hover:-translate-y-1">
+              <Button
+                asChild
+                className="w-full h-16 text-xl lg:text-2xl font-black bg-bear-blue hover:brightness-110 text-bear-black rounded-xl shadow-[0_0_40px_-10px_rgba(8,225,247,0.6)] hover:shadow-[0_0_60px_-10px_rgba(8,225,247,0.8)] transition-all transform hover:-translate-y-1"
+              >
+                <Link href="/checkout" onClick={() => trackCTAClick('HERO_CTA', 'hero')}>
                   ⚡ OBTENER MI VENTAJA INJUSTA - ${priceMXN}
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <div className="flex items-center justify-center lg:justify-start gap-4 text-xs text-zinc-500 font-medium">
                 <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> 🔒 Si no te hace ganar más dinero, te devolvemos todo.</span>
               </div>

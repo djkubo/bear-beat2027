@@ -2,7 +2,7 @@
 
 import Script from 'next/script'
 import { usePathname } from 'next/navigation'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { trackPageView } from '@/lib/tracking'
 import { AttributionTracker } from '@/components/tracking/AttributionTracker'
 
@@ -32,18 +32,26 @@ function pathToPageName(pathname: string): string {
 export function TrackingScripts() {
   const pathname = usePathname()
   const lastPathRef = useRef<string | null>(null)
-  const isAutomation = typeof navigator !== 'undefined' && navigator.webdriver
+  const [mounted, setMounted] = useState(false)
+
+  // Avoid hydration mismatches: on the server we don't know navigator.webdriver.
+  // We only decide to render/skip tracking after mount.
+  useEffect(() => setMounted(true), [])
+
+  const isAutomation = mounted && typeof navigator !== 'undefined' && navigator.webdriver
 
   useEffect(() => {
+    if (!mounted) return
     if (isAutomation) return
     if (typeof window === 'undefined') return
     const pageName = pathToPageName(pathname || '/')
     if (lastPathRef.current === pathname) return
     lastPathRef.current = pathname
     trackPageView(pageName)
-  }, [pathname, isAutomation])
+  }, [pathname, isAutomation, mounted])
 
   useEffect(() => {
+    if (!mounted) return
     if (isAutomation) return
     if (DISABLED || !PIXEL_ID || typeof window === 'undefined' || !window.fbq) return
     try {
@@ -52,9 +60,9 @@ export function TrackingScripts() {
     } catch (_) {
       // Pixel puede estar unavailable por permisos en Meta
     }
-  }, [pathname, isAutomation])
+  }, [pathname, isAutomation, mounted])
 
-  if (isAutomation) return null
+  if (!mounted || isAutomation) return null
 
   return (
     <>

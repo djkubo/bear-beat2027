@@ -8,6 +8,7 @@ interface PhoneInputProps {
   onChange: (value: string) => void
   onCountryChange?: (country: CountryCode) => void
   defaultCountry?: CountryCode
+  autoDetectCountry?: boolean
   className?: string
   placeholder?: string
 }
@@ -69,6 +70,7 @@ export function PhoneInput({
   onChange,
   onCountryChange,
   defaultCountry = 'MX',
+  autoDetectCountry = true,
   className = '',
   placeholder = 'Número con lada (ej. 55 1234 5678)',
 }: PhoneInputProps) {
@@ -83,19 +85,27 @@ export function PhoneInput({
   }, [value, country])
 
   useEffect(() => {
-    // Detectar país por IP al montar
-    fetch('https://ipapi.co/json/')
-      .then(res => res.json())
-      .then(data => {
-        const detectedCountry = data.country_code as CountryCode
-        if (countryNames[detectedCountry]) {
-          setCountry(detectedCountry)
-          onCountryChange?.(detectedCountry)
+    if (!autoDetectCountry) return
+    // Evitar llamadas externas por performance/privacidad: inferir por locale del navegador.
+    try {
+      const locales = [
+        typeof navigator !== 'undefined' ? navigator.language : '',
+        ...(typeof navigator !== 'undefined' && Array.isArray(navigator.languages) ? navigator.languages : []),
+      ].filter(Boolean)
+      for (const loc of locales) {
+        const m = String(loc).match(/[-_]([A-Za-z]{2})\\b/)
+        const cc = m?.[1]?.toUpperCase()
+        if (cc && countryNames[cc]) {
+          const detected = cc as CountryCode
+          setCountry(detected)
+          onCountryChange?.(detected)
+          break
         }
-      })
-      .catch(() => {
-        setCountry('MX')
-      })
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,7 +131,7 @@ export function PhoneInput({
       } else {
         onChange(fullNumber)
       }
-    } catch (error) {
+    } catch (_error) {
       // Si hay error en parseo, devolver lo que escribió el usuario
       onChange(input)
     }

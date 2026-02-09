@@ -125,7 +125,23 @@ export function generateSignedUrl(
   const pathNorm = (filePath || '').replace(/^\/+/, '').replace(/\.\./g, '').trim()
   if (!pathNorm) return ''
   const pathNormalized = '/' + pathNorm
-  const expires = Math.floor(Date.now() / 1000) + expiresInSeconds
+
+  // Bunny cache behavior can vary by Pull Zone configuration. When the cache key includes query params,
+  // generating a unique `expires` every request effectively disables caching (slow first-byte for large ZIPs).
+  // To improve real-world download speed, we "bucket" the expiry so URLs stay stable for a short window.
+  // Defaults:
+  // - ZIPs + images: 1h bucket (high cache value, low risk)
+  // - Videos/others: 5m bucket (keeps tokens short-lived but still cacheable on retries)
+  const lower = pathNorm.toLowerCase()
+  const isZip = lower.endsWith('.zip')
+  const isImage = /\.(png|jpe?g|webp|gif|avif)$/i.test(lower)
+  const bucketFromEnv = Number(process.env.BUNNY_TOKEN_EXPIRES_BUCKET_SECONDS)
+  const bucketSeconds = Number.isFinite(bucketFromEnv) && bucketFromEnv > 0
+    ? Math.max(30, Math.min(24 * 60 * 60, Math.floor(bucketFromEnv)))
+    : (isZip || isImage ? 3600 : 300)
+
+  const rawExpires = Math.floor(Date.now() / 1000) + expiresInSeconds
+  const expires = Math.ceil(rawExpires / bucketSeconds) * bucketSeconds
 
   const hashable = BUNNY_TOKEN_KEY + pathNormalized + expires.toString()
   const token = crypto
